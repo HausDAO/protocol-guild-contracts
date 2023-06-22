@@ -6,14 +6,15 @@ import type { NetworkUserConfig } from "hardhat/types";
 import { resolve } from "path";
 
 import "./tasks/accounts";
-import "./tasks/greet";
 import "./tasks/taskDeploy";
+import "./tasks/members";
+import "./tasks/registry";
 
 const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || "./.env";
 dotenvConfig({ path: resolve(__dirname, dotenvConfigPath) });
 
 // Ensure that we have all the environment variables we need.
-const mnemonic: string | undefined = process.env.MNEMONIC;
+const mnemonic: string = process.env.MNEMONIC || '';
 if (!mnemonic) {
   throw new Error("Please set your MNEMONIC in a .env file");
 }
@@ -24,37 +25,80 @@ if (!infuraApiKey) {
 }
 
 const chainIds = {
-  "arbitrum-mainnet": 42161,
-  avalanche: 43114,
-  bsc: 56,
   hardhat: 31337,
+  goerli: 5,
+  sepolia: 11155111,
   mainnet: 1,
+  gnosis: 100,
+  "arbitrum-mainnet": 42161,
+  "arbitrum-goerli": 421613,
   "optimism-mainnet": 10,
+  "optimism-goerli": 420,
   "polygon-mainnet": 137,
   "polygon-mumbai": 80001,
-  sepolia: 11155111,
 };
 
-function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
-  let jsonRpcUrl: string;
-  switch (chain) {
-    case "avalanche":
-      jsonRpcUrl = "https://api.avax.network/ext/bc/C/rpc";
-      break;
-    case "bsc":
-      jsonRpcUrl = "https://bsc-dataseed1.binance.org";
-      break;
-    default:
-      jsonRpcUrl = "https://" + chain + ".infura.io/v3/" + infuraApiKey;
+const explorerApiKey = (networkName: keyof typeof chainIds) => {
+  const fromEnv = () => {
+    switch (networkName) {
+      case 'mainnet':
+      case 'goerli':
+        return process.env.ETHERSCAN_APIKEY;
+      case 'gnosis':
+        return process.env.GNOSISSCAN_APIKEY;
+      case 'polygon-mainnet':
+      case 'polygon-mumbai':
+        return process.env.POLYGONSCAN_APIKEY;
+      case 'optimism-mainnet':
+      case 'optimism-goerli':
+        return process.env.OPTIMISTICSCAN_APIKEY;
+      case 'arbitrum-mainnet':
+      case 'arbitrum-goerli':
+        return process.env.ARBISCAN_APIKEY;
+      default:
+        break;
+    }
   }
+  return fromEnv() || '';
+}
+
+const getNodeURI = (networkName: keyof typeof chainIds) => {
+  switch (networkName) {
+    case "arbitrum-mainnet":
+      return "https://rpc.ankr.com/arbitrum";
+    case "arbitrum-goerli":
+      return "https://goerli-rollup.arbitrum.io/rpc";
+      // return "https://arbitrum-goerli.publicnode.com";
+    case "optimism-mainnet":
+      return "https://rpc.ankr.com/optimism";
+    case "optimism-goerli":
+      return "https://goerli.optimism.io";
+    case "polygon-mainnet":
+      return "https://rpc.ankr.com/polygon";
+    case "polygon-mumbai":
+      return "https://rpc.ankr.com/polygon_mumbai";
+    default:
+      return "https://" + networkName + ".infura.io/v3/" + infuraApiKey;
+  }
+}
+
+function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
+  let jsonRpcUrl: string = getNodeURI(chain);
   return {
-    accounts: {
-      count: 10,
-      mnemonic,
-      path: "m/44'/60'/0'/0",
-    },
+    accounts: process.env.ACCOUNT_PK
+      ? [process.env.ACCOUNT_PK]
+      : {
+        count: 10,
+        mnemonic,
+        path: "m/44'/60'/0'/0",
+      },
     chainId: chainIds[chain],
     url: jsonRpcUrl,
+    verify: {
+      etherscan: {
+        apiKey: explorerApiKey(chain),
+      },
+    },
   };
 }
 
@@ -63,18 +107,18 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: 0,
   },
-  etherscan: {
-    apiKey: {
-      arbitrumOne: process.env.ARBISCAN_API_KEY || "",
-      avalanche: process.env.SNOWTRACE_API_KEY || "",
-      bsc: process.env.BSCSCAN_API_KEY || "",
-      mainnet: process.env.ETHERSCAN_API_KEY || "",
-      optimisticEthereum: process.env.OPTIMISM_API_KEY || "",
-      polygon: process.env.POLYGONSCAN_API_KEY || "",
-      polygonMumbai: process.env.POLYGONSCAN_API_KEY || "",
-      sepolia: process.env.ETHERSCAN_API_KEY || "",
-    },
-  },
+  // etherscan: {
+  //   apiKey: {
+  //     arbitrumOne: process.env.ARBISCAN_APIKEY || "",
+  //     // avalanche: process.env.SNOWTRACE_API_KEY || "",
+  //     // bsc: process.env.BSCSCAN_API_KEY || "",
+  //     mainnet: process.env.ETHERSCAN_APIKEY || "",
+  //     optimisticEthereum: process.env.OPTIMISM_APIKEY || "",
+  //     polygon: process.env.POLYGONSCAN_API_KEY || "",
+  //     polygonMumbai: process.env.POLYGONSCAN_API_KEY || "",
+  //     sepolia: process.env.ETHERSCAN_API_KEY || "",
+  //   },
+  // },
   gasReporter: {
     currency: "USD",
     enabled: process.env.REPORT_GAS ? true : false,
@@ -87,21 +131,58 @@ const config: HardhatUserConfig = {
         mnemonic,
       },
       chainId: chainIds.hardhat,
-    },
-    ganache: {
-      accounts: {
-        mnemonic,
+      forking: process.env.HARDHAT_FORK_NETWORK
+        ? {
+            url: getNodeURI(process.env.HARDHAT_FORK_NETWORK as keyof typeof chainIds),
+            blockNumber: process.env.HARDHAT_FORK_BLOCKNUMBER
+              ? parseInt(process.env.HARDHAT_FORK_BLOCKNUMBER)
+              : undefined,
+          }
+        : undefined,
+      companionNetworks: {
+        l2: 'hardhat',
       },
-      chainId: chainIds.ganache,
-      url: "http://localhost:8545",
     },
-    arbitrum: getChainConfig("arbitrum-mainnet"),
-    avalanche: getChainConfig("avalanche"),
-    bsc: getChainConfig("bsc"),
+    // ganache: {
+    //   accounts: {
+    //     mnemonic,
+    //   },
+    //   chainId: chainIds.ganache,
+    //   url: "http://localhost:8545",
+    // },
+    // avalanche: getChainConfig("avalanche"),
+    // bsc: getChainConfig("bsc"),
+    goerli: {
+      ...getChainConfig("goerli"),
+      companionNetworks: {
+        "l2-optimism": "optimismGoerli",
+        "l2-arbitrum": "arbitrumGoerli",
+      },
+      gas: 5000000,
+      gasPrice: 8000000000,
+      gasMultiplier: 2,
+    },
     mainnet: getChainConfig("mainnet"),
+    gnosis: getChainConfig("gnosis"),
+    arbitrum: getChainConfig("arbitrum-mainnet"),
+    arbitrumGoerli: {
+      ...getChainConfig("arbitrum-goerli"),
+      companionNetworks: {
+        'l1': 'goerli',
+      },
+      initialBaseFeePerGas: 61135190000,
+      gasPrice: 61135190000,
+      gasMultiplier: 1.2,
+    },
     optimism: getChainConfig("optimism-mainnet"),
-    "polygon-mainnet": getChainConfig("polygon-mainnet"),
-    "polygon-mumbai": getChainConfig("polygon-mumbai"),
+    optimismGoerli: {
+      ...getChainConfig("optimism-goerli"),
+      companionNetworks: {
+        'l1': 'goerli',
+      },
+    },
+    polygon: getChainConfig("polygon-mainnet"),
+    mumbai: getChainConfig("polygon-mumbai"),
     sepolia: getChainConfig("sepolia"),
   },
   paths: {
@@ -111,24 +192,63 @@ const config: HardhatUserConfig = {
     tests: "./test",
   },
   solidity: {
-    version: "0.8.17",
-    settings: {
-      metadata: {
-        // Not including the metadata hash
-        // https://github.com/paulrberg/hardhat-template/issues/31
-        bytecodeHash: "none",
+    compilers: [
+      {
+        version: '0.8.4',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
-      // Disable the optimizer when debugging
-      // https://hardhat.org/hardhat-network/#solidity-optimizer-support
-      optimizer: {
-        enabled: true,
-        runs: 800,
+      {
+        version: '0.8.7',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
-    },
+      {
+        version: '0.8.13',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: "0.8.19",
+        settings: {
+          metadata: {
+            // Not including the metadata hash
+            // https://github.com/paulrberg/hardhat-template/issues/31
+            bytecodeHash: "none",
+          },
+          // Disable the optimizer when debugging
+          // https://hardhat.org/hardhat-network/#solidity-optimizer-support
+          optimizer: {
+            enabled: true,
+            runs: 200, // 800
+          },
+        },
+      },
+    ]
   },
   typechain: {
     outDir: "types",
     target: "ethers-v5",
+  },
+  external: {
+    contracts: [
+      {
+        artifacts: 'node_modules/@daohaus/baal-contracts/export/artifacts',
+        deploy: 'node_modules/@daohaus/baal-contracts/export/deploy'
+      }
+    ]
   },
 };
 
