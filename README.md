@@ -182,9 +182,9 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 | Contract                | Address                                    |
 | ----------------------  | ------------------------------------------ |
-| NetworkRegistrySummoner | 0xdDF554Cf7863C86f42D395E21a64Ab39569Cfd29 |
-| NetworkRegistry         | 0x21e3a59C240bf52A596293bD80D670817B67628B |
-| NetworkRegistryShaman   | 0x1c4Aa07212e80D47c7CFb0614549521dC1a51D44 |
+| NetworkRegistrySummoner | 0xd8453cEE3b86887829cd7622FDD39187DE8e8261 |
+| NetworkRegistry         | 0xbeBfd47b32D241CeeceD90FF627A6845277fef49 |
+| NetworkRegistryShaman   | 0xE175295bBF380FF27eBa23730E08e7488BF82530 |
 
 ### OptimismGoerli
 
