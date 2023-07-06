@@ -3,36 +3,40 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 //*********************************************************************//
 // --------------------------- custom errors ------------------------- //
 //*********************************************************************//
-error ALREADY_REGISTERED();
-error NOT_REGISTERED();
-error START_DATE_IN_FUTURE();
-error INVALID_ACTIVITY_MULTIPLIER();
+error Member__AlreadyRegistered(address _member);
+error Member__NotRegistered(address _member);
+error InvalidMember__Address(address _member);
+error InvalidMember__StartDateInTheFuture(address _member, uint32 _startDate);
+error InvalidMember__ActivityMultiplier(address _member, uint32 _activityMultiplier);
 
 abstract contract MemberRegistry {
     struct Member {
         address account;
         uint32 secondsActive;
         uint32 startDate;
-        uint8 activityMultiplier;
+        uint32 activityMultiplier;
     }
 
-    // store when a update happens
-    uint32 public lastUpdate;
     // iterable
     Member[] public members;
     uint256 internal count = 0;
+    
     mapping(address => uint256) public memberIdxs;
 
+    // store when a update happens
+    uint32 public lastActivityUpdate;
+
     // EVENTS
-    event SetMember(Member member, uint32 startDate);
-    event UpdateMemberSeconds(Member member, uint32 newSeconds);
-    event UpdateMember(Member member);
-    event Update(uint32 date);
+    event NewMember(address indexed _member, uint32 _startDate, uint32 _activityMultiplier);
+    event UpdateMember(address indexed _member, uint32 _activityMultiplier);
+    event UpdateMemberSeconds(address indexed _member, uint32 _secondsActive);
+    
+    event RegistryActivityUpdate(uint32 _date, uint256 _totalMemberUpdates);
 
     // REGISTERY MODIFIERS
 
@@ -41,72 +45,94 @@ abstract contract MemberRegistry {
     // if member does not exist, add them to the registry
     function _setNewMember(
         address _member,
-        uint8 _activityMultiplier,
+        uint32 _activityMultiplier,
         uint32 _startDate
     ) internal {
-        if(memberIdxs[_member] != 0) revert ALREADY_REGISTERED();
-        if(_startDate > uint32(block.timestamp)) revert START_DATE_IN_FUTURE();
-        if(_activityMultiplier > 100) revert INVALID_ACTIVITY_MULTIPLIER();
+        if (_member == address(0)) revert InvalidMember__Address(_member);
+        if (memberIdxs[_member] != 0) revert Member__AlreadyRegistered(_member);
+        if (_activityMultiplier > 100) revert InvalidMember__ActivityMultiplier(_member, _activityMultiplier);
+        if (_startDate > block.timestamp) revert InvalidMember__StartDateInTheFuture(_member, _startDate);
 
         // set to 0, will be updated in next update
-        uint32 secsActive = 0;
+        uint32 secondsActive = 0;
         members.push(
-            Member(_member, secsActive, _startDate, _activityMultiplier)
+            Member(_member, secondsActive, _startDate, _activityMultiplier)
         );
         count += 1;
         memberIdxs[_member] = count;
-        emit SetMember(members[count - 1], uint32(block.timestamp)); // index is minus 1 for 0 index array
+        emit NewMember(_member, _startDate, _activityMultiplier);
     }
 
     function _updateMember(
         address _member,
-        uint8 _activityMultiplier // 0-100 %
+        uint32 _activityMultiplier // e.g. 0-100 %
     ) internal {
-        if(memberIdxs[_member] == 0) revert NOT_REGISTERED();
-        if(_activityMultiplier > 100) revert INVALID_ACTIVITY_MULTIPLIER();
+        uint256 memberIdx = memberIdxs[_member];
+        if(memberIdx == 0) revert Member__NotRegistered(_member);
+        if(_activityMultiplier > 100) revert InvalidMember__ActivityMultiplier(_member, _activityMultiplier);
 
-        members[memberIdxs[_member] - 1]
-            .activityMultiplier = _activityMultiplier;
-        emit UpdateMember(members[memberIdxs[_member] - 1]);
+        Member storage member = members[memberIdxs[_member] - 1];
+        member.activityMultiplier = _activityMultiplier;
+
+        emit UpdateMember(_member, _activityMultiplier);
     }
 
     // add seconds active to member from last update
     // for brand new members it will be an update from their start date
     // todo: this could be more generic, use a controller contract to update
     function _updateSecondsActive() internal virtual {
-        uint32 currentUpdate = uint32(block.timestamp);
+        uint32 currentDate = uint32(block.timestamp);
         // update struct with total seconds active and seconds in last claim
-        for (uint256 i = 0; i < members.length; i++) {
+        uint256 i;
+        for (i = 0; i < members.length; ) {
             Member storage _member = members[i];
-
-            uint32 newSeconds = 0;
-            if (_member.secondsActive == 0) {
-                // new member will be 0 and should get seconds from start date
-                newSeconds = (currentUpdate - _member.startDate);
-            } else {
-                newSeconds = (currentUpdate - lastUpdate);
+            uint32 newSecondsActive = 0;
+            if (_member.activityMultiplier > 0) {
+                uint32 initDate = _member.secondsActive > 0 ? lastActivityUpdate : _member.startDate;
+                uint32 activeSeconds = currentDate - initDate;
+                // multiply by modifier and divide by 100 to get modifier % of seconds
+                newSecondsActive = (activeSeconds *
+                    _member.activityMultiplier) / 100;
             }
-            // multiple by modifier and divide by 100 to get modifier % of seconds
-            uint32 newSecondsActive = (newSeconds *
-                _member.activityMultiplier) / 100;
             _member.secondsActive += newSecondsActive;
-            emit UpdateMemberSeconds(_member, newSecondsActive);
+            emit UpdateMemberSeconds(_member.account, newSecondsActive);
+            unchecked {
+                i++; // gas optimization: very unlikely to overflow
+            }
         }
-        lastUpdate = currentUpdate;
-        emit Update(currentUpdate);
+        emit RegistryActivityUpdate(currentDate, i);
+        lastActivityUpdate = currentDate;
     }
 
     function getMembers() public view returns (Member[] memory) {
         return members;
     }
 
+    function getMembersSplitProperties() public view returns(
+        address[] memory,
+        uint32[] memory,
+        uint32[] memory
+    ) {
+        address[] memory _members = new address[](members.length);
+        uint32[] memory _activityMultipliers = new uint32[](members.length);
+        uint32[] memory _startDates = new uint32[](members.length);
+        for (uint256 i = 0; i < members.length; ) {
+            _members[i] = members[i].account;
+            _activityMultipliers[i] = members[i].activityMultiplier;
+            _startDates[i] = members[i].startDate;
+            unchecked {
+                i++;
+            }
+        }
+        return (_members, _activityMultipliers, _startDates);
+    }
+
     function getMember(address _member) public view returns (Member memory) {
-        if(memberIdxs[_member] == 0) revert NOT_REGISTERED();
+        if(memberIdxs[_member] == 0) revert Member__NotRegistered(_member);
         return members[memberIdxs[_member] - 1];
     }
 
     function totalMembers() public view returns (uint256) {
         return members.length;
     }
-
 }

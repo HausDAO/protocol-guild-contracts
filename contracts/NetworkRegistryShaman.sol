@@ -7,15 +7,14 @@ import { NetworkRegistry } from "./NetworkRegistry.sol";
 
 contract NetworkRegistryShaman is NetworkRegistry {
 
-    // string public name;
-
     IBaal public baal;
     uint256 public sharesToMint;
     bool public burnShares;
 
     modifier isManagerShaman() {
-        require(address(baal) != address(0), "PGNetworkRegistryShaman: !init");
-        require(baal.isManager(address(this)), "PGNetworkRegistryShaman: Shaman is not manager");
+        if (isMainRegistry()) {
+            require(address(baal) != address(0) && baal.isManager(address(this)), "NetworkRegistryShaman: !init || ! manager");
+        }
         _;
     }
 
@@ -26,34 +25,35 @@ contract NetworkRegistryShaman is NetworkRegistry {
             address _updater,
             address _splitMain,
             address _split,
-            uint32 _splitDistributorFee,
             address _baal,
             uint256 _sharesToMint,
             bool _burnShares
-        ) = abi.decode(_initializationParams, (address, uint32, address, address, address, uint32, address, uint256, bool));
+        ) = abi.decode(_initializationParams, (address, uint32, address, address, address, address, uint256, bool));
         __NetworkRegistry_init(
             _connext,
             _updaterDomain,
             _updater,
             _splitMain,
             _split,
-            _splitDistributorFee,
-            _baal
+            _baal // Baal is registry Owner
         );
         baal = IBaal(_baal);
         sharesToMint = _sharesToMint;
         burnShares = _burnShares;
     }
 
+    function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwnerOrUpdater {
+        burnShares = _burnShares;
+        sharesToMint = _sharesToMint;
+    }
+
     function setNewMember(
         address _member,
-        uint8 _activityMultiplier,
+        uint32 _activityMultiplier,
         uint32 _startDate
     ) public override onlyOwnerOrUpdater isManagerShaman {
         super.setNewMember(_member, _activityMultiplier, _startDate);
         if (isMainRegistry()) {
-            require(address(baal) != address(0), "PGNetworkRegistryShaman: !init");
-            require(baal.isManager(address(this)), "PGNetworkRegistryShaman: Shaman is not manager");
             address[] memory _receivers = new address[](1);
             _receivers[0] = _member;
             uint256[] memory _amounts = new uint256[](1);
@@ -64,13 +64,11 @@ contract NetworkRegistryShaman is NetworkRegistry {
 
     function updateMember(
         address _member,
-        uint8 _activityMultiplier
+        uint32 _activityMultiplier
     ) public override onlyOwnerOrUpdater isManagerShaman
     {
         super.updateMember(_member, _activityMultiplier);
         if (isMainRegistry() && burnShares) {
-            require(address(baal) != address(0), "PGNetworkRegistryShaman: !init");
-            require(baal.isManager(address(this)), "PGNetworkRegistryShaman: Shaman is not manager");
             address[] memory _from = new address[](1);
             _from[0] = _member;
             uint256[] memory _amounts = new uint256[](1);

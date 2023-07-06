@@ -118,6 +118,10 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
         pgRegistryShamanSingleton,
       },
       users: {
+        owner: {
+          address: deployer,
+          summoner: summoner.connect(await ethers.getSigner(deployer)),
+        },
         applicant: {
           address: applicant,
           summoner: summoner.connect(await ethers.getSigner(applicant)),

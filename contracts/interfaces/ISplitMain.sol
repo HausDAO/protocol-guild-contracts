@@ -30,6 +30,10 @@ interface ISplitMain {
     uint32 distributorFee
   ) external;
 
+  function getController(address split) external view returns (address);
+
+  function getNewPotentialController(address split) external view returns (address);
+
   function transferControl(address split, address newController) external;
 
   function cancelControlTransfer(address split) external;
