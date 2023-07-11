@@ -63,7 +63,7 @@ export const deploymentConfig: { [key: string]: any } = {
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
     split: "0x3023F7f106888C4F21d579D0d0FA0a334986FB54",
-    pgRegistry: "0x3cFe6EE0664954c27E2D1Cfbe14E455e502527eB",
+    pgRegistry: "0x806692b37b859d532ca373E84828F4899EBbAd27",
   },
   "80001": {
     // mumbai
