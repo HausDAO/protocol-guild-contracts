@@ -84,8 +84,8 @@ export const deploymentConfig: { [key: string]: any } = {
     safe: "", // TODO:
     splitsMain: "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE",
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0xec2b5aa0a85a6b30ccdd298e576bb25c7c93c51d",
-    pgRegistry: "0x29cB372f45604475781492cC688683a7202c13e5",
+    split: "0xfc9d3e4f1a01589f29bfe6e047c3b62fb3de7095",
+    pgRegistry: "0x58d31B7668b13cb2995FF754dA2a658041B6cEEf",
   },
   "421613": {
     // arbitrumGoerli
@@ -95,7 +95,7 @@ export const deploymentConfig: { [key: string]: any } = {
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0xfde01489c4e420d35d2fcb208089037ef5f7d4f5",
-    pgRegistry: "0x29cB372f45604475781492cC688683a7202c13e5",
+    split: "0xab7a08be21dfecd4c9902995f3e30a2659b564e1",
+    pgRegistry: "0x58d31B7668b13cb2995FF754dA2a658041B6cEEf",
   },
 };

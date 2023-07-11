@@ -31,14 +31,13 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     console.log("networkConfig", networkConfig);
 
     const initializationParams = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint32", "address", "address", "address", "uint32", "address"],
+      ["address", "uint32", "address", "address", "address", "address"],
       [
         networkConfig.connext,
         networkConfig.l2 ? deploymentConfig[parentChainId].domainId : 0,
         networkConfig.l2 ? deploymentConfig[parentChainId].pgRegistry : ethers.constants.AddressZero,
         networkConfig.splitMain,
         networkConfig.split,
-        "0", // _splitDistributorFee
         networkConfig.l2 ? ethers.constants.AddressZero : networkConfig.moloch || networkConfig.safe || deployer,
       ],
     );
