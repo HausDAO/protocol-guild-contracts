@@ -171,8 +171,8 @@ const config: HardhatUserConfig = {
       companionNetworks: {
         'l1': 'goerli',
       },
-      initialBaseFeePerGas: 61135190000,
-      gasPrice: 61135190000,
+      initialBaseFeePerGas: 1635190000,
+      gasPrice: 1635190000,
       gasMultiplier: 1.2,
     },
     optimism: getChainConfig("optimism-mainnet"),
