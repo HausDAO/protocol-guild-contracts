@@ -142,6 +142,7 @@ const config: HardhatUserConfig = {
       companionNetworks: {
         l2: 'hardhat',
       },
+      initialDate: '01 Jun 2023',
     },
     // ganache: {
     //   accounts: {

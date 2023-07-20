@@ -1,82 +1,16 @@
-import { ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { ConnextMock, NetworkRegistrySummoner, NetworkRegistry, NetworkRegistryShaman, SplitMain } from "../../types";
-import { NetworkRegistryProps, User, registryFixture } from "./NetworkRegistry.fixture";
 import { expect } from "chai";
-import { BigNumber, BigNumberish, Event } from "ethers";
+import { BigNumber, Event } from "ethers";
+import { ethers, getNamedAccounts, getUnnamedAccounts, network } from "hardhat";
 
-const deploySplit = async (
-    splitMain: SplitMain,
-    members: Array<string>,
-    percentAllocations: Array<number>,
-    distributorFee: number,
-    controller: string
-): Promise<string> => {
-    const tx = await splitMain.createSplit(members, percentAllocations, distributorFee, controller);
-    const receipt = await tx.wait();
-    const splitAddress = 
-        receipt.events?.[0].topics[1] && ethers.utils.defaultAbiCoder.decode(['address'], receipt.events?.[0].topics[1])[0];
-    if (!splitAddress) throw new Error('Failed to deploy Split');
-    return splitAddress;
-}
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
-type NetworkRegistryArgs = {
-    connext: string;
-    updaterDomainId: number;
-    updaterAddress: string;
-    splitMain: string;
-    split: string;
-    // distributorFee: number;
-    owner: string;
-}
-
-type Member = {
-    account: string;
-    secondsActive?: BigNumberish;
-    startDate: BigNumberish;
-    activityMultiplier: BigNumberish;
-}
-
-const summonRegistry = async (
-    summoner: NetworkRegistrySummoner,
-    registrySingleton: string,
-    registryArgs: NetworkRegistryArgs,
-    registryName: string = 'SampleRegistry'
-  ) => {
-    const { connext, updaterDomainId, updaterAddress, splitMain, split, owner } = registryArgs;
-    const initializationParams = ethers.utils.defaultAbiCoder.encode(
-        ['address', 'uint32', 'address', 'address', 'address', 'address'],
-        [connext, updaterDomainId, updaterAddress, splitMain, split, owner]
-    );
-    // const eventIndex = 2 + Number(registryArgs.renounceOwnership);
-    const eventIndex = 3; // NetworkRegistrySummoned
-
-    const tx = await summoner.summonRegistry(registrySingleton, registryName, initializationParams);
-    const receipt = await tx.wait();
-    // if (!registryArgs.renounceOwnership) {
-    //     console.log('events', receipt);
-    // }
-    const registryAddress =
-        receipt.events?.[eventIndex].topics[1] &&
-        ethers.utils.defaultAbiCoder.decode(['address'], receipt.events?.[eventIndex].topics[1])[0];
-    if (!registryAddress) throw new Error('Failed to summon a Network Registry');
-    return registryAddress;
-};
-
-const generateMemberBatch = async (
-    totalMembers: number
-): Promise<Array<Member>> => {
-    const accounts = await getUnnamedAccounts();
-    const members = accounts.slice(0, totalMembers);
-    const startDate = (new Date().getTime() / 1000).toFixed(0);
-    return members.map((m: string, idx: number) => {
-        return {
-            account: m,
-            activityMultiplier: idx < 3 ? 100 : (idx % 5 === 0 ? 0 : (Math.floor(Math.random() * 100) > 50 ? 100 : 50)),
-            startDate,
-        }
-    });
-};
+import { PERCENTAGE_SCALE } from "../../constants";
+import { ConnextMock, NetworkRegistrySummoner, NetworkRegistry, NetworkRegistryShaman, SplitMain } from "../../types";
+import { Member } from "../types";
+import { generateMemberBatch, summonRegistry } from "../utils/networkRegistry";
+import { deploySplit, hashSplit } from "../utils/split";
+import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistry", function () {
 
@@ -90,14 +24,10 @@ describe("NetworkRegistry", function () {
     let l2SplitAddress: string;
     let users: { [key: string]: User };
     let members: Array<string>;
-    let newMemberQueue: Array<string>;
     const splitConfig = {
         percentAllocations: [400_000, 300_000, 300_000],
         distributorFee: 0,
     };
-
-    let l1InitializationParams: string;
-    let l2InitializationParams: string;
 
     const parentDomainId = 6648936;
     const replicaChainId = 10;
@@ -107,7 +37,6 @@ describe("NetworkRegistry", function () {
     let l2NetworkRegistry: NetworkRegistry;
 
     const defaultRelayerFee = ethers.utils.parseEther("0.001");
-
 
     beforeEach(async function () {
         const setup = await registryFixture({});
@@ -119,26 +48,14 @@ describe("NetworkRegistry", function () {
         l2Registry = setup.l2;
         users = setup.users;
 
-        // const { deployer } = await getNamedAccounts();
         const signer = await ethers.getSigner(users.owner.address);
         const accounts = await getUnnamedAccounts();
         members = accounts.slice(0, splitConfig.percentAllocations.length);
-        newMemberQueue = accounts.slice(splitConfig.percentAllocations.length, 20 + splitConfig.percentAllocations.length);
 
+        // Deploy Split on L1
         l1SplitAddress = await deploySplit(l1SplitMain, members, splitConfig.percentAllocations, splitConfig.distributorFee, users.owner.address);
 
-        l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
-            ['address', 'uint32', 'address', 'address', 'address', 'bool'],
-            [
-                connext.address,
-                0, // Main Registry -> no domainId
-                ethers.constants.AddressZero, // Main Registry -> no updater
-                l1SplitMain.address,
-                l1SplitAddress,
-                // deployer,
-                users.owner.address,
-            ]
-        );
+        // Summon Main Registry
         const l1RegistryAddress = await summonRegistry(
             summoner,
             registrySingleton.address,
@@ -155,11 +72,12 @@ describe("NetworkRegistry", function () {
         );
         l1NetworkRegistry = (await ethers.getContractAt('NetworkRegistry', l1RegistryAddress, signer)) as NetworkRegistry;
 
-        // Transfer control to L1 NetworkRegistry
+        // Transfer Split control to L1 NetworkRegistry
         const tx_controller_l1 = await l1SplitMain.transferControl(l1SplitAddress, l1RegistryAddress);
         await tx_controller_l1.wait();
         await l1NetworkRegistry.acceptSplitControl();
         
+        // Deploy Split on L2
         l2SplitAddress = await deploySplit(
             l2Registry.splitMain,
             members,
@@ -167,6 +85,8 @@ describe("NetworkRegistry", function () {
             splitConfig.distributorFee,
             users.owner.address
         );
+
+        // Summon a Replica Registry
         const l2RegistryAddress = await summonRegistry(
             summoner,
             registrySingleton.address,
@@ -182,29 +102,40 @@ describe("NetworkRegistry", function () {
         );
         l2NetworkRegistry = (await ethers.getContractAt('NetworkRegistry', l2RegistryAddress, signer)) as NetworkRegistry;
 
-        // Transfer control to L2 NetworkRegistry
-        const tx_controller_l2 = await l2Registry.splitMain.transferControl(l2SplitAddress, l2RegistryAddress);
-        await tx_controller_l2.wait();
-
+        // Add replica registry to main
         const networkRegistry = {
             domainId: replicaDomainId,
             registryAddress: l2NetworkRegistry.address,
             delegate: ethers.constants.AddressZero,
         };
-
         const tx = await l1NetworkRegistry.updateNetworkRegistry(replicaChainId, networkRegistry);
         await tx.wait();
+
+        // Transfer Split control to L2 NetworkRegistry
+        const tx_controller_l2 = await l2Registry.splitMain.transferControl(l2SplitAddress, l2RegistryAddress);
+        await tx_controller_l2.wait();        
     });
 
     describe("NetworkRegistrySummoner", function () {
 
         it("Should not be able to initialize a singleton", async () => {
+            const l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
+                ['address', 'uint32', 'address', 'address', 'address', 'bool'],
+                [
+                    connext.address,
+                    0, // Main Registry -> no domainId
+                    ethers.constants.AddressZero, // Main Registry -> no updater
+                    l1SplitMain.address,
+                    l1SplitAddress,
+                    // deployer,
+                    users.owner.address,
+                ]
+            );
             expect(registrySingleton.initialize(l1InitializationParams)).to.be.revertedWith('AlreadyInitialized');
             expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWith('AlreadyInitialized');
         });
 
         it("Should summon a PGNetworkRegistry", async () => {
-            // const { deployer } = await getNamedAccounts();
             const initializationParams = ethers.utils.defaultAbiCoder.encode(
                 ['address', 'uint32', 'address', 'address', 'address', 'uint32', 'address'],
                 [
@@ -254,7 +185,6 @@ describe("NetworkRegistry", function () {
                 [
                     connext.address, parentDomainId, ethers.constants.AddressZero, l1SplitMain.address,
                     l1SplitAddress, splitConfig.distributorFee,
-                    // deployer,
                     users.owner.address,
                 ]
             );
@@ -268,7 +198,7 @@ describe("NetworkRegistry", function () {
             );
             await expect(tx).to.emit(summoner, 'NetworkRegistrySummoned').withArgs(predictedAddress, details, initializationParams);
             const receipt = await tx.wait();
-            // console.log('Events', receipt.events?.[3]);
+
             const registryAddress = receipt.events?.[3].topics[1] 
                 && ethers.utils.getAddress(`0x${receipt.events?.[3].topics[1].substring(24 + 2)}`);
             
@@ -372,6 +302,23 @@ describe("NetworkRegistry", function () {
             expect(await l1NetworkRegistry.isMainRegistry()).to.equal(false);
         });
 
+        it("Should be able to add a replica network registry", async () => {
+            const newReplicaChainId = 442;
+            const networkRegistry = {
+                domainId: 442000000,
+                registryAddress: l2NetworkRegistry.address,
+                delegate: ethers.constants.AddressZero,
+            };
+    
+            const tx = await l1NetworkRegistry.updateNetworkRegistry(newReplicaChainId, networkRegistry);
+            await expect(tx)
+                .to.emit(l1NetworkRegistry, 'NetworkRegistryUpdated')
+                .withArgs(newReplicaChainId, networkRegistry.registryAddress, networkRegistry.domainId, networkRegistry.delegate);
+            
+            const netRegistry = await l1NetworkRegistry.networkRegistry(newReplicaChainId);
+            expect(netRegistry).to.eql(Object.values(networkRegistry));
+        });
+
         it("Should control a 0xSplit contract on L1", async () => {
             const signer = await ethers.getSigner(users.owner.address);
             const l1SplitMainAddress = await l1NetworkRegistry.splitMain();
@@ -385,7 +332,7 @@ describe("NetworkRegistry", function () {
             const l2SplitMainAddress = await l2NetworkRegistry.splitMain();
             const l2SplitAddress = await l2NetworkRegistry.split();
             const splitMain = (await ethers.getContractAt('SplitMain', l2SplitMainAddress, signer)) as SplitMain;
-            // Controller is still on hold waiting for a message from L1 main regsitry to accept control
+            // NOTICE: Controller is still on hold waiting for a message from L1 main regsitry to accept control
             expect(await splitMain.getNewPotentialController(l2SplitAddress)).to.equal(l2NetworkRegistry.address);
         });
 
@@ -538,7 +485,7 @@ describe("NetworkRegistry", function () {
         it("Should be able to add a new member with correct parameters", async () => {
             const [, , , member1, member2] = await getUnnamedAccounts();
             const activityMultiplier = 100;
-            const startDate = (new Date().getTime() / 1000).toFixed(0);
+            const startDate = await time.latest();
             
             await expect(
                 l1NetworkRegistry.setNewMember(ethers.constants.AddressZero, activityMultiplier, startDate)
@@ -579,7 +526,7 @@ describe("NetworkRegistry", function () {
             const [, , , member1, member2] = await getUnnamedAccounts();
             const activityMultiplier = 100;
             const modActivityMultiplier = activityMultiplier / 2;
-            const startDate = (new Date().getTime() / 1000).toFixed(0);
+            const startDate = await time.latest();
 
             await expect(
                 l1NetworkRegistry.updateMember(member2, activityMultiplier)
@@ -664,8 +611,6 @@ describe("NetworkRegistry", function () {
             await batch2Tx.wait();
 
             const tx = await l1NetworkRegistry.updateSecondsActive();
-            // const receipt = await tx.wait();
-            // console.log('receipt', receipt.events);
 
             const lastBlockTimestamp = await time.latest();
 
@@ -681,14 +626,135 @@ describe("NetworkRegistry", function () {
             await expect(tx).to.emit(l1NetworkRegistry, 'RegistryActivityUpdate').withArgs(lastBlockTimestamp, totalMembers);
         });
 
-        it("", async () => {
-            // TODO: calculate
+        it("Should not be able to update Split values if submitted member list is not correct", async () => {
+            const { deployer } = await getNamedAccounts();
+            const batchSize = 10;
+            let newMembers = await generateMemberBatch(batchSize);
+            let members = newMembers.map((m: Member) => m.account);
+            let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+            let startDates = newMembers.map((m: Member) => m.startDate);
+            const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
+            await batch1Tx.wait();
+
+            await time.increase(3600 * 24 * 30); // next block in 30 days
+
+            const txUpdate = await l1NetworkRegistry.updateSecondsActive();
+            await txUpdate.wait();
+
+            const splitDistributorFee = splitConfig.distributorFee;
+            
+            await expect(l1NetworkRegistry.updateSplits(members.slice(0, 5), splitDistributorFee))
+                .to.be.revertedWithCustomError(l1NetworkRegistry, 'InvalidSplit__MemberListSizeMismatch');
+            await expect(l1NetworkRegistry.updateSplits([deployer, ...members.slice(1)], splitDistributorFee))
+                .to.be.revertedWithCustomError(l1NetworkRegistry, 'Member__NotRegistered').withArgs(deployer);
+            await expect(l1NetworkRegistry.updateSplits(members, splitDistributorFee))
+                .to.be.revertedWithCustomError(l1NetworkRegistry, 'InvalidSplit__AccountsOutOfOrder');
         });
 
-        it("", async () => {
-            // ====================================================================================
-            // ====================================================================================
-            // ====================================================================================
+        it("Should be able to calculate Split allocations pre/post commiting to the chain", async () => {
+            const batchSize = 10;
+            let newMembers = await generateMemberBatch(batchSize);
+            let members = newMembers.map((m: Member) => m.account);
+            let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+            let startDates = newMembers.map((m: Member) => m.startDate);
+
+            const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
+            await batch1Tx.wait();
+
+            await time.increase(3600 * 24 * 30); // next block in 30 days
+
+            const txUpdate = await l1NetworkRegistry.updateSecondsActive();
+            await txUpdate.wait();
+
+
+            newMembers.sort((a: Member, b: Member) => a.account.toLowerCase() > b.account.toLowerCase() ? 1 : - 1);
+            const sortedMembers = newMembers.map((m: Member) => m.account);
+            
+            const { _receivers, _percentAllocations } = await l1NetworkRegistry.calculate(sortedMembers);
+
+            // filter active members
+            const activeMembers = newMembers.filter((member: Member) =>Number(member.activityMultiplier) > 0);
+            // fetch last calculated contributions on registry
+            const contributions = await Promise.all(
+                activeMembers
+                    .map(async (member: Member) => await l1NetworkRegistry["calculateContributionOf(address)"](member.account)
+                )
+            );
+            const totalContributions = contributions.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+            // calculate allocations on active members
+            const calculatedAllocations = contributions.map((contr: BigNumber) => contr.mul(PERCENTAGE_SCALE).div(totalContributions));
+            const totalAllocations = calculatedAllocations.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+            if (totalAllocations.lt(PERCENTAGE_SCALE)) {
+                calculatedAllocations[0] = calculatedAllocations[0].add(PERCENTAGE_SCALE.sub(totalAllocations));
+            }
+
+            expect(_receivers).to.be.eql(activeMembers.map((m: Member) => m.account));
+            expect(_percentAllocations).to.be.eql(calculatedAllocations.map((v: BigNumber) => v.toNumber()));
+        });
+
+        it("Should be able to update Split values from last update", async () => {
+            const batchSize = 10;
+            let newMembers = await generateMemberBatch(batchSize);
+            let members = newMembers.map((m: Member) => m.account);
+            let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+            let startDates = newMembers.map((m: Member) => m.startDate);
+            const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
+            await batch1Tx.wait();
+
+            await time.increase(3600 * 24 * 30); // next block in 30 days
+
+            const txUpdate = await l1NetworkRegistry.updateSecondsActive();
+            await txUpdate.wait();
+
+            members.sort((a: string, b: string) => a.toLowerCase() > b.toLowerCase() ? 1 : - 1);
+            const splitDistributorFee = splitConfig.distributorFee;
+            
+            // pre-calculate to get split hash
+            const { _receivers, _percentAllocations } = await l1NetworkRegistry.calculate(members);
+
+            const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
+            
+            const tx = await l1NetworkRegistry.updateSplits(members, splitDistributorFee);
+
+            await expect(tx).to.emit(l1SplitMain, 'UpdateSplit').withArgs(l1SplitAddress);
+            await expect(tx).to.emit(l1NetworkRegistry, 'SplitsUpdated').withArgs(l1SplitAddress, splitHash, splitDistributorFee);
+        });
+
+        it("Should be able to update all (member's activity + Splits)", async () => {
+            const batchSize = 10;
+            let newMembers = await generateMemberBatch(batchSize);
+            let members = newMembers.map((m: Member) => m.account);
+            let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+            let startDates = newMembers.map((m: Member) => m.startDate);
+            const batch1Date = Number(startDates[0]);
+            const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
+            await batch1Tx.wait();
+
+            await time.increase(3600 * 24 * 30); // next block in 30 days
+
+            members.sort((a: string, b: string) => a.toLowerCase() > b.toLowerCase() ? 1 : - 1);
+            const splitDistributorFee = splitConfig.distributorFee;
+            
+            const tx = await l1NetworkRegistry.updateAll(members, splitDistributorFee);
+            await tx.wait();
+
+            const lastBlockTimestamp = await time.latest();
+
+            // MUST get calculations after the updateAll call so it uses the latest activeSeconds
+            const { _receivers, _percentAllocations } = await l1NetworkRegistry.calculate(members);
+            const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
+
+            for (let i = 0; i < batchSize; i++) {
+                await expect(tx)
+                    .to.emit(l1NetworkRegistry, 'UpdateMemberSeconds')
+                    .withArgs(newMembers[i].account, Math.floor((lastBlockTimestamp - batch1Date) * Number(newMembers[i].activityMultiplier) / 100));
+            }
+            const totalMembers = await l1NetworkRegistry.totalMembers();
+            await expect(tx).to.emit(l1NetworkRegistry, 'RegistryActivityUpdate').withArgs(lastBlockTimestamp, totalMembers);
+
+            await expect(tx).to.emit(l1SplitMain, 'UpdateSplit').withArgs(l1SplitAddress);
+            await expect(tx).to.emit(l1NetworkRegistry, 'SplitsUpdated').withArgs(l1SplitAddress, splitHash, splitDistributorFee);
         });
     });
 
@@ -910,11 +976,142 @@ describe("NetworkRegistry", function () {
                 )
             ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
         });
+
+        it("Should be able to update 0xSplit contract on a replica registry and get control over it", async () => {
+            const chainIds = [replicaChainId];
+            const relayerFees = [defaultRelayerFee];
+            const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+            const newSplitAddress = await deploySplit(
+                l2Registry.splitMain,
+                members,
+                splitConfig.percentAllocations,
+                splitConfig.distributorFee,
+                users.owner.address
+            );
+
+            const txTransfer = await l2Registry.splitMain.transferControl(newSplitAddress, l2NetworkRegistry.address);
+            await txTransfer.wait();
+
+            const action = l2NetworkRegistry.interface.getSighash('setSplit(address,address)');
+            const syncTx = await l1NetworkRegistry.updateNetworkSplit(
+                chainIds,
+                [l2Registry.splitMain.address],
+                [newSplitAddress],
+                relayerFees,
+                { value: totalValue }
+            );
+
+            await expect(syncTx)
+                .to.emit(l1NetworkRegistry, "SyncMessageSubmitted")
+                .withArgs(anyValue, replicaChainId, action, l2NetworkRegistry.address);
+            await expect(syncTx)
+                .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+                .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+            
+            await expect(syncTx).to.emit(l2NetworkRegistry, 'SplitUpdated').withArgs(l2Registry.splitMain.address, newSplitAddress);
+            await expect(syncTx).to.emit(l2Registry.splitMain, 'ControlTransfer').withArgs(newSplitAddress, users.owner.address, l2NetworkRegistry.address);
+        });
+
+        it("Should be able to accept 0xSplit control on replica registry", async () => {
+            const chainIds = [replicaChainId];
+            const relayerFees = [defaultRelayerFee];
+            const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+            const action = l2NetworkRegistry.interface.getSighash('acceptSplitControl');
+            const syncTx = await l1NetworkRegistry.acceptNetworkSplitControl(
+                chainIds,
+                relayerFees,
+                { value: totalValue }
+            );
+
+            await expect(syncTx)
+                .to.emit(l1NetworkRegistry, "SyncMessageSubmitted")
+                .withArgs(anyValue, replicaChainId, action, l2NetworkRegistry.address);
+            await expect(syncTx)
+                .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+                .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+            
+            await expect(syncTx).to.emit(l2Registry.splitMain, 'ControlTransfer').withArgs(l2SplitAddress, users.owner.address, l2NetworkRegistry.address);
+            const newController = await l2Registry.splitMain.getController(l2SplitAddress);
+            expect(newController).to.equal(l2NetworkRegistry.address);
+            const newPotentialController = await l2Registry.splitMain.getNewPotentialController(l2SplitAddress);
+            expect(newPotentialController).to.equal(ethers.constants.AddressZero);
+        });
+
+        it("Should be able to transfer 0xSplit controller on replica registry", async () => {
+            const chainIds = [replicaChainId];
+            const relayerFees = [defaultRelayerFee];
+            const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+            await acceptNetworkSplitControl({
+                l1NetworkRegistry,
+                chainIds,
+                relayerFees,
+            });
+
+            const action = l2NetworkRegistry.interface.getSighash('transferSplitControl(address)');
+            const syncTx = await l1NetworkRegistry.transferNetworkSplitControl(
+                chainIds,
+                [users.alice.address], // newControllers
+                relayerFees,
+                { value: totalValue }
+            );
+
+            await expect(syncTx)
+                .to.emit(l1NetworkRegistry, "SyncMessageSubmitted")
+                .withArgs(anyValue, replicaChainId, action, l2NetworkRegistry.address);
+            await expect(syncTx)
+                .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+                .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+            
+            await expect(syncTx).to.emit(l2Registry.splitMain, 'InitiateControlTransfer').withArgs(l2SplitAddress, users.alice.address);
+            const newPotentialController = await l2Registry.splitMain.getNewPotentialController(l2SplitAddress);
+            expect(newPotentialController).to.equal(users.alice.address);
+        });
+
+        it("Should be able to cancel a transfer 0xSplit controller on replica registry", async () => {
+            const chainIds = [replicaChainId];
+            const relayerFees = [defaultRelayerFee];
+            const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+            await acceptNetworkSplitControl({
+                l1NetworkRegistry,
+                chainIds,
+                relayerFees,
+            });
+
+            const tx = await l1NetworkRegistry.transferNetworkSplitControl(
+                chainIds,
+                [users.alice.address], // newControllers
+                relayerFees,
+                { value: totalValue }
+            );
+            await tx.wait();
+
+            const action = l2NetworkRegistry.interface.getSighash('cancelSplitControlTransfer');
+            const syncTx = await l1NetworkRegistry.cancelNetworkSplitControlTransfer(
+                chainIds,
+                relayerFees,
+                { value: totalValue }
+            );
+
+            await expect(syncTx)
+                .to.emit(l1NetworkRegistry, "SyncMessageSubmitted")
+                .withArgs(anyValue, replicaChainId, action, l2NetworkRegistry.address);
+            await expect(syncTx)
+                .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+                .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+            
+            await expect(syncTx).to.emit(l2Registry.splitMain, 'CancelControlTransfer').withArgs(l2SplitAddress);
+            const newPotentialController = await l2Registry.splitMain.getNewPotentialController(l2SplitAddress);
+            expect(newPotentialController).to.equal(ethers.constants.AddressZero);
+        });
         
         it("Should sync a new member", async () => {
             const [, , , member] = await getUnnamedAccounts();
             const activityMultiplier = 100;
-            const startDate = (new Date().getTime() / 1000).toFixed(0);
+            const startDate = await time.latest();
             const chainIds = [replicaChainId];
             const relayerFees = [defaultRelayerFee];
 
@@ -935,16 +1132,6 @@ describe("NetworkRegistry", function () {
                 { value: totalValue }
             );
             const receipt = await syncTx.wait();
-
-            // console.log('l1NetworkRegistry', l1NetworkRegistry.address);
-            // console.log('l2NetworkRegistry', l2NetworkRegistry.address);
-            // console.log('events', receipt.events);
-            // 0 SetMember 0xb64C
-            // 1 SetMember 0x0eb1
-            // 2 SynActionPerformed
-            // 3
-            // 4 SynMessageSubmitted
-            // 
 
             await expect(syncTx).to.emit(l1NetworkRegistry, "SyncMessageSubmitted");
             const transferId = receipt.events?.[4].topics?.[1];
@@ -968,17 +1155,11 @@ describe("NetworkRegistry", function () {
         it("Should sync an updated member", async () => {
             const [, , , member] = await getUnnamedAccounts();
             const activityMultiplier = 100;
-            const startDate = (new Date().getTime() / 1000).toFixed(0);
+            const startDate = await time.latest();
             const chainIds = [replicaChainId];
             const relayerFees = [defaultRelayerFee];
 
             const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
-
-            // expect(await l1NetworkRegistry.memberIdxs(member)).to.equal(0);
-            // expect(await l2NetworkRegistry.memberIdxs(member)).to.equal(0);
-
-            // const l1CurrentMemberId = await l1NetworkRegistry.totalMembers();
-            // const l2CurrentMemberId = await l2NetworkRegistry.totalMembers();
 
             const syncNewTx = await l1NetworkRegistry.syncSetNewMember(
                 member,
@@ -1216,5 +1397,136 @@ describe("NetworkRegistry", function () {
             await expect(tx).to.emit(l2NetworkRegistry, 'RegistryActivityUpdate').withArgs(lastBlockTimestamp, totalMembersL2);
         });
 
+        it("Should be able to sync update Split values from last update", async () => {
+            const batchSize = 10;
+            let newMembers = await generateMemberBatch(batchSize);
+            let members = newMembers.map((m: Member) => m.account);
+            let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+            let startDates = newMembers.map((m: Member) => m.startDate);
+            const chainIds = [replicaChainId];
+            const relayerFees = [defaultRelayerFee];
+            const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+            await acceptNetworkSplitControl({
+                l1NetworkRegistry,
+                chainIds,
+                relayerFees,
+            });
+
+            const batch1Tx = await l1NetworkRegistry.syncBatchNewMember(
+                members,
+                activityMultipliers,
+                startDates,
+                chainIds,
+                relayerFees,
+                { value: totalValue }
+            );
+            await batch1Tx.wait();
+
+            await time.increase(3600 * 24 * 30); // next block in 30 days
+
+            const txUpdate = await l1NetworkRegistry.syncUpdateSecondsActive(chainIds, relayerFees, { value: totalValue });
+            await txUpdate.wait();
+
+            members.sort((a: string, b: string) => a.toLowerCase() > b.toLowerCase() ? 1 : - 1);
+            const splitDistributorFee = splitConfig.distributorFee;
+
+            const { _receivers, _percentAllocations } = await l1NetworkRegistry.calculate(members);
+
+            const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
+            
+            const action = l2NetworkRegistry.interface.getSighash('updateSplits(address[],uint32)');
+            const tx = await l1NetworkRegistry.syncUpdateSplits(
+                members,
+                splitDistributorFee,
+                chainIds,
+                relayerFees,
+                { value: totalValue }
+            );
+
+            await expect(tx).to.emit(l1NetworkRegistry, "SyncMessageSubmitted").withArgs(anyValue, replicaChainId, action, l2NetworkRegistry.address);
+            await expect(tx)
+                .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+                .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+
+            await expect(tx).to.emit(l1SplitMain, 'UpdateSplit').withArgs(l1SplitAddress);
+            await expect(tx).to.emit(l2Registry.splitMain, 'UpdateSplit').withArgs(l2SplitAddress);
+            // TODO: when fails
+            // await expect(tx).to.emit(l2NetworkRegistry, 'SyncActionPerformed').withArgs(anyValue, parentDomainId, action, false, l1NetworkRegistry.address);
+            await expect(tx).to.emit(l1NetworkRegistry, 'SplitsUpdated').withArgs(l1SplitAddress, splitHash, splitDistributorFee);
+            await expect(tx).to.emit(l2NetworkRegistry, 'SplitsUpdated').withArgs(l2SplitAddress, splitHash, splitDistributorFee);
+        });
+
+        it("Should be able to sync update all (member's activity + Splits)", async () => {
+            const batchSize = 10;
+            let newMembers = await generateMemberBatch(batchSize);
+            let members = newMembers.map((m: Member) => m.account);
+            let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+            let startDates = newMembers.map((m: Member) => m.startDate);
+            const batch1Date = Number(startDates[0]);
+            const chainIds = [replicaChainId];
+            const relayerFees = [defaultRelayerFee];
+            const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+            await acceptNetworkSplitControl({
+                l1NetworkRegistry,
+                chainIds,
+                relayerFees,
+            });
+
+            const batch1Tx = await l1NetworkRegistry.syncBatchNewMember(
+                members,
+                activityMultipliers,
+                startDates,
+                chainIds,
+                relayerFees,
+                { value: totalValue }
+            );
+            await batch1Tx.wait();
+
+            await time.increase(3600 * 24 * 30); // next block in 30 days
+
+            members.sort((a: string, b: string) => a.toLowerCase() > b.toLowerCase() ? 1 : - 1);
+            const splitDistributorFee = splitConfig.distributorFee;
+            
+            const action = l2NetworkRegistry.interface.getSighash('updateAll(address[],uint32)');
+            const tx = await l1NetworkRegistry.syncUpdateAll(
+                members,
+                splitDistributorFee,
+                chainIds,
+                relayerFees,
+                { value: totalValue }
+            );
+            await tx.wait();
+
+            const lastBlockTimestamp = await time.latest();
+
+            // MUST get calculations after the updateAll call so it uses the latest activeSeconds
+            const { _receivers, _percentAllocations } = await l1NetworkRegistry.calculate(members);
+            const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
+
+            await expect(tx).to.emit(l1NetworkRegistry, "SyncMessageSubmitted").withArgs(anyValue, replicaChainId, action, l2NetworkRegistry.address);
+            await expect(tx)
+                .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+                .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+
+            for (let i = 0; i < batchSize; i++) {
+                await expect(tx)
+                    .to.emit(l1NetworkRegistry, 'UpdateMemberSeconds')
+                    .withArgs(newMembers[i].account, Math.floor((lastBlockTimestamp - batch1Date) * Number(newMembers[i].activityMultiplier) / 100));
+                await expect(tx)
+                    .to.emit(l2NetworkRegistry, 'UpdateMemberSeconds')
+                    .withArgs(newMembers[i].account, Math.floor((lastBlockTimestamp - batch1Date) * Number(newMembers[i].activityMultiplier) / 100));
+            }
+            const totalMembersL1 = await l1NetworkRegistry.totalMembers();
+            const totalMembersL2 = await l2NetworkRegistry.totalMembers();
+            await expect(tx).to.emit(l1NetworkRegistry, 'RegistryActivityUpdate').withArgs(lastBlockTimestamp, totalMembersL1);
+            await expect(tx).to.emit(l2NetworkRegistry, 'RegistryActivityUpdate').withArgs(lastBlockTimestamp, totalMembersL2);
+
+            await expect(tx).to.emit(l1SplitMain, 'UpdateSplit').withArgs(l1SplitAddress);
+            await expect(tx).to.emit(l1NetworkRegistry, 'SplitsUpdated').withArgs(l1SplitAddress, splitHash, splitDistributorFee);
+            await expect(tx).to.emit(l2Registry.splitMain, 'UpdateSplit').withArgs(l2SplitAddress);
+            await expect(tx).to.emit(l2NetworkRegistry, 'SplitsUpdated').withArgs(l2SplitAddress, splitHash, splitDistributorFee);
+        });
     });
 });

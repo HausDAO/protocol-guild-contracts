@@ -1,3 +1,5 @@
+import csv from 'csv-parser';
+import fs from 'fs';
 import { round, sum } from 'lodash';
 
 import { PERCENTAGE_SCALE } from '../constants';
@@ -10,8 +12,18 @@ export type Member = {
     percentAllocation: number;
 };
 
+export type SampleSplit = {
+  address: string;
+  startDateSeconds: number;
+  secondsActive: number;
+  activityMultiplier: number;
+  calcContribution: number;
+  allocation: number;
+  splitAllocation: number;
+};
+
 // Takes a count and returns an array of evenly distributed random BigNumbers that sum to ALLOCATION_TOTAL
-export function getRandomAllocations(count: number): number[] {
+export const getRandomAllocations = (count: number): number[] => {
   const allocations = Array.from({ length: count }, () => Math.random());
   const totalAllocation = sum(allocations);
   const scaledAllocations = allocations.map((alloc) =>
@@ -24,3 +36,34 @@ export function getRandomAllocations(count: number): number[] {
     return getRandomAllocations(count)
   return scaledAllocations
 };
+
+export const readSampleSplit =
+  async (csvFilePath: string): Promise<Array<SampleSplit>> => {
+    const results: Array<SampleSplit> = [];
+    return new Promise((resolve, reject) => {
+      fs.createReadStream(csvFilePath)
+        .pipe(csv())
+        .on('data', (data) => {
+          results.push(
+            {
+              address: data.address,
+              startDateSeconds: Number(data.startDateSeconds),
+              secondsActive: Number(data.secondsActive),
+              activityMultiplier: Number(data.activityMultiplier),
+              calcContribution: Number(data.calcContribution.replace(',', '')),
+              allocation: Number(data.allocation),
+              splitAllocation: Number(data.splitAllocation.replace(',', '')),
+            }
+          );
+        })
+        .on('end', () => resolve(results))
+        .on('error', (error) => reject(error));
+    });
+  };
+
+export const arrayToFile = 
+  async (array: Array<any>) => {
+    const stream = fs.createWriteStream('output.log')
+    array.forEach((val: any) => stream.write(`${val}\n`));
+    stream.end();
+  };

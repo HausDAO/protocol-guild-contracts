@@ -21,3 +21,4 @@ yarn.lock
 
 # custom
 memberlist.json
+pgsplit.csv
