@@ -6,8 +6,6 @@ import { IXReceiver } from "@connext/interfaces/core/IXReceiver.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "@prb/math/src/UD60x18.sol";
-
 import { IMemberRegistry, INetworkMemberRegistry, ISplitManager } from "./interfaces/INetworkMemberRegistry.sol";
 import { ISplitMain } from "./interfaces/ISplitMain.sol";
 import "./registry/MemberRegistry.sol";
@@ -35,9 +33,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     // The address of the source updater contract
     address public updater;
 
-    // NetworkRegistry[] public networkRegistry;
-    // chainId => NetworkRegistry
-    mapping (uint32 => NetworkRegistry) public networkRegistry;
+    // chainId => Registry
+    mapping (uint32 => Registry) public networkRegistry;
 
     ISplitMain public splitMain;
     address public split;
@@ -114,6 +111,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     event NewUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater);
     event SplitUpdated(address _splitMain, address _split);
     event NetworkRegistryUpdated(uint32 indexed _chainId, address indexed _registryAddress, uint32 indexed _domainId, address _delegate);
+    event SplitsUpdated(address _split, bytes32 _splitHash, uint32 _splitDistributorFee);
     event SyncMessageSubmitted(bytes32 indexed _transferId, uint32 indexed _chainId, bytes4 indexed _action, address _registryAddress);
     event SyncActionPerformed(bytes32 indexed _transferId, uint32 indexed _originDomain, bytes4 indexed _action, bool _success, address _originSender);
 
@@ -181,13 +179,13 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint256 _relayerFee
     ) internal validNetworkRegistry(_chainId) returns (bytes32 transferId) {
         transferId = connext.xcall{value: _relayerFee}(
-            networkRegistry[_chainId].domainId, // _destination: domain ID of the destination chain
-            networkRegistry[_chainId].registryAddress,            // _to: address of the target contract (Pong)
-            address(0),        // _asset: use address zero for 0-value transfers
-            networkRegistry[_chainId].delegate,        // _delegate: address that can revert or forceLocal on destination
-            0,                 // _amount: 0 because no funds are being transferred
-            0,                 // _slippage: can be anything between 0-10000 because no funds are being transferred
-            _callData           // _callData: the encoded calldata to send
+            networkRegistry[_chainId].domainId,         // _destination: domain ID of the destination chain
+            networkRegistry[_chainId].registryAddress,  // _to: address of the target contract (Pong)
+            address(0),     // _asset: use address zero for 0-value transfers
+            networkRegistry[_chainId].delegate,         // _delegate: address that can revert or forceLocal on destination
+            0,              // _amount: 0 because no funds are being transferred
+            0,              // _slippage: can be anything between 0-10000 because no funds are being transferred
+            _callData       // _callData: the encoded calldata to send
         );
     }
 
@@ -334,14 +332,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
 
     // takes a sorted (offchain) list of addresses from the member array
     // send update to 0xsplits
-    function updateSplits(address[] calldata _sortedList, uint32 _splitDistributorFee)
-        public
-        returns (
-            address[] memory _receivers,
-            uint32[] memory _percentAllocations
-        )
-    {
-        (_receivers, _percentAllocations) = calculate(_sortedList);
+    function updateSplits(address[] calldata _sortedList, uint32 _splitDistributorFee) public {
+        (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
 
         // run splits update
         splitMain.updateSplit(
@@ -350,6 +342,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             _percentAllocations,
             _splitDistributorFee
         );
+        bytes32 splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, _splitDistributorFee));
+        emit SplitsUpdated(split, splitHash, _splitDistributorFee);
     }
 
     function syncUpdateSplits(
@@ -365,16 +359,9 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     // update member registry and update splits
-    function updateAll(address[] calldata _sortedList, uint32 _splitDistributorFee)
-        public
-        returns (
-            address[] memory _receivers,
-            uint32[] memory _percentAllocations
-        )
-    {
+    function updateAll(address[] calldata _sortedList, uint32 _splitDistributorFee) public {
         updateSecondsActive();
-        (_receivers, _percentAllocations) = updateSplits(_sortedList, _splitDistributorFee);
-        
+        updateSplits(_sortedList, _splitDistributorFee);
     }
 
     function syncUpdateAll(
@@ -389,48 +376,48 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
-    // update member registry, update splits, and distribute ETH
-    // wraps 0xsplits distributeETH
-    function updateAllAndDistributeETH(
-        address[] calldata _sortedList,
-        address _distributorAddress,
-        uint32 _splitDistributorFee
-    ) external {
-        (
-            address[] memory _receivers,
-            uint32[] memory _percentAllocations
-        ) = updateAll(_sortedList, _splitDistributorFee);
-        splitMain.distributeETH(
-            split,
-            _receivers,
-            _percentAllocations,
-            _splitDistributorFee,
-            _distributorAddress
-        );   
-    }
+    // // update member registry, update splits, and distribute ETH
+    // // wraps 0xsplits distributeETH
+    // function updateAllAndDistributeETH(
+    //     address[] calldata _sortedList,
+    //     address _distributorAddress,
+    //     uint32 _splitDistributorFee
+    // ) external {
+    //     (
+    //         address[] memory _receivers,
+    //         uint32[] memory _percentAllocations
+    //     ) = updateAll(_sortedList, _splitDistributorFee);
+    //     splitMain.distributeETH(
+    //         split,
+    //         _receivers,
+    //         _percentAllocations,
+    //         _splitDistributorFee,
+    //         _distributorAddress
+    //     );   
+    // }
 
-    // update member registry, update splits, and distribute ERC20
-    // wraps 0xsplits distributeERC20
-    function updateAllAndDistributeERC20(
-        address[] calldata _sortedList,
-        IERC20 _token,
-        address _distributorAddress,
-        uint32 _splitDistributorFee
-    ) external {
-        (
-            address[] memory _receivers,
-            uint32[] memory _percentAllocations
-        ) = updateAll(_sortedList, _splitDistributorFee);
-        splitMain.distributeERC20(
-            split,
-            _token,
-            _receivers,
-            _percentAllocations,
-            _splitDistributorFee,
-            _distributorAddress
-        );
+    // // update member registry, update splits, and distribute ERC20
+    // // wraps 0xsplits distributeERC20
+    // function updateAllAndDistributeERC20(
+    //     address[] calldata _sortedList,
+    //     IERC20 _token,
+    //     address _distributorAddress,
+    //     uint32 _splitDistributorFee
+    // ) external {
+    //     (
+    //         address[] memory _receivers,
+    //         uint32[] memory _percentAllocations
+    //     ) = updateAll(_sortedList, _splitDistributorFee);
+    //     splitMain.distributeERC20(
+    //         split,
+    //         _token,
+    //         _receivers,
+    //         _percentAllocations,
+    //         _splitDistributorFee,
+    //         _distributorAddress
+    //     );
         
-    }
+    // }
 
     // calculate the split allocations
     // verifys the address list is sorted, has no dups, and is valid
@@ -440,6 +427,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     //  keep track of running total of allocations because it must equal PERCENTAGE_SCALE
     function calculate(address[] memory _sortedList)
         public
+        virtual
         view
         returns (
             address[] memory _receivers,
@@ -455,20 +443,14 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
         for (uint256 i = 0; i < _sortedList.length; ) {
             address memberAddress = _sortedList[i];
-            uint256 memberIdx = memberIdxs[memberAddress];
-            unchecked {
-                if(memberIdx-- == 0) revert Member__NotRegistered(memberAddress);
-            }
-            if (_sortedList[i] >= previous) revert InvalidSplit__AccountsOutOfOrder(i);
-            previous = memberAddress;
-            Member memory member = members[memberIdx];
+            Member memory member = getMember(memberAddress);
+            if (previous >= memberAddress) revert InvalidSplit__AccountsOutOfOrder(i);
 
             // ignore inactive members
-            // if (members[memberIdx - 1].activityMultiplier == 0) {
             if (member.activityMultiplier > 0) {
                 memberDistribution[i] = MemberContribution({
                     receiverAddress: memberAddress,
-                    calcContribution: unwrap(wrap(member.secondsActive).sqrt())
+                    calcContribution: calculateContributionOf(member)
                 });
                 // get the total seconds in the last period
                 // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
@@ -476,6 +458,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
                 unchecked { // gas optimization: very unlikely to overflow
                     activeMembers++;
                 }
+                previous = memberAddress;
             }
             unchecked {
                 i++;
@@ -495,13 +478,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             // Member memory _member = members[memberIdx - 1];
             // if (_member.activityMultiplier > 0) {
             if (memberDistribution[i].calcContribution > 0) {
-                // _receivers[nonZeroIndex] = _member.account;
                 _receivers[nonZeroIndex] = memberDistribution[i].receiverAddress;
-
-                // _percentAllocations[nonZeroIndex] = uint32(
-                //     (unwrap(wrap(_member.secondsActive).sqrt()) *
-                //         PERCENTAGE_SCALE) / total
-                // );
                 _percentAllocations[nonZeroIndex] = uint32(
                     (memberDistribution[i].calcContribution * PERCENTAGE_SCALE) / total
                 );
@@ -529,7 +506,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         emit NewUpdaterConfig(_connext, _updaterDomain, _updater);
     }
 
-    function updateNetworkRegistry(uint32 _chainId, NetworkRegistry memory _newRegistry) external onlyOwner {
+    function updateNetworkRegistry(uint32 _chainId, Registry memory _newRegistry) external onlyOwner {
         if (networkRegistry[_chainId].registryAddress != address(0) && _newRegistry.registryAddress == address(0)) {
             delete networkRegistry[_chainId];
         } else {
@@ -691,11 +668,4 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         emit SyncActionPerformed(_transferId, _origin, action, success, _originSender);
         return data;
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[45] private __gap;
 }

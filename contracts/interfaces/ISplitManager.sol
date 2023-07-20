@@ -10,12 +10,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface ISplitManager {
     function calculate(address[] memory _sortedList) external view returns (address[] memory, uint32[] memory);
-    function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) external returns (address[] memory, uint32[] memory);
-    function updateAll(address[] memory _sortedList, uint32 _splitDistributorFee) external returns (address[] memory, uint32[] memory);
+    function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) external;
+    function updateAll(address[] memory _sortedList, uint32 _splitDistributorFee) external;
 
     // TODO: might remove this
-    function updateAllAndDistributeETH(address[] memory _sortedList, address _distributorAddress, uint32 _splitDistributorFee) external;
-    function updateAllAndDistributeERC20(address[] memory _sortedList, IERC20 _token, address _distributorAddress, uint32 _splitDistributorFee) external;
+    // function updateAllAndDistributeETH(address[] memory _sortedList, address _distributorAddress, uint32 _splitDistributorFee) external;
+    // function updateAllAndDistributeERC20(address[] memory _sortedList, IERC20 _token, address _distributorAddress, uint32 _splitDistributorFee) external;
 
     /**
      * @notice Updates the addresses for the 0xSplitMain proxy and 0xSplit contract

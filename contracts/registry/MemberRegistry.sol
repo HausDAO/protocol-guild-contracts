@@ -2,6 +2,7 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@prb/math/src/UD60x18.sol";
 
 // import "hardhat/console.sol";
 
@@ -58,8 +59,9 @@ abstract contract MemberRegistry {
         members.push(
             Member(_member, secondsActive, _startDate, _activityMultiplier)
         );
-        count += 1;
-        memberIdxs[_member] = count;
+        unchecked {
+            memberIdxs[_member] = ++count;
+        }
         emit NewMember(_member, _startDate, _activityMultiplier);
     }
 
@@ -81,7 +83,7 @@ abstract contract MemberRegistry {
     // for brand new members it will be an update from their start date
     // todo: this could be more generic, use a controller contract to update
     function _updateSecondsActive() internal virtual {
-        uint32 currentDate = uint32(block.timestamp);
+        uint32 currentDate = uint32(block.timestamp / 1000);
         // update struct with total seconds active and seconds in last claim
         uint256 i;
         for (i = 0; i < members.length; ) {
@@ -89,10 +91,9 @@ abstract contract MemberRegistry {
             uint32 newSecondsActive = 0;
             if (_member.activityMultiplier > 0) {
                 uint32 initDate = _member.secondsActive > 0 ? lastActivityUpdate : _member.startDate;
-                uint32 activeSeconds = currentDate - initDate;
+                uint256 activeSeconds = currentDate - initDate;
                 // multiply by modifier and divide by 100 to get modifier % of seconds
-                newSecondsActive = (activeSeconds *
-                    _member.activityMultiplier) / 100;
+                newSecondsActive = uint32((activeSeconds * _member.activityMultiplier) / 100);
             }
             _member.secondsActive += newSecondsActive;
             emit UpdateMemberSeconds(_member.account, newSecondsActive);
@@ -102,6 +103,10 @@ abstract contract MemberRegistry {
         }
         emit RegistryActivityUpdate(currentDate, i);
         lastActivityUpdate = currentDate;
+    }
+
+    function calculateContributionOf(Member memory _member) public virtual pure returns (uint256) {
+        return unwrap(wrap(_member.secondsActive).sqrt());
     }
 
     function getMembers() public view returns (Member[] memory) {
@@ -134,5 +139,19 @@ abstract contract MemberRegistry {
 
     function totalMembers() public view returns (uint256) {
         return members.length;
+    }
+
+    function calculateContributionOf(address _memberAddress) public view returns (uint256) {
+        Member memory member = getMember(_memberAddress);
+        return calculateContributionOf(member);
+    }
+
+    function calculateTotalContributions() public view returns (uint256 total) {
+        for (uint256 i = 0; i < members.length; ) {
+            total += calculateContributionOf(members[i]);
+            unchecked {
+                i++;
+            }
+        }
     }
 }

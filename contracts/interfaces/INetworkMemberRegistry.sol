@@ -6,9 +6,9 @@ import { ISplitManager } from "./ISplitManager.sol";
 
 interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
 
-    struct NetworkRegistry {
+    struct Registry {
         uint32 domainId;
-        address registryAddress; // registryAddress: PGNetworkRegistry on destination
+        address registryAddress; // registryAddress: NetworkRegistry on destination
         address delegate; // delegate: address that can revert or forceLocal on destination
     }
 
@@ -17,7 +17,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     function isMainRegistry() external view returns (bool);
 
     function setUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater) external;
-    function updateNetworkRegistry(uint32 _chainId, NetworkRegistry memory _registry) external;
+    function updateNetworkRegistry(uint32 _chainId, Registry memory _registry) external;
 
     function syncSetNewMember(
         address _member,
