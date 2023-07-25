@@ -45,11 +45,10 @@ describe("NetworkRegistry", function () {
 
     let sampleSplit: SampleSplit[];
 
-    const CUTOFF_DATE = Date.parse('01 Jul 2023');
+    const CUTOFF_DATE = (Date.parse('01 Jul 2023') / 1000);
 
     this.beforeAll(async function () {
         sampleSplit = await readSampleSplit('pgsplit.csv');
-        console.log('sampleSplit lenght', sampleSplit.length);
     });
 
     beforeEach(async function () {
@@ -144,7 +143,7 @@ describe("NetworkRegistry", function () {
         });
     });
 
-    describe("Split through NetworkRegistry", function () {
+    describe("0xSplit + NetworkRegistry", function () {
 
         beforeEach(async function () {
             // Syncing a batch of members
@@ -165,7 +164,7 @@ describe("NetworkRegistry", function () {
             );
             await batchTx.wait();
             const blockNo = await time.latestBlock();
-            console.log('block timestamp', (await ethers.provider.getBlock(blockNo)).timestamp);
+            // console.log('block timestamp', (await ethers.provider.getBlock(blockNo)).timestamp);
         });
 
         it("Should sync update seconds active and update splits prior distribution", async () => {

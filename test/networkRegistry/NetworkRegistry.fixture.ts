@@ -38,7 +38,8 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
     const signer = await ethers.getSigner(deployer);
 
     // TODO: add baal fixtures or execute existing fixture under utils
-    const deployed = await deployments.fixture(['Infra', 'Summoner']);
+    // const deployed = await deployments.fixture(['Infra', 'Summoner']);
+    const deployed = await deployments.fixture(['Summoner']);
     
     // Deploy registry summoner on L1
     const l1Summoner = (

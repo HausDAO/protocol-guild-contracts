@@ -83,7 +83,7 @@ abstract contract MemberRegistry {
     // for brand new members it will be an update from their start date
     // todo: this could be more generic, use a controller contract to update
     function _updateSecondsActive() internal virtual {
-        uint32 currentDate = uint32(block.timestamp / 1000);
+        uint32 currentDate = uint32(block.timestamp);
         // update struct with total seconds active and seconds in last claim
         uint256 i;
         for (i = 0; i < members.length; ) {
