@@ -2,8 +2,8 @@ import { deployments } from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
 import { Baal, BaalSummoner, Loot, MultiSend, Poster, Shares, TributeMinion } from '@daohaus/baal-contracts';
-import { TestERC20 } from '../../src/types';
-import { GnosisSafe } from '../../src/types/@gnosis.pm/safe-contracts/contracts';
+import { TestERC20 } from '../../types';
+import { GnosisSafe } from '../../types/@gnosis.pm/safe-contracts/contracts';
 
 import { DAOSettings, defaultDAOSettings, defaultSummonSetup, setupBaal } from './baal';
 

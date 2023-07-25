@@ -62,7 +62,6 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      *    3) The call to this contract comes from Connext.
      */
     modifier onlyUpdater(address _originSender, uint32 _origin) {
-        // console.log("onlyUpdater: %s %s %s", _origin, _originSender, _msgSender());
         require(
         _origin == updaterDomain &&
             _originSender == updater &&
@@ -73,8 +72,6 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     modifier onlyOwnerOrUpdater() {
-        // console.log("address(this) %s", address(this));
-        // console.log("onlyOwnerOrUpdater %s %s %s %s", updater, _msgSender(), address(connext));
         require(
             owner() == _msgSender() ||
             (updater != address(0) && _msgSender() == address(this)),
@@ -664,7 +661,6 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         }
 
         (bool success, bytes memory data) = address(this).call(callData);
-        // console.log("xReceive success? %s", success);
         emit SyncActionPerformed(_transferId, _origin, action, success, _originSender);
         return data;
     }

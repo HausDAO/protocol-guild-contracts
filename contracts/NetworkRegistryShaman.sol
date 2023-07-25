@@ -5,6 +5,8 @@ import { IBaal } from "@daohaus/baal-contracts/contracts/interfaces/IBaal.sol";
 
 import { NetworkRegistry } from "./NetworkRegistry.sol";
 
+// import "hardhat/console.sol";
+
 contract NetworkRegistryShaman is NetworkRegistry {
 
     IBaal public baal;
@@ -29,15 +31,15 @@ contract NetworkRegistryShaman is NetworkRegistry {
             uint256 _sharesToMint,
             bool _burnShares
         ) = abi.decode(_initializationParams, (address, uint32, address, address, address, address, uint256, bool));
+        baal = IBaal(_baal);
         __NetworkRegistry_init(
             _connext,
             _updaterDomain,
             _updater,
             _splitMain,
             _split,
-            _baal // Baal is registry Owner
+            baal.avatar() // NOTICE: Baal avatar as registry Owner
         );
-        baal = IBaal(_baal);
         sharesToMint = _sharesToMint;
         burnShares = _burnShares;
     }
@@ -51,7 +53,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
         address _member,
         uint32 _activityMultiplier,
         uint32 _startDate
-    ) public override onlyOwnerOrUpdater isManagerShaman {
+    ) public override isManagerShaman {
         super.setNewMember(_member, _activityMultiplier, _startDate);
         if (isMainRegistry()) {
             address[] memory _receivers = new address[](1);
@@ -65,8 +67,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
     function updateMember(
         address _member,
         uint32 _activityMultiplier
-    ) public override onlyOwnerOrUpdater isManagerShaman
-    {
+    ) public override isManagerShaman {
         super.updateMember(_member, _activityMultiplier);
         if (isMainRegistry() && burnShares) {
             address[] memory _from = new address[](1);

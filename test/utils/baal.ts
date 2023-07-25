@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { BigNumber, BigNumberish, ContractTransaction } from 'ethers';
 
-import { encodeMultiAction } from '../../src/utils';
+import { encodeMultiAction } from './safe';
 import { moveForwardPeriods } from './evm';
 import { expect } from 'chai';
 import { Baal, BaalSummoner, MultiSend, Poster } from '@daohaus/baal-contracts';
@@ -115,7 +115,7 @@ export enum SHAMAN_PERMISSIONS {
 
 export const defaultDAOSettings = {
     GRACE_PERIOD_IN_SECONDS: 43200,
-    VOTING_PERIOD_IN_SECONDS: 432000,
+    VOTING_PERIOD_IN_SECONDS: 86400,
     PROPOSAL_OFFERING: 0,
     SPONSOR_THRESHOLD: 1,
     MIN_RETENTION_PERCENT: 0,
@@ -280,7 +280,7 @@ export const submitAndProcessProposal = async ({
     baal: Baal,
     encodedAction: string,
     proposal: ProposalType,
-    proposalId: BigNumberish
+    proposalId?: BigNumberish
 }) => {
     await baal.submitProposal(
       encodedAction,
@@ -288,9 +288,10 @@ export const submitAndProcessProposal = async ({
       proposal.baalGas,
       ethers.utils.id(proposal.details)
     );
-    await baal.submitVote(proposalId, true);
+    const id = proposalId ? proposalId : await baal.proposalCount();
+    await baal.submitVote(id, true);
     await moveForwardPeriods(defaultDAOSettings.VOTING_PERIOD_IN_SECONDS, 2);
-    return await baal.processProposal(proposalId, encodedAction);
+    return await baal.processProposal(id, encodedAction);
 };
   
 export const setShamanProposal = async (

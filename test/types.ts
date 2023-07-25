@@ -21,8 +21,18 @@ export type NetworkRegistryArgs = {
   updaterAddress: string;
   splitMain: string;
   split: string;
-  // distributorFee: number;
   owner: string;
+}
+
+export type NetworkRegistryShamanArgs = {
+  connext: string;
+  updaterDomainId: number;
+  updaterAddress: string;
+  splitMain: string;
+  split: string;
+  baal: string;
+  sharesToMint: BigNumberish;
+  burnShares: boolean;
 }
 
 export type Member = {

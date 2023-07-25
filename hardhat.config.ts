@@ -1,8 +1,8 @@
-import "@nomicfoundation/hardhat-toolbox";
 import { config as dotenvConfig } from "dotenv";
-import "hardhat-deploy";
+import "@nomicfoundation/hardhat-toolbox";
 import type { HardhatUserConfig } from "hardhat/config";
 import type { NetworkUserConfig } from "hardhat/types";
+import "hardhat-deploy";
 import { resolve } from "path";
 
 import "./tasks/accounts";
@@ -142,7 +142,7 @@ const config: HardhatUserConfig = {
       companionNetworks: {
         l2: 'hardhat',
       },
-      initialDate: '01 Jun 2023',
+      initialDate: '01 May 2023',
     },
     // ganache: {
     //   accounts: {
