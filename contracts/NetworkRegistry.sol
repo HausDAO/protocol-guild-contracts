@@ -364,7 +364,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
-        setNewMember(_member, _activityMultiplier, _startDate);
+        _setNewMember(_member, _activityMultiplier, _startDate);
         bytes4 action = IMemberRegistry.setNewMember.selector;
         bytes memory callData = abi.encode(action, _member, _activityMultiplier, _startDate);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -401,28 +401,60 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
-        updateMember(_member, _activityMultiplier);
+        _updateMember(_member, _activityMultiplier);
         bytes4 action = IMemberRegistry.updateMember.selector;
         bytes memory callData = abi.encode(action, _member, _activityMultiplier);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
-    // BATCH OPERATIONS
-
-    function batchNewMember(
+    /**
+     * @notice Adds a new set of members to the registry
+     * @dev It should only be called by {owner} or {updater}
+     * @param _members A list of member addresses to be added to the registry
+     * @param _activityMultipliers Activity multipliers for each new member
+     * @param _startDates A list of dates when each member got active
+     */
+    function _batchNewMember(
         address[] memory _members,
         uint32[] memory _activityMultipliers,
         uint32[] memory _startDates
-    ) public onlyOwnerOrUpdater {
+    ) internal {
         for (uint256 i = 0; i < _members.length; ) {
-            setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
+            _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
             unchecked {
                 i++;
             }
         }
     }
 
-    // TODO: should we cover edge cases when we want to sync a replica registry from scratch?
+    /**
+     * @notice Adds a new set of members to the registry
+     * @dev {onlyOwnerOrUpdater} verifies:
+     *  - it can only be called by registry owner
+     *  - it can only be called by main registry through the Connext bridge (in case it is a replica registry)
+     * @param _members A list of member addresses to be added to the registry
+     * @param _activityMultipliers Activity multipliers for each new member
+     * @param _startDates A list of dates when each member got active
+     */
+    function batchNewMember(
+        address[] memory _members,
+        uint32[] memory _activityMultipliers,
+        uint32[] memory _startDates
+    ) public onlyOwnerOrUpdater {
+        _batchNewMember(_members, _activityMultipliers, _startDates);
+    }
+
+    /**
+     * @notice Adds a new set of members to the registry and sync with replicas
+     * @dev it can only be called by the main registry owner
+     * {validNetworkParams} verifies for matching network param sizes & {msg.value}
+     * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
+     * @param _members A list of member addresses to be added to the registry
+     * @param _activityMultipliers Activity multipliers for each new member
+     * @param _startDates A list of dates when each member got active
+     * @param _chainIds a list of network chainIds where valid replicas live
+     * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
+     */
     function syncBatchNewMember(
         address[] calldata _members,
         uint32[] calldata _activityMultipliers,
@@ -430,7 +462,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
-        batchNewMember(_members, _activityMultipliers, _startDates);
+        _batchNewMember(_members, _activityMultipliers, _startDates);
         bytes4 action = IMemberRegistry.batchNewMember.selector;
         bytes memory callData = abi.encode(action, _members, _activityMultipliers, _startDates);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -458,25 +490,56 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
-    function batchUpdateMember(
+    /**
+     * @notice Updates the activity multiplier for a set of existing members
+     * @dev It should only be called by {owner} or {updater}
+     * @param _members A list of existing members
+     * @param _activityMultipliers New activity multipliers for each member
+     */
+    function _batchUpdateMember(
         address[] memory _members,
         uint32[] memory _activityMultipliers
-    ) public onlyOwnerOrUpdater {
+    ) internal {
         for (uint256 i = 0; i < _members.length; ) {
-            updateMember(_members[i], _activityMultipliers[i]);
+            _updateMember(_members[i], _activityMultipliers[i]);
             unchecked {
                 i++;
             }
         } 
     }
 
+    /**
+     * @notice Updates the activity multiplier for a set of existing members
+     * @dev {onlyOwnerOrUpdater} verifies:
+     *  - it can only be called by registry owner
+     *  - it can only be called by main registry through the Connext bridge (in case it is a replica registry)
+     * @param _members A list of existing members
+     * @param _activityMultipliers New activity multipliers for each member
+     */
+    function batchUpdateMember(
+        address[] memory _members,
+        uint32[] memory _activityMultipliers
+    ) public onlyOwnerOrUpdater {
+        _batchUpdateMember(_members, _activityMultipliers); 
+    }
+
+    /**
+     * @notice Updates the activity multiplier for a set of existing members and sync with replicas
+     * @dev it can only be called by the main registry owner
+     * {validNetworkParams} verifies for matching network param sizes & {msg.value}
+     * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
+     * @param _members A list of existing members
+     * @param _activityMultipliers New activity multipliers for each member
+     * @param _chainIds a list of network chainIds where valid replicas live
+     * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
+     */
     function syncBatchUpdateMember(
         address[] calldata _members,
         uint32[] calldata _activityMultipliers,
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
-        batchUpdateMember(_members, _activityMultipliers);
+        _batchUpdateMember(_members, _activityMultipliers);
         bytes4 action = IMemberRegistry.batchUpdateMember.selector;
         bytes memory callData = abi.encode(action, _members, _activityMultipliers);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
