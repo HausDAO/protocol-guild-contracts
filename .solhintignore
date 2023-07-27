@@ -1,3 +1,6 @@
 # directories
 **/artifacts
 **/node_modules
+contracts/fixtures
+contracts/mocks
+contracts/interfaces/ISplitMain.sol
