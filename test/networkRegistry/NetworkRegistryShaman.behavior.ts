@@ -676,5 +676,51 @@ describe("NetworkRegistryShaman E2E tests", function () {
       expect(expectedBalances).to.eql(l1Balances);
       expect(expectedBalances).to.eql(l2Balances);
     });
+
+    it("Should burn shares if a member's activeMultiplier is set to zero", async () => {
+      // Syncing a batch of members
+      const members = sampleSplit.slice(0, 2).map((memberSplit: SampleSplit) => memberSplit.address);
+      const activityMultipliers = members.map((_, idx: number) => idx % 2 * 50);
+      const chainIds = [replicaChainId];
+      const relayerFees = [defaultRelayerFee];
+      const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const batchEncoded = l1NetworkRegistry.interface.encodeFunctionData(
+        "syncBatchUpdateMember",
+        [
+          members,
+          activityMultipliers,
+          chainIds,
+          relayerFees
+        ]
+      );
+      
+      const encodedAction = encodeMultiAction(
+        multisend,
+        [batchEncoded],
+        [l1NetworkRegistry.address],
+        [totalValue],
+        [0]
+      );
+      const tx_batch = await submitAndProcessProposal({
+        baal,
+        encodedAction,
+        proposal,
+      });
+      await tx_batch.wait();
+      const action = l2NetworkRegistry.interface.getSighash("batchUpdateMember(address[],uint32[])");
+      await expect(tx_batch)
+        .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+        .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+
+      for (let i = 0; i < members.length; i++) {
+        if (i % 2 === 0) {
+          await expect(tx_batch)
+            .to.emit(sharesToken, 'Transfer')
+            .withArgs(members[i], ethers.constants.AddressZero, parseEther("1"));
+        }
+        expect(await sharesToken.balanceOf(members[i])).to.be.equal( i % 2 === 0 ? BigNumber.from(0) : parseEther("1"));
+      }
+    });
   });
 });
