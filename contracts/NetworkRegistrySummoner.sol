@@ -13,7 +13,6 @@ import { NetworkRegistry } from "./NetworkRegistry.sol";
  * @dev Singleton contract must inherit NetworkRegistry
  */
 contract NetworkRegistrySummoner {
-    
     /**
      * @notice emitted after a new NetworkRegistry has been summoned
      * @param _registry new NetworkRegistry address
@@ -22,7 +21,8 @@ contract NetworkRegistrySummoner {
      */
     event NetworkRegistrySummoned(address indexed _registry, string _details, bytes _initializationParams);
 
-    constructor() { }
+    // solhint-disable-next-line no-empty-blocks
+    constructor() {}
 
     /**
      * @notice Summons a new NetworkRegistry

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@prb/math/src/UD60x18.sol";
 
 // import "hardhat/console.sol";
 
 /**
- * CUSTOM ERRORS 
+ * CUSTOM ERRORS
  */
 
 /// @notice Member is already registered
@@ -35,7 +34,6 @@ error InvalidMember__ActivityMultiplier(address _member, uint32 _activityMultipl
  * @dev Includes minimal functions to implement an on-chain registry to track members & time active
  */
 abstract contract MemberRegistry {
-
     /// @dev Member struct to track minimal information about member activity in the registry
     struct Member {
         /// @notice member address
@@ -44,7 +42,7 @@ abstract contract MemberRegistry {
         uint32 secondsActive;
         /// @notice timestamp where member started activities
         /// @dev timestamp format in seconds
-        uint32 startDate; 
+        uint32 startDate;
         /**
          * @notice member activity multiplier (i.e. 50 -> part-time 100 -> full-time)
          * @dev activity multiplier should be set as a 0-100 (%)
@@ -59,15 +57,15 @@ abstract contract MemberRegistry {
     uint256 internal count = 0;
     /// @notice member index in the registry
     /// @dev mapping between member registry and index assigned during registration
+    // solhint-disable-next-line named-parameters-mapping
     mapping(address => uint256) public memberIdxs;
-
     /// @notice last timestamp where the registry got updated
     /// @dev should be assigned to uint32(block.timestamp)
     uint32 public lastActivityUpdate;
 
-    /** 
+    /**
      * EVENTS
-    */
+     */
 
     /**
      * @notice emitted after a new member is added to the registry
@@ -103,11 +101,7 @@ abstract contract MemberRegistry {
      * @param _activityMultiplier member activity multiplier
      * @param _startDate timestamp (in seconds) when the member got active
      */
-    function _setNewMember(
-        address _member,
-        uint32 _activityMultiplier,
-        uint32 _startDate
-    ) internal virtual {
+    function _setNewMember(address _member, uint32 _activityMultiplier, uint32 _startDate) internal virtual {
         if (_member == address(0)) revert InvalidMember__Address(_member);
         if (memberIdxs[_member] != 0) revert Member__AlreadyRegistered(_member);
         if (_activityMultiplier > 100) revert InvalidMember__ActivityMultiplier(_member, _activityMultiplier);
@@ -115,9 +109,7 @@ abstract contract MemberRegistry {
 
         // set to 0, will be updated in next update
         uint32 secondsActive = 0;
-        members.push(
-            Member(_member, secondsActive, _startDate, _activityMultiplier)
-        );
+        members.push(Member(_member, secondsActive, _startDate, _activityMultiplier));
         unchecked {
             memberIdxs[_member] = ++count;
         }
@@ -132,13 +124,10 @@ abstract contract MemberRegistry {
      * @param _member member address
      * @param _activityMultiplier member new activity multiplier
      */
-    function _updateMember(
-        address _member,
-        uint32 _activityMultiplier
-    ) internal virtual {
+    function _updateMember(address _member, uint32 _activityMultiplier) internal virtual {
         uint256 memberIdx = memberIdxs[_member];
-        if(memberIdx == 0) revert Member__NotRegistered(_member);
-        if(_activityMultiplier > 100) revert InvalidMember__ActivityMultiplier(_member, _activityMultiplier);
+        if (memberIdx == 0) revert Member__NotRegistered(_member);
+        if (_activityMultiplier > 100) revert InvalidMember__ActivityMultiplier(_member, _activityMultiplier);
 
         Member storage member = members[memberIdxs[_member] - 1];
         member.activityMultiplier = _activityMultiplier;
@@ -190,7 +179,7 @@ abstract contract MemberRegistry {
      * @return a Member metadata
      */
     function getMember(address _member) public view returns (Member memory) {
-        if(memberIdxs[_member] == 0) revert Member__NotRegistered(_member);
+        if (memberIdxs[_member] == 0) revert Member__NotRegistered(_member);
         return members[memberIdxs[_member] - 1];
     }
 
@@ -208,11 +197,7 @@ abstract contract MemberRegistry {
      * @return list of member activity multipliers
      * @return list of member start dates
      */
-    function getMembersProperties() public view returns (
-        address[] memory,
-        uint32[] memory,
-        uint32[] memory
-    ) {
+    function getMembersProperties() public view returns (address[] memory, uint32[] memory, uint32[] memory) {
         address[] memory _members = new address[](members.length);
         uint32[] memory _activityMultipliers = new uint32[](members.length);
         uint32[] memory _startDates = new uint32[](members.length);

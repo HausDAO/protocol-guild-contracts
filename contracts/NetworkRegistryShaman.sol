@@ -8,21 +8,23 @@ import { NetworkRegistry } from "./NetworkRegistry.sol";
 // import "hardhat/console.sol";
 
 /**
- * @title A cross-chain network registry and Baal shaman module to distribute funds escrowed in 0xSplit based on member activity
+ * @title A cross-chain network registry and Baal shaman module to distribute funds escrowed in 0xSplit based
+ * on member activity.
  * @author DAOHaus
- * @notice Manage a cross-chain member registry that mints Baal DAO shares and distribute funds hold in 0xSplit based on member activity
+ * @notice Manage a cross-chain member registry that mints Baal DAO shares and distribute funds hold in 0xSplit based
+ * on member activity.
  * @dev Setup as a MolochV3 manager shaman module to mint/burn shares based on member activity.
  * Features and important things to consider:
  * - Inherits all the features of NetworkRegistry contract
- * - It can be setup as a manager Shaman module on a MolochV3 DAO (codename Baal) to mint/burn shares when adding/updating members
- *   without the need of sending a separate proposal or additional proposal actions within a multicall proposal
+ * - It can be setup as a manager Shaman module on a MolochV3 DAO (codename Baal) to mint/burn shares when
+ *   adding/updating members without the need of sending a separate proposal or additional proposal actions within a
+ *   multicall proposal.
  * - You can setup the amount of {sharesToMint} to new members being added to the registry
  * - You can enable/disable burning shares to inactive members (activityMultiplier == 0)
  * - As the DAO lives only on the main network, you just need to deploy one NetworkRegistryShaman as the main registry
  *   while replicas can be NetworkRegistry flavour
  */
 contract NetworkRegistryShaman is NetworkRegistry {
-
     /// @notice MolochV3 DAO address
     /// @dev Baal address
     IBaal public baal;
@@ -36,7 +38,10 @@ contract NetworkRegistryShaman is NetworkRegistry {
      */
     modifier isManagerShaman() {
         if (isMainRegistry()) {
-            require(address(baal) != address(0) && baal.isManager(address(this)), "NetworkRegistryShaman: !init || ! manager");
+            require(
+                address(baal) != address(0) && baal.isManager(address(this)),
+                "NetworkRegistryShaman: !init || ! manager"
+            );
         }
         _;
     }
@@ -109,10 +114,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @param _member member address
      * @param _activityMultiplier member new activity multiplier
      */
-    function _updateMember(
-        address _member,
-        uint32 _activityMultiplier
-    ) internal override isManagerShaman {
+    function _updateMember(address _member, uint32 _activityMultiplier) internal override isManagerShaman {
         super._updateMember(_member, _activityMultiplier);
         if (_activityMultiplier == 0 && isMainRegistry() && burnShares) {
             address[] memory _from = new address[](1);

@@ -13,7 +13,7 @@ import "./registry/MemberRegistry.sol";
 // import "hardhat/console.sol";
 
 /**
- * CUSTOM ERRORS 
+ * CUSTOM ERRORS
  */
 
 /// @notice Member list size doens't match the current amount of members in the regsitry
@@ -33,12 +33,13 @@ error Split_ControlNotHandedOver();
  * - There are syncing methods for adding/updating members, update registry activity & split funds across networks.
  * - Funds are escrowed in a 0xSplit contract so NetworkRegistry must be set as the controller in oder to split funds.
  * - A NetworkRegistry contract can be setup either as the main registry (updater == address(0)) or as a replica.
- * - A main NetworkRegistry should be owned by the community (i.e. Safe or a DAO) 
- * - A replica NetworkRegistry must set the `updater` to the main registry address and be registered in the main 
+ * - A main NetworkRegistry should be owned by the community (i.e. Safe or a DAO)
+ * - A replica NetworkRegistry must set the `updater` to the main registry address and be registered in the main
  *   NetworkRegistry in order to get synced.
- * - A replica NetworkRegistry should not be owned by anyone so it can only be controlled by the main registry (updater) 
- *   however another Safe or DAO in the replica network can act as a trusted delegate in case of a halt of the Connext bridge 
- *   which could potentially froze the 0xSplit funds as the replica NetworkRegistry and thus its controller will become innacessible.
+ * - A replica NetworkRegistry should not be owned by anyone so it can only be controlled by the main registry (updater)
+ *   however another Safe or DAO in the replica network can act as a trusted delegate in case of a halt of the Connext
+ *   bridge which could potentially froze the 0xSplit funds as the replica NetworkRegistry and thus its controller will
+ *   become innacessible.
  */
 contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegistry, MemberRegistry {
     /// @notice Connext contract in the current domain
@@ -53,7 +54,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     address public updater;
     /// @notice replica registries tied to the current contract
     /// @dev chainId => Registry
-    mapping (uint32 => Registry) public networkRegistry;
+    // solhint-disable-next-line named-parameters-mapping
+    mapping(uint32 => Registry) public networkRegistry;
     /// @notice 0xSplit proxy contract
     /// @dev 0xSplitMain contract
     ISplitMain public splitMain;
@@ -86,10 +88,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      */
     modifier onlyUpdater(address _originSender, uint32 _origin) {
         require(
-        _origin == updaterDomain &&
-            _originSender == updater &&
-            _msgSender() == address(connext),
-        "NetworkRegistry: !updaterDomain || !updater || !Connext"
+            _origin == updaterDomain && _originSender == updater && _msgSender() == address(connext),
+            "NetworkRegistry: !updaterDomain || !updater || !Connext"
         );
         _;
     }
@@ -101,8 +101,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      */
     modifier onlyOwnerOrUpdater() {
         require(
-            owner() == _msgSender() ||
-            (updater != address(0) && _msgSender() == address(this)),
+            owner() == _msgSender() || (updater != address(0) && _msgSender() == address(this)),
             "NetworkRegistry: !owner || !updater"
         );
         _;
@@ -124,17 +123,15 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
                 i++;
             }
         }
-        require(
-            msg.value == totalRelayerFees,
-            "NetworkRegistry: msg.value < relayerFees"
-        );
+        require(msg.value == totalRelayerFees, "NetworkRegistry: msg.value < relayerFees");
         _;
     }
 
     /**
      * @notice A modifier to validates there's a replica NetworkRegistry setup for the `_chainId` chainId
      * @dev networkRegistry delegate is related Connext xcall but it is not being used so always set to address(0)
-     * It it very unlikely for this use case to get a failed tx on the replica if it doens't fail in the main registry first.
+     * It it very unlikely for this use case to get a failed tx on the replica if it doens't revert
+     * in the main registry first.
      * More info at https://docs.connext.network/developers/guides/handling-failures#increasing-slippage-tolerance
      */
     modifier validNetworkRegistry(uint32 _chainId) {
@@ -142,13 +139,12 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             networkRegistry[_chainId].domainId != 0 && networkRegistry[_chainId].registryAddress != address(0),
             "NetworkRegistry: !supported network"
         );
-        // require(_registry.delegate != address(0), "NetworkRegistry: Missing delegate"); // TODO: really need a delegate in case of failed tx?
         _;
     }
 
-    /** 
+    /**
      * EVENTS
-    */
+     */
 
     /**
      * @notice emitted after the connection to the main registry (updater) domain & address are updated
@@ -171,7 +167,12 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _domainId Connext domain ID that correspond to the network where the replica lives
      * @param _delegate Delegate address in case of a bridge tx failure (currently not in use)
      */
-    event NetworkRegistryUpdated(uint32 indexed _chainId, address indexed _registryAddress, uint32 indexed _domainId, address _delegate);
+    event NetworkRegistryUpdated(
+        uint32 indexed _chainId,
+        address indexed _registryAddress,
+        uint32 indexed _domainId,
+        address _delegate
+    );
     /**
      * @notice emitted when a new split of funds is registered on the 0xSplit contract
      * @param _split 0xSplit contract address
@@ -186,7 +187,12 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _action Selector of the function to be executed on the replica
      * @param _registryAddress replica contract address
      */
-    event SyncMessageSubmitted(bytes32 indexed _transferId, uint32 indexed _chainId, bytes4 indexed _action, address _registryAddress);
+    event SyncMessageSubmitted(
+        bytes32 indexed _transferId,
+        uint32 indexed _chainId,
+        bytes4 indexed _action,
+        address _registryAddress
+    );
     /**
      * @notice emitted when a registry synchronization message is received and executed on a replica
      * @param _transferId transfer ID returned by Connext that identifies the received xcall message
@@ -195,10 +201,16 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _success flag whether or not the execution of the sync function succeeded
      * @param _originSender main registry address that forwarded the sync message through the Connext bridge
      */
-    event SyncActionPerformed(bytes32 indexed _transferId, uint32 indexed _originDomain, bytes4 indexed _action, bool _success, address _originSender);
+    event SyncActionPerformed(
+        bytes32 indexed _transferId,
+        uint32 indexed _originDomain,
+        bytes4 indexed _action,
+        bool _success,
+        address _originSender
+    );
 
     constructor() {
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/Initializable.sol#L45
+        // github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/utils/Initializable.sol#L45
         _disableInitializers();
     }
 
@@ -210,6 +222,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _splitMain 0xSplit proxy contract
      * @param _split 0xSplit contract where funds are hold
      */
+    // solhint-disable-next-line func-name-mixedcase
     function __NetworkRegistry_init_unchained(
         address _connext,
         uint32 _updaterDomain,
@@ -233,6 +246,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _split 0xSplit contract where funds are hold
      * @param _owner who owns the registry contract
      */
+    // solhint-disable-next-line func-name-mixedcase
     function __NetworkRegistry_init(
         address _connext,
         uint32 _updaterDomain,
@@ -242,13 +256,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address _owner
     ) internal onlyInitializing {
         __Ownable_init();
-        __NetworkRegistry_init_unchained(
-            _connext,
-            _updaterDomain,
-            _updater,
-            _splitMain,
-            _split
-        );
+        __NetworkRegistry_init_unchained(_connext, _updaterDomain, _updater, _splitMain, _split);
         if (_owner == address(0)) renounceOwnership();
         else transferOwnership(_owner);
     }
@@ -267,14 +275,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             address _split,
             address _owner
         ) = abi.decode(_initializationParams, (address, uint32, address, address, address, address));
-        __NetworkRegistry_init(
-            _connext,
-            _updaterDomain,
-            _updater,
-            _splitMain,
-            _split,
-            _owner
-        );
+        __NetworkRegistry_init(_connext, _updaterDomain, _updater, _splitMain, _split, _owner);
     }
 
     /**
@@ -290,14 +291,14 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         bytes memory _callData,
         uint256 _relayerFee
     ) internal validNetworkRegistry(_chainId) returns (bytes32 transferId) {
-        transferId = connext.xcall{value: _relayerFee}(
-            networkRegistry[_chainId].domainId,         // _destination: domain ID of the destination chain
-            networkRegistry[_chainId].registryAddress,  // _to: address of the target contract (Pong)
-            address(0),     // _asset: use address zero for 0-value transfers
-            networkRegistry[_chainId].delegate,         // _delegate: address that can revert or forceLocal on destination
-            0,              // _amount: 0 because no funds are being transferred
-            0,              // _slippage: can be anything between 0-10000 because no funds are being transferred
-            _callData       // _callData: the encoded calldata to send
+        transferId = connext.xcall{ value: _relayerFee }(
+            networkRegistry[_chainId].domainId, // _destination: domain ID of the destination chain
+            networkRegistry[_chainId].registryAddress, // _to: address of the target contract (Pong)
+            address(0), // _asset: use address zero for 0-value transfers
+            networkRegistry[_chainId].delegate, // _delegate: address that can revert or forceLocal on destination
+            0, // _amount: 0 because no funds are being transferred
+            0, // _slippage: can be anything between 0-10000 because no funds are being transferred
+            _callData // _callData: the encoded calldata to send
         );
     }
 
@@ -320,7 +321,12 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _chainIds a list of network chainIds where valid replicas live
      * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
      */
-    function _syncRegistries(bytes4 _action, bytes memory _callData, uint32[] memory _chainIds, uint256[] memory _relayerFees) internal {
+    function _syncRegistries(
+        bytes4 _action,
+        bytes memory _callData,
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
+    ) internal {
         for (uint256 i = 0; i < _chainIds.length; ) {
             _execSyncAction(_action, _callData, _chainIds[i], _relayerFees[i]);
             unchecked {
@@ -338,12 +344,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _activityMultiplier member activity multiplier
      * @param _startDate timestamp (in seconds) when the member got active
      */
-    function setNewMember(
-        address _member,
-        uint32 _activityMultiplier,
-        uint32 _startDate
-    ) public onlyOwnerOrUpdater {
-        _setNewMember(_member, _activityMultiplier, _startDate);  
+    function setNewMember(address _member, uint32 _activityMultiplier, uint32 _startDate) public onlyOwnerOrUpdater {
+        _setNewMember(_member, _activityMultiplier, _startDate);
     }
 
     /**
@@ -378,10 +380,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _member member address
      * @param _activityMultiplier member new activity multiplier
      */
-    function updateMember(address _member, uint32 _activityMultiplier)
-        public
-        onlyOwnerOrUpdater
-    {
+    function updateMember(address _member, uint32 _activityMultiplier) public onlyOwnerOrUpdater {
         _updateMember(_member, _activityMultiplier);
     }
 
@@ -484,7 +483,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             address[] memory _members,
             uint32[] memory _activityMultipliers,
             uint32[] memory _startDates
-        )= getMembersProperties();
+        ) = getMembersProperties();
         bytes4 action = IMemberRegistry.batchNewMember.selector;
         bytes memory callData = abi.encode(action, _members, _activityMultipliers, _startDates);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -496,16 +495,13 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _members A list of existing members
      * @param _activityMultipliers New activity multipliers for each member
      */
-    function _batchUpdateMember(
-        address[] memory _members,
-        uint32[] memory _activityMultipliers
-    ) internal {
+    function _batchUpdateMember(address[] memory _members, uint32[] memory _activityMultipliers) internal {
         for (uint256 i = 0; i < _members.length; ) {
             _updateMember(_members[i], _activityMultipliers[i]);
             unchecked {
                 i++;
             }
-        } 
+        }
     }
 
     /**
@@ -520,7 +516,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] memory _members,
         uint32[] memory _activityMultipliers
     ) public onlyOwnerOrUpdater {
-        _batchUpdateMember(_members, _activityMultipliers); 
+        _batchUpdateMember(_members, _activityMultipliers);
     }
 
     /**
@@ -583,12 +579,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
 
         // run splits update
-        splitMain.updateSplit(
-            split,
-            _receivers,
-            _percentAllocations,
-            _splitDistributorFee
-        );
+        splitMain.updateSplit(split, _receivers, _percentAllocations, _splitDistributorFee);
         bytes32 splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, _splitDistributorFee));
         emit SplitsUpdated(split, splitHash, _splitDistributorFee);
     }
@@ -617,7 +608,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Updates both {updateSecondsActive} to update registry member activity and {updateSplits} for split distribution
+     * @notice Updates both {updateSecondsActive} to update registry member activity and {updateSplits}
+     * for split distribution
      * @dev permissionless action, however the registry must hold the controller role of the 0xSplit contract
      * Addresses in _sortedList must be in the member registry
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
@@ -629,8 +621,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Updates both {updateSecondsActive} to update registry member activity and {updateSplits} for split distribution
-     * across all networks
+     * @notice Updates both {updateSecondsActive} to update registry member activity and {updateSplits}
+     * for split distribution across all networks
      * @dev permissionless action, however the registry must hold the controller role of the 0xSplit contract
      * {validNetworkParams} verifies for matching network param sizes & {msg.value}
      * Addresses in _sortedList must be in the member registry
@@ -661,15 +653,9 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @return _receivers list of eligible recipients (non-zero allocation) for the next split distribution
      * @return _percentAllocations list of split allocations for each eligible recipeint
      */
-    function calculate(address[] memory _sortedList)
-        public
-        virtual
-        view
-        returns (
-            address[] memory _receivers,
-            uint32[] memory _percentAllocations
-        )
-    {
+    function calculate(
+        address[] memory _sortedList
+    ) public view virtual returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
         uint256 activeMembers;
         uint256 total;
         address previous;
@@ -691,7 +677,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
                 // get the total seconds in the last period
                 // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
                 total += memberDistribution[i].calcContribution;
-                unchecked { // gas optimization: very unlikely to overflow
+                unchecked {
+                    // gas optimization: very unlikely to overflow
                     activeMembers++;
                 }
                 previous = memberAddress;
@@ -743,7 +730,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _member Member metadata
      * @return calculated contribution as uin256 value
      */
-    function calculateContributionOf(Member memory _member) public virtual pure returns (uint256) {
+    function calculateContributionOf(Member memory _member) public pure virtual returns (uint256) {
         return unwrap(wrap(_member.secondsActive).sqrt());
     }
 
@@ -790,7 +777,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
 
     /**
      * @notice Adds a replica NetworkRegistry to get in sync with the main registry
-     * @dev Must only be called by contract owner. Sending zero values on {_newRegistry} should disable an existing replica
+     * @dev Must only be called by contract owner. Sending zero values on {_newRegistry} should disable
+     * an existing replica
      * @param _chainId Network chainId where the replica registry lives
      * @param _newRegistry Connext domain ID and replica NetworkRegistry address
      */
@@ -798,10 +786,18 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         if (networkRegistry[_chainId].registryAddress != address(0) && _newRegistry.registryAddress == address(0)) {
             delete networkRegistry[_chainId];
         } else {
-            require(_newRegistry.domainId != 0 && _newRegistry.registryAddress != address(0), "NetworkRegistry: invalid registry");
+            require(
+                _newRegistry.domainId != 0 && _newRegistry.registryAddress != address(0),
+                "NetworkRegistry: invalid registry"
+            );
             networkRegistry[_chainId] = _newRegistry;
         }
-        emit NetworkRegistryUpdated(_chainId, _newRegistry.registryAddress, _newRegistry.domainId, _newRegistry.delegate);
+        emit NetworkRegistryUpdated(
+            _chainId,
+            _newRegistry.registryAddress,
+            _newRegistry.domainId,
+            _newRegistry.delegate
+        );
     }
 
     /**
@@ -875,7 +871,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Sends sync messages to replicas in order to transfer control of the current 0xSplit contract to `_newController`
+     * @notice Sends sync messages to replicas in order to transfer control of the current
+     * 0xSplit contract to `_newController`
      * @dev Must only be called by the owner
      * {validNetworkParams} verifies for matching network param sizes & {msg.value}
      * @param _chainIds a list of network chainIds where valid replicas live
@@ -931,7 +928,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Sends sync messages to replicas in order to cancel a transfer control request of the current 0xSplit contract
+     * @notice Sends sync messages to replicas in order to cancel a transfer control request of
+     * the current 0xSplit contract
      * @dev Must only be called by the owner
      * {validNetworkParams} verifies for matching network param sizes & {msg.value}
      * @param _chainIds a list of network chainIds where valid replicas live
@@ -966,38 +964,42 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         bytes4 action = abi.decode(_incomingCalldata, (bytes4));
         bytes memory callData;
         if (action == IMemberRegistry.setNewMember.selector) {
-            (
-                ,
-                address _member,
-                uint32 _activityMultiplier,
-                uint32 _startDate
-            ) = abi.decode(_incomingCalldata, (bytes4, address, uint32, uint32));
-            callData = abi.encodeWithSelector(IMemberRegistry.setNewMember.selector, _member, _activityMultiplier, _startDate);
+            (, address _member, uint32 _activityMultiplier, uint32 _startDate) = abi.decode(
+                _incomingCalldata,
+                (bytes4, address, uint32, uint32)
+            );
+            callData = abi.encodeWithSelector(
+                IMemberRegistry.setNewMember.selector,
+                _member,
+                _activityMultiplier,
+                _startDate
+            );
         } else if (action == IMemberRegistry.updateMember.selector) {
             (, address _member, uint32 _activityMultiplier) = abi.decode(_incomingCalldata, (bytes4, address, uint32));
             callData = abi.encodeWithSelector(action, _member, _activityMultiplier);
         } else if (action == IMemberRegistry.batchNewMember.selector) {
-            (
-                ,
-                address[] memory _members,
-                uint32[] memory _activityMultipliers,
-                uint32[] memory _startDates
-            ) = abi.decode(_incomingCalldata, (bytes4, address[], uint32[], uint32[]));
+            (, address[] memory _members, uint32[] memory _activityMultipliers, uint32[] memory _startDates) = abi
+                .decode(_incomingCalldata, (bytes4, address[], uint32[], uint32[]));
             callData = abi.encodeWithSelector(action, _members, _activityMultipliers, _startDates);
         } else if (action == IMemberRegistry.batchUpdateMember.selector) {
-            (
-                ,
-                address[] memory _members,
-                uint32[] memory _activityMultipliers
-            ) = abi.decode(_incomingCalldata, (bytes4, address[], uint32[]));
+            (, address[] memory _members, uint32[] memory _activityMultipliers) = abi.decode(
+                _incomingCalldata,
+                (bytes4, address[], uint32[])
+            );
             callData = abi.encodeWithSelector(action, _members, _activityMultipliers);
         } else if (action == IMemberRegistry.updateSecondsActive.selector) {
             callData = abi.encodeWithSelector(action);
         } else if (action == ISplitManager.updateSplits.selector) {
-            (, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(_incomingCalldata, (bytes4, address[], uint32));
+            (, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(
+                _incomingCalldata,
+                (bytes4, address[], uint32)
+            );
             callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
         } else if (action == ISplitManager.updateAll.selector) {
-            (, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(_incomingCalldata, (bytes4, address[], uint32));
+            (, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(
+                _incomingCalldata,
+                (bytes4, address[], uint32)
+            );
             callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
         } else if (action == ISplitManager.setSplit.selector) {
             (, address _splitMain, address _split) = abi.decode(_incomingCalldata, (bytes4, address, address));
@@ -1011,6 +1013,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             callData = abi.encodeWithSelector(action);
         }
 
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory data) = address(this).call(callData);
         emit SyncActionPerformed(_transferId, _origin, action, success, _originSender);
         return data;

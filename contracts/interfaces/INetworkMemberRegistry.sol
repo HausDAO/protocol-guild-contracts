@@ -13,7 +13,6 @@ import { ISplitManager } from "./ISplitManager.sol";
  * It should also be able to distribute funds escrowed on a 0xSplit contract based on member activity
  */
 interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
-
     /// @dev Data structure to store NetworkRegistry config
     struct Registry {
         /// @notice Connext Domain ID where the NetworkRegistry lives
@@ -31,6 +30,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
      * @param _initializationParams abi-encoded parameters
      */
     function initialize(bytes memory _initializationParams) external;
+
     /**
      * @notice Set connext and updater config parameters to setup the contract as a replica registry
      * @dev Must only be called by contract owner. Zero values will setup the contract as a main registry
@@ -39,18 +39,22 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
      * @param _updater Main NetworkRegistry address that will update the registry through the Connext bridge
      */
     function setUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater) external;
+
     /**
      * @notice Adds a replica NetworkRegistry to get in sync with the main registry
-     * @dev Must only be called by contract owner. Sending zero values on {_newRegistry} should disable an existing replica
+     * @dev Must only be called by contract owner. Sending zero values on {_newRegistry}
+     * should disable an existing replica
      * @param _chainId Network chainId where the replica registry lives
      * @param _newRegistry Connext domain ID and replica NetworkRegistry address
      */
     function updateNetworkRegistry(uint32 _chainId, Registry memory _newRegistry) external;
+
     /**
      * @notice Returns True if the registry has been setup as Main or Replica
      * @dev Verifies if updater params are set to zero
      */
     function isMainRegistry() external view returns (bool);
+
     /**
      * @notice Adds a new member to the registry and sync with replicas
      * @dev It should forward messages to sync all registered replicas
@@ -68,6 +72,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable;
+
     /**
      * @notice Updates the activity multiplier of an existing member and sync with replicas
      * @dev It should forward messages to sync all registered replicas
@@ -83,6 +88,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable;
+
     /**
      * @notice Adds a new set of members to the registry and sync with replicas
      * @dev It should forward messages to sync all registered replicas
@@ -100,6 +106,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable;
+
     /**
      * @notice Sync all registry members. Useful if looking to sync a new replica from scratch
      * however action can be pretty gas intensive in case of the registry having a large amount of members
@@ -107,10 +114,8 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
      * @param _chainIds a list of network chainIds where valid replicas live
      * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
      */
-    function syncNetworkMemberRegistry(
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
-    ) external payable;
+    function syncNetworkMemberRegistry(uint32[] calldata _chainIds, uint256[] calldata _relayerFees) external payable;
+
     /**
      * @notice Updates the activity multiplier for a set of existing members and sync with replicas
      * @dev It should forward messages to sync all registered replicas
@@ -126,6 +131,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable;
+
     /**
      * @notice Updates activity for each member in the registry since the last update epoch and sync with replicas
      * @dev It should forward messages to sync all registered replicas
@@ -133,10 +139,8 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
      * @param _chainIds a list of network chainIds where valid replicas live
      * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
      */
-    function syncUpdateSecondsActive(
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
-    ) external payable;
+    function syncUpdateSecondsActive(uint32[] calldata _chainIds, uint256[] calldata _relayerFees) external payable;
+
     /**
      * @notice Updates the 0xsplit distribution on all networks based on member activity during the last epoch.
      * @dev It should forward messages to sync all registered replicas
@@ -153,9 +157,10 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable;
+
     /**
-     * @notice Updates both {updateSecondsActive} to update registry member activity and {updateSplits} for split distribution
-     * across all networks
+     * @notice Updates both {updateSecondsActive} to update registry member activity and {updateSplits}
+     * for split distribution across all networks
      * @dev permissionless action, however the registry must hold the controller role of the 0xSplit contract
      * Addresses in _sortedList must be in the member registry
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
@@ -169,6 +174,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable;
+
     /**
      * @notice Updates the 0xSplit contracts on existing NetworkRegistry replicas via sync message
      * @dev It should forward messages to sync specified replicas
@@ -184,8 +190,10 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         address[] memory _splits,
         uint256[] memory _relayerFees
     ) external payable;
+
     /**
-     * @notice Sends sync messages to replicas in order to transfer control of the current 0xSplit contract to `_newController`
+     * @notice Sends sync messages to replicas in order to transfer control
+     * of the current 0xSplit contract to `_newController`
      * @dev It should forward messages to sync specified replicas
      * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
      * @param _chainIds a list of network chainIds where valid replicas live
@@ -197,6 +205,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         address[] memory _newControllers,
         uint256[] memory _relayerFees
     ) external payable;
+
     /**
      * @notice Sends sync messages to replicas in order to accept control of the current 0xSplit contract
      * @dev It should forward messages to sync specified replicas
@@ -204,12 +213,11 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
      * @param _chainIds a list of network chainIds where valid replicas live
      * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
      */
-    function acceptNetworkSplitControl(
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
-    ) external payable;
+    function acceptNetworkSplitControl(uint32[] calldata _chainIds, uint256[] calldata _relayerFees) external payable;
+
     /**
-     * @notice Sends sync messages to replicas in order to cancel a transfer control request of the current 0xSplit contract
+     * @notice Sends sync messages to replicas in order to cancel a transfer control request
+     * of the current 0xSplit contract
      * @dev It should forward messages to sync specified replicas
      * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
      * @param _chainIds a list of network chainIds where valid replicas live
