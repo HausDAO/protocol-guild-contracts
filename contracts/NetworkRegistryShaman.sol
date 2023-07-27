@@ -114,7 +114,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
         uint32 _activityMultiplier
     ) public override isManagerShaman {
         super.updateMember(_member, _activityMultiplier);
-        if (isMainRegistry() && burnShares) {
+        if (_activityMultiplier == 0 && isMainRegistry() && burnShares) {
             address[] memory _from = new address[](1);
             _from[0] = _member;
             uint256[] memory _amounts = new uint256[](1);
