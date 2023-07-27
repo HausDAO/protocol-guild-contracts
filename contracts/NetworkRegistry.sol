@@ -452,7 +452,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             address[] memory _members,
             uint32[] memory _activityMultipliers,
             uint32[] memory _startDates
-        )= getMembersSplitProperties();
+        )= getMembersProperties();
         bytes4 action = IMemberRegistry.batchNewMember.selector;
         bytes memory callData = abi.encode(action, _members, _activityMultipliers, _startDates);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
