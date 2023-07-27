@@ -183,24 +183,24 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 | Contract                | Address                                    |
 | ----------------------  | ------------------------------------------ |
 | NetworkRegistrySummoner | 0xd8453cEE3b86887829cd7622FDD39187DE8e8261 |
-| NetworkRegistry         | 0xCF9e178C030f0C0C19A244505eE108296B1F8779 |
-| NetworkRegistryShaman   | 0x5862c7D497FFd77A1a103A6A1c55159e30D889ad |
+| NetworkRegistry         | 0xa5D9469f11C277A91d718D338eece150d93996b3 |
+| NetworkRegistryShaman   | 0xe03F296b89c99a223E41c42E5d56acd51DB329A8 |
 
 ### OptimismGoerli
 
 | Contract                | Address                                    |
 | ----------------------  | ------------------------------------------ |
 | NetworkRegistrySummoner | 0xE8c26332C8Ecbc05a29e62E9c6bc3578EC82090f |
-| NetworkRegistry         | 0x0E6267032Ff8451D0530fe46f03236316Ab46A97 |
-| NetworkRegistryShaman   | 0xC334c3313b833679809566F1035fC931cEffB919 |
+| NetworkRegistry         | 0x813F246856A79898a2b49Eef7ff3feb740Fe4226 |
+| NetworkRegistryShaman   | 0xC2c90e8328877737B9ac495833eE701f98F90Db1 |
 
 ### ArbitrumGoerli
 
 | Contract                | Address                                    |
 | ----------------------  | ------------------------------------------ |
 | NetworkRegistrySummoner | 0xE8c26332C8Ecbc05a29e62E9c6bc3578EC82090f |
-| NetworkRegistry         | 0x0E6267032Ff8451D0530fe46f03236316Ab46A97 |
-| NetworkRegistryShaman   | 0xC334c3313b833679809566F1035fC931cEffB919 |
+| NetworkRegistry         | 0x813F246856A79898a2b49Eef7ff3feb740Fe4226 |
+| NetworkRegistryShaman   | 0xC2c90e8328877737B9ac495833eE701f98F90Db1 |
 
 ## License
 
