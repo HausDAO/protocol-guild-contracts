@@ -88,12 +88,12 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @param _activityMultiplier member activity multiplier
      * @param _startDate timestamp (in seconds) when the member got active
      */
-    function setNewMember(
+    function _setNewMember(
         address _member,
         uint32 _activityMultiplier,
         uint32 _startDate
-    ) public override isManagerShaman {
-        super.setNewMember(_member, _activityMultiplier, _startDate);
+    ) internal override isManagerShaman {
+        super._setNewMember(_member, _activityMultiplier, _startDate);
         if (isMainRegistry()) {
             address[] memory _receivers = new address[](1);
             _receivers[0] = _member;
@@ -109,11 +109,11 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @param _member member address
      * @param _activityMultiplier member new activity multiplier
      */
-    function updateMember(
+    function _updateMember(
         address _member,
         uint32 _activityMultiplier
-    ) public override isManagerShaman {
-        super.updateMember(_member, _activityMultiplier);
+    ) internal override isManagerShaman {
+        super._updateMember(_member, _activityMultiplier);
         if (_activityMultiplier == 0 && isMainRegistry() && burnShares) {
             address[] memory _from = new address[](1);
             _from[0] = _member;

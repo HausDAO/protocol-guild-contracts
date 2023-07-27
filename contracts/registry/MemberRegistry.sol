@@ -107,7 +107,7 @@ abstract contract MemberRegistry {
         address _member,
         uint32 _activityMultiplier,
         uint32 _startDate
-    ) internal {
+    ) internal virtual {
         if (_member == address(0)) revert InvalidMember__Address(_member);
         if (memberIdxs[_member] != 0) revert Member__AlreadyRegistered(_member);
         if (_activityMultiplier > 100) revert InvalidMember__ActivityMultiplier(_member, _activityMultiplier);
@@ -135,7 +135,7 @@ abstract contract MemberRegistry {
     function _updateMember(
         address _member,
         uint32 _activityMultiplier
-    ) internal {
+    ) internal virtual {
         uint256 memberIdx = memberIdxs[_member];
         if(memberIdx == 0) revert Member__NotRegistered(_member);
         if(_activityMultiplier > 100) revert InvalidMember__ActivityMultiplier(_member, _activityMultiplier);

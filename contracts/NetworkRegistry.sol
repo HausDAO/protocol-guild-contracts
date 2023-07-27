@@ -342,7 +342,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address _member,
         uint32 _activityMultiplier,
         uint32 _startDate
-    ) public virtual onlyOwnerOrUpdater {
+    ) public onlyOwnerOrUpdater {
         _setNewMember(_member, _activityMultiplier, _startDate);  
     }
 
@@ -379,7 +379,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _activityMultiplier member new activity multiplier
      */
     function updateMember(address _member, uint32 _activityMultiplier)
-        public virtual
+        public
         onlyOwnerOrUpdater
     {
         _updateMember(_member, _activityMultiplier);

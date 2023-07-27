@@ -294,6 +294,9 @@ describe("NetworkRegistryShaman E2E tests", function () {
         proposal,
       });
       await tx_batch1.wait();
+      // for (let i = 0; i < batchSize; i++) {
+      //   await expect(tx_batch1).to.emit(sharesToken, 'Transfer').withArgs(ethers.constants.AddressZero, newMembers[i], parseEther("1"));
+      // }
       const action = l2NetworkRegistry.interface.getSighash("batchNewMember(address[],uint32[],uint32[])");
       await expect(tx_batch1)
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
@@ -324,6 +327,9 @@ describe("NetworkRegistryShaman E2E tests", function () {
         proposal,
       });
       await tx_batch2.wait();
+      // for (let i = batchSize; i < newMembers.length; i++) {
+      //   await expect(tx_batch2).to.emit(sharesToken, 'Transfer').withArgs(ethers.constants.AddressZero, newMembers[i], parseEther("1"));
+      // }
       await expect(tx_batch2)
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
         .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
