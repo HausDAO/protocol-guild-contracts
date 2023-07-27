@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BigNumber, Event } from "ethers";
-import { ethers, getNamedAccounts, getUnnamedAccounts, network } from "hardhat";
+import { ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
@@ -131,8 +131,8 @@ describe("NetworkRegistry", function () {
           users.owner.address,
         ]
       );
-      expect(registrySingleton.initialize(l1InitializationParams)).to.be.revertedWith('AlreadyInitialized');
-      expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWith('AlreadyInitialized');
+      await expect(registrySingleton.initialize(l1InitializationParams)).to.be.revertedWith('Initializable: contract is already initialized');
+      await expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWith('Initializable: contract is already initialized');
     });
 
     it("Should summon a PGNetworkRegistry", async () => {
@@ -152,7 +152,7 @@ describe("NetworkRegistry", function () {
         ethers.utils.getAddress(`0x${receipt.events?.[3].topics[1].substring(24 + 2)}`);
       await expect(tx).to.emit(summoner, 'NetworkRegistrySummoned').withArgs(registryAddress, details, initializationParams);
       
-      const registry = (await ethers.getContractAt('NetworkRegistry', registryAddress!)) as NetworkRegistry;
+      const registry = (await ethers.getContractAt('NetworkRegistry', registryAddress || ethers.constants.AddressZero)) as NetworkRegistry;
       expect(await registry.connext()).to.be.equal(connext.address);
       expect(await registry.updaterDomain()).to.be.equal(parentDomainId);
       expect(await registry.updater()).to.be.equal(ethers.constants.AddressZero);
@@ -578,7 +578,7 @@ describe("NetworkRegistry", function () {
       const newMembers = await generateMemberBatch(10);
       const members = newMembers.map((m: Member) => m.account);
       const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      const modActivityMultipliers = newMembers.map((m: Member) => 100);
+      const modActivityMultipliers = newMembers.map(() => 100);
       const startDates = newMembers.map((m: Member) => m.startDate);
       const batchTx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
       await batchTx.wait();
@@ -597,7 +597,7 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to update members activity", async () => {
       const batchSize = 5;
-      let newMembers = await generateMemberBatch(batchSize * 2);
+      const newMembers = await generateMemberBatch(batchSize * 2);
       const batch1 = newMembers.slice(0, batchSize);
       let members = batch1.map((m: Member) => m.account);
       let activityMultipliers = batch1.map((m: Member) => m.activityMultiplier);
@@ -635,10 +635,10 @@ describe("NetworkRegistry", function () {
     it("Should not be able to update Split values if submitted member list is not correct", async () => {
       const { deployer } = await getNamedAccounts();
       const batchSize = 10;
-      let newMembers = await generateMemberBatch(batchSize);
-      let members = newMembers.map((m: Member) => m.account);
-      let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      let startDates = newMembers.map((m: Member) => m.startDate);
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+      const startDates = newMembers.map((m: Member) => m.startDate);
       const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
       await batch1Tx.wait();
 
@@ -659,10 +659,10 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to calculate Split allocations pre/post commiting to the chain", async () => {
       const batchSize = 10;
-      let newMembers = await generateMemberBatch(batchSize);
-      let members = newMembers.map((m: Member) => m.account);
-      let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      let startDates = newMembers.map((m: Member) => m.startDate);
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+      const startDates = newMembers.map((m: Member) => m.startDate);
 
       const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
       await batch1Tx.wait();
@@ -701,10 +701,10 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to update Split values from last update", async () => {
       const batchSize = 10;
-      let newMembers = await generateMemberBatch(batchSize);
-      let members = newMembers.map((m: Member) => m.account);
-      let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      let startDates = newMembers.map((m: Member) => m.startDate);
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+      const startDates = newMembers.map((m: Member) => m.startDate);
       const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
       await batch1Tx.wait();
 
@@ -729,10 +729,10 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to update all (member's activity + Splits)", async () => {
       const batchSize = 10;
-      let newMembers = await generateMemberBatch(batchSize);
-      let members = newMembers.map((m: Member) => m.account);
-      let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      let startDates = newMembers.map((m: Member) => m.startDate);
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+      const startDates = newMembers.map((m: Member) => m.startDate);
       const batch1Date = Number(startDates[0]);
       const batch1Tx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
       await batch1Tx.wait();
@@ -1283,7 +1283,7 @@ describe("NetworkRegistry", function () {
       const newMembers = await generateMemberBatch(10);
       const members = newMembers.map((m: Member) => m.account);
       const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      const modActivityMultipliers = newMembers.map((m: Member) => 100);
+      const modActivityMultipliers = newMembers.map(() => 100);
       const startDates = newMembers.map((m: Member) => m.startDate);
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];
@@ -1328,7 +1328,7 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to sync update members activity", async () => {
       const batchSize = 5;
-      let newMembers = await generateMemberBatch(batchSize * 2);
+      const newMembers = await generateMemberBatch(batchSize * 2);
       const batch1 = newMembers.slice(0, batchSize);
       let members = batch1.map((m: Member) => m.account);
       let activityMultipliers = batch1.map((m: Member) => m.activityMultiplier);
@@ -1405,10 +1405,10 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to sync update Split values from last update", async () => {
       const batchSize = 10;
-      let newMembers = await generateMemberBatch(batchSize);
-      let members = newMembers.map((m: Member) => m.account);
-      let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      let startDates = newMembers.map((m: Member) => m.startDate);
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+      const startDates = newMembers.map((m: Member) => m.startDate);
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
@@ -1465,10 +1465,10 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to sync update all (member's activity + Splits)", async () => {
       const batchSize = 10;
-      let newMembers = await generateMemberBatch(batchSize);
-      let members = newMembers.map((m: Member) => m.account);
-      let activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
-      let startDates = newMembers.map((m: Member) => m.startDate);
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+      const startDates = newMembers.map((m: Member) => m.startDate);
       const batch1Date = Number(startDates[0]);
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];

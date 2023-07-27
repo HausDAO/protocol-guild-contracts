@@ -3,7 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types';
 
 // NOTICE: In case you want to deploy Safe + Baal infrstructure on a public testnet
 const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
-    const { deployments, getNamedAccounts } = hre;
+    const { deployments } = hre;
     // const { deploy, read } = deployments;
     // const { deployer } = await getNamedAccounts();
     

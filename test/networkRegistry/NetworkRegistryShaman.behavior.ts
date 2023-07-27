@@ -20,7 +20,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
   let sharesToken: Shares;
   let multisend: MultiSend;
 
-  let proposal: ProposalType = {
+  const proposal: ProposalType = {
     flag: 0,
     data: '0x',
     details: "test proposal",
@@ -511,7 +511,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
 
       // Validate member's balance
       const expectedBalances = await Promise.all(
-        l1Splits._percentAllocations.map((allocation: number, i: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
+        l1Splits._percentAllocations.map((allocation: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
       );
       const l1Balances = await Promise.all(
         memberList
@@ -662,7 +662,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
 
       // Validate member's balance
       const expectedBalances = await Promise.all(
-        l1Splits._percentAllocations.map((allocation: number, i: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
+        l1Splits._percentAllocations.map((allocation: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
       );
       const l1Balances = await Promise.all(
         memberList

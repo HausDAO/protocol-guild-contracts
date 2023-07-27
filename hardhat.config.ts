@@ -83,7 +83,7 @@ const getNodeURI = (networkName: keyof typeof chainIds) => {
 }
 
 function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
-  let jsonRpcUrl: string = getNodeURI(chain);
+  const jsonRpcUrl: string = getNodeURI(chain);
   return {
     accounts: process.env.ACCOUNT_PK
       ? [process.env.ACCOUNT_PK]

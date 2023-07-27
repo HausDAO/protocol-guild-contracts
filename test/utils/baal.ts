@@ -149,11 +149,11 @@ export const getNewBaalAddresses = async (
 ): Promise<{ baal: string; loot: string; safe: string }> => {
     const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
     // console.log({logs: receipt.logs})
-    let baalSummonAbi = [
+    const baalSummonAbi = [
         "event SummonBaal(address indexed baal, address indexed loot, address indexed shares, address safe, address forwarder, uint256 existingAddrs)",
     ];
-    let iface = new ethers.utils.Interface(baalSummonAbi);
-    let log = iface.parseLog(receipt.logs[receipt.logs.length - 1]);
+    const iface = new ethers.utils.Interface(baalSummonAbi);
+    const log = iface.parseLog(receipt.logs[receipt.logs.length - 1]);
     const { baal, loot, safe } = log.args;
     return { baal, loot, safe };
 };
@@ -322,7 +322,7 @@ export const setShamanProposal = async (
 };
 
 export const verifyProposal = (prop1: any, prop2: any, overrides?: any) => {
-    for (let key in prop1) {
+    for (const key in prop1) {
       if (Number.isInteger(+key)) {
         continue;
       }

@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 import { deploymentConfig } from '../constants';
-import { NetworkRegistry, NetworkRegistrySummoner } from '../types';
+import { NetworkRegistrySummoner } from '../types';
 
 // import { PGRegistry } from '../src/types';
 

@@ -1,4 +1,4 @@
-import { SdkBase, SdkConfig, create } from "@connext/sdk";
+import { /*SdkBase, */SdkConfig, create } from "@connext/sdk";
 import { BigNumber } from "ethers";
 import { task } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";
@@ -77,7 +77,7 @@ task("registry:addNetwork", "Add a network registry to be synced through Connext
       registryAddress: foreignRegistryAddress,
       delegate: ethers.constants.AddressZero, // TODO: do we really need a delegate?
     });
-    tx.wait();
+    await tx.wait();
 
     console.log("Done.", `(txhash: ${tx.hash})`);
   });
@@ -187,7 +187,7 @@ task("registry:transferOwnership", "transfer ownership of registry (to DAO Safe"
     // TODO: validate if foreign registry is not already registered
 
     const tx = await registry.transferOwnership(ownerAddress);
-    tx.wait();
+    await tx.wait();
 
     console.log("Done.", `(txhash: ${tx.hash})`);
   });

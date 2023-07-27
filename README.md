@@ -46,7 +46,7 @@ $ pnpm typechain
 Run the tests with Hardhat:
 
 ```sh
-$ pnpm hardhat test test/networkRegistry/NetworkRegistry.ts
+$ pnpm test
 ```
 
 ### Lint Solidity
@@ -94,7 +94,7 @@ $ pnpm clean
 Deploy Summoner contract + singletons
 
 ```sh
-$ pnpm hardhat --network <network_name> deploy --tags Summoner"
+$ pnpm hardhat --network <network_name> deploy --tags Summoner
 ```
 
 ### Tasks

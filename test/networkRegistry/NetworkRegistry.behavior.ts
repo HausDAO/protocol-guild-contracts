@@ -6,7 +6,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
-import { ConnextMock, NetworkRegistrySummoner, NetworkRegistry, NetworkRegistryShaman, SplitMain, TestERC20 } from "../../types";
+import { ConnextMock, NetworkRegistrySummoner, NetworkRegistry, SplitMain, TestERC20 } from "../../types";
 import { summonRegistry } from "../utils/networkRegistry";
 import { deploySplit, hashSplit } from "../utils/split";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
@@ -15,7 +15,7 @@ describe("NetworkRegistry E2E tests", function () {
 
   let summoner: NetworkRegistrySummoner;
   let registrySingleton: NetworkRegistry;
-  let registryShamanSingleton: NetworkRegistryShaman;
+  // let registryShamanSingleton: NetworkRegistryShaman;
   let connext: ConnextMock;
   let l1SplitMain: SplitMain;
   let l1SplitAddress: string;
@@ -57,7 +57,7 @@ describe("NetworkRegistry E2E tests", function () {
     const setup = await registryFixture({});
     summoner = setup.summoner;
     registrySingleton = setup.pgRegistrySingleton;
-    registryShamanSingleton = setup.pgRegistryShamanSingleton;
+    // registryShamanSingleton = setup.pgRegistryShamanSingleton;
     l1Token = setup.token;
     connext = setup.connext;
     l1SplitMain = setup.splitMain;
@@ -165,7 +165,7 @@ describe("NetworkRegistry E2E tests", function () {
         { value: totalValue }
       );
       await batchTx.wait();
-      const blockNo = await time.latestBlock();
+      // const blockNo = await time.latestBlock();
       // console.log('block timestamp', (await ethers.provider.getBlock(blockNo)).timestamp);
     });
 
@@ -291,7 +291,7 @@ describe("NetworkRegistry E2E tests", function () {
 
       // Validate member's balance
       const expectedBalances = await Promise.all(
-        l1Splits._percentAllocations.map((allocation: number, i: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
+        l1Splits._percentAllocations.map((allocation: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
       );
       const l1Balances = await Promise.all(
         memberList
@@ -418,7 +418,7 @@ describe("NetworkRegistry E2E tests", function () {
 
       // Validate member's balance
       const expectedBalances = await Promise.all(
-        l1Splits._percentAllocations.map((allocation: number, i: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
+        l1Splits._percentAllocations.map((allocation: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
       );
       const l1Balances = await Promise.all(
         memberList

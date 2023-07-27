@@ -4,7 +4,7 @@ import { encodeMultiSend, MetaTransaction } from "@gnosis.pm/safe-contracts";
 import { MultiSend } from "@daohaus/baal-contracts"
 
 export const encodeMultiAction = (multisend: MultiSend, actions: string[], tos: string[], values: BigNumber[], operations: number[]) => {
-  let metatransactions: MetaTransaction[] = [];
+  const metatransactions: MetaTransaction[] = [];
   for (let index = 0; index < actions.length; index++) {
     metatransactions.push({
       to: tos[index],

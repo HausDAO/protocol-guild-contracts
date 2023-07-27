@@ -1,9 +1,10 @@
 import { BigNumber, BigNumberish } from "ethers";
-import { deployments, getNamedAccounts } from "hardhat";
+import { deployments } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ConnextMock, NetworkRegistry, NetworkRegistryShaman, NetworkRegistrySummoner, SplitMain, TestERC20 } from "../../types";
 
 export type NetworkRegistryOpts = {
+  parentDomainId?: number;
 };
 
 export type User = {
@@ -28,13 +29,12 @@ export type RegistrySetup = NetworkRegistryProps & {
 }
 
 export const registryFixture = deployments.createFixture<RegistrySetup, NetworkRegistryOpts>(
-  async (hre: HardhatRuntimeEnvironment, options?: NetworkRegistryOpts
+  async (hre: HardhatRuntimeEnvironment, _?: NetworkRegistryOpts
   ) => {
-    const { ethers, getChainId, getNamedAccounts, getUnnamedAccounts } = hre;
+    const { ethers, getNamedAccounts, getUnnamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     const [applicant, alice, bob] = await getUnnamedAccounts();
 
-    const chainId = await getChainId();
     const signer = await ethers.getSigner(deployer);
 
     // TODO: add baal fixtures or execute existing fixture under utils
@@ -173,7 +173,6 @@ type SplitControlOpts = {
 export const acceptNetworkSplitControl = deployments.createFixture<void, SplitControlOpts>(
   async (hre: HardhatRuntimeEnvironment, options?: SplitControlOpts) => {
     // console.log('************ acceptNetworkSplitControl ****************');
-    const { deployer } = await getNamedAccounts();
     if (!options) throw new Error('Missing parameters');
     const {
       l1NetworkRegistry,
