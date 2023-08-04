@@ -14,8 +14,8 @@ For Protocol Guild's 1-year pilot, the [smart contract architecture](https://pro
       - NFT donations are not supported - standard NFT transfers (safeTransfer) will be rejected by the contract, i.e. will cause the transaction to fail. Non-safeTransfer NFT donations will be lost.
       - Funds donated on L2s were bridged over to mainnet.
 2. **Vesting**
-    - Whenever funds are added to the 0xSplits Vesting contract, a "Stream" needs to be started to begin the vesting process.
-      - Starting a Stream is permissionless.
+    - Whenever funds are added to the 0xSplits Vesting contract, a "stream" needs to be started to begin the vesting process.
+      - Starting a stream is permissionless.
       - Any funds donated during the pilot vest over 1 year (from the point the stream is started).
 3. **Distributions**
     - Donated funds which are vested need to be "released" in 0xSplits. Releasing vested funds pushes them to the Guild's [Split contract](https://app.0xsplits.xyz/accounts/0x84af3D5824F0390b9510440B6ABB5CC02BB68ea1/)
