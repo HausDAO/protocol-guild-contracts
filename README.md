@@ -163,23 +163,20 @@ This section will be expanded upon once DAOHaus shares more information on its i
   - Allows the onchain membership registry to be the "Controller" of the Vesting and Split contract, instead of the current multisig
   - Updating Split contract recipients is automated via DAO proposals
   - No code / UI modifications required to 0xSplits
-  - 0xSplits may be able to disable "Withdraw for all" in the Guild's Split contract UI
   - 0xSplits is planning future upgrades to 1) enable custom withdrawal logic (e.g. disallow third parties to distribute on recipients behalf), 2) introduce [new incentive mechanisms](https://docs.google.com/document/d/1RlWcD149Zj-AwdskyWVcpWIxRIBqcKfpPmsrLcKlvkw/edit?usp=sharing) to make third-party distributions more competitive and 3) make contracts more gas efficient
-  - 0xSplits team built the Vesting module for the Guild, and are willing to make more modifications / help out as needed
-  - 0xSplits has been deployed on Optimism, Arbitrum and Polygon
+  - 0xSplits has been deployed on Optimism, Arbitrum, Zora and Polygon
 - Cons:
-  - Gas fees: Distributing 5 tokens to 128 members costs $85 in gas @ ~14 Gwei. may become prohibitively expensive in the future (bull market). We can turn on the distributor fee to incentivise this
-  - Changing to 4-year vesting stream post-pilot will require new Vesting contract (i.e. new donation address, however, we can point the ENS at this new address to help)
-  - No way to earn yield on vesting funds (this is also the status quo)
-  - Current 0xSplits implementation does not allow donating NFTs (status quo)
+  - Gas fees: Distributing 5 tokens to 128 members costs $85 in gas @ ~14 Gwei. This could quickly become prohibitively expensive as gas fees increase.
+  - Changing to 4-year vesting stream post-pilot will require a brand new Vesting contract (i.e. a new donation address, though the Guild's ENS can be redirected to this new address)
+  - No way to earn yield on vesting funds (though unclear if this is actually desired)
+  - No way to use the same address for L2 Vesting contracts
 
 **Moloch v3 DAO** used for governance only (voting on and executing membership changes):
 - Pros:
     - Moloch's DAO infrastructure is extremely battle tested
     - DAO functionality is reduced to bare essential (don't need "[loot](https://moloch.daohaus.fun/features/updates#shares-and-loot)" shares, shamans / minions, or any treasury management)
-    - DAO implementation does not doxx member addresses
     - Could leverage plugins ("[Boosts](https://daohaus.club/docs/users/boosts/)") to 1) conduct offchain voting via [Snapshot](https://snapshot.org/#/) and 2) add proposals as [Discourse](https://www.discourse.org/) forum posts for discussions
-    - DAOHaus is helping us set everything up between Moloch and the registry
+    - DAOHaus is helping the Guild develop everything
     - Allows vote delegation for members who prefer to be hands off
     - Moloch V3 is launched and audited
 - Cons:
@@ -206,6 +203,7 @@ This section will be expanded upon once DAOHaus shares more information on its i
 - Cons:
     - Cost of sending messages from L1 \> L2 is unclear
     - Requires members to withdraw funds from multiple chains
+    - So reduce complexity associated with pushing the membership registry state to other chains, members would be requires to use an EOA as their Split recipient (instead of a smart contract wallet)
  
 ## Getting Started
 
