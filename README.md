@@ -26,13 +26,13 @@ For Protocol Guild's 1-year pilot, the [smart contract architecture](https://pro
 
 **Managing 0xSplits**
 
-While the Guild's Vesting contract is immutable, the Split contract can be updated by the Guild's 6/10 [Safe multisig](https://app.safe.global/transactions/history?safe=eth:0xF6CBDd6Ea6EC3C4359e33de0Ac823701Cc56C6c4). The multisig can be used to add / remove members from the Splits contract, and change the % allocation to members. The % allocation is determined by a [weighting formula](https://protocol-guild.readthedocs.io/en/latest/6-operating-guidelines.html#weighting):
+While the Guild's Vesting contract is immutable, the Split contract can be updated by the Guild's 6/10 [Safe multisig](https://app.safe.global/transactions/history?safe=eth:0xF6CBDd6Ea6EC3C4359e33de0Ac823701Cc56C6c4). The multisig can be used to add / remove members from the Split contract, and change the % allocation to members. The % allocation is determined by a [weighting formula](https://protocol-guild.readthedocs.io/en/latest/6-operating-guidelines.html#weighting):
 
 _= SQRT((eligibleMonths - monthsOnBreak) \* timeWeighting)_
 
 The "timeWeighting" multiplier is 0.5 for part time contributors, and 1 for full time contributors. The goal of the weighting formula is to reduce the total variance range of every member weight (hence using a square root).
 
-**Updating** the Splits contract is a manual process. The membership list is kept in an offchain, permissioned Airtable using formulas to keep track of the weighting, based on member start dates and status (full time / part time). Updates to the membership are made quarterly. To update the Splits contract, the multisig is used to import a CSV from the Airtable into the Splits contract, which updates member addresses and their weights.
+**Updating** the Split contract is a manual process. The membership list is kept in an offchain, permissioned Airtable using formulas to keep track of the weighting, based on member start dates and status (full time / part time). Updates to the membership are made quarterly. To update the Split contract, the multisig is used to import a CSV from the Airtable into the Split contract, which updates member addresses and their weights.
 
 If someone is **removed** from the Split contract, they still have access to the funds distributed to them before being removed. But they will not receive any future vested funds.
 
@@ -54,14 +54,14 @@ If someone new is **added** to the Split contract, they will be eligible for the
 
 To achieve these goals, the Guild's offchain components will be modularized onchain:
 
-1. **0xSplits** Splits and Vesting contracts continue to handle all finances (donations, vesting + distributions)
+1. **0xSplits** Split and Vesting contracts continue to handle all finances (donations, vesting + distributions)
 2. **Moloch v3 DAO** used for governance (voting on and executing membership changes)
-3. **Onchain membership registry** updated via DAO proposals, fed into Splits contract
-4. **Connext state bridging** allows the mainnet DAO to control membership registries, Vesting and Splits contracts on L2s
+3. **Onchain membership registry** updated via DAO proposals, fed into Split contract
+4. **Connext state bridging** allows the mainnet DAO to control membership registries, Vesting and Split contracts on L2s
 
 To remove the need for a multisig, we aim to convert the Guild's membership governance into an onchain process. We have identified [Moloch v3](https://moloch.daohaus.fun/) as a suitable tool for this, due to its ability to execute external contracts via proposals.
 
-The **Moloch DAO** would include all Guild members, with one person one vote, including vote delegation. Note that the DAO would hold no funds, all funds would continue to go through 0xSplits. DAO members would create proposals to update an onchain **membership registry** , which keeps track of member addresses, their status (_timeWeighting_ multiplier) and their start date. Once updated, a function can be triggered to update the **0xSplits Splits contract** to mirror the onchain registry.
+The **Moloch DAO** would include all Guild members, with one person one vote, including vote delegation. Note that the DAO would hold no funds, all funds would continue to go through 0xSplits. DAO members would create proposals to update an onchain **membership registry** , which keeps track of member addresses, their status (_timeWeighting_ multiplier) and their start date. Once updated, a function can be triggered to update the **0xSplits Split contract** to mirror the onchain registry.
 
 ### Contracts
 
@@ -82,7 +82,7 @@ V2 will have two frontends - [one specifically for PG V2 smart contracts (to int
 
 Here's the process flow for quarterly updates:
 
-1. Members can use the custom [frontend](https://ipfs.io/ipfs/bafybeia4o2lfias2kfnxmvsdoerxvtnrgurjk5gwhchmfnty6ph3xeptnq/#/) to interact with the membership registry, which 1) shows the state of the membership registries (on mainnet and L2s), 2) allows the creation of proposals to update the registries, and 3) update the Splits contracts (on mainnet and L2s).
+1. Members can use the custom [frontend](https://ipfs.io/ipfs/bafybeia4o2lfias2kfnxmvsdoerxvtnrgurjk5gwhchmfnty6ph3xeptnq/#/) to interact with the membership registry, which 1) shows the state of the membership registries (on mainnet and L2s), 2) allows the creation of proposals to update the registries, and 3) update the Split contracts (on mainnet and L2s).
 
 ![Custom Frontend](https://github.com/cheeky-gorilla/protocol-guild-contracts/assets/76262359/dd5f1f4c-8c9d-4a4f-9afd-f751322ff613)
 
@@ -118,7 +118,7 @@ Here's the process flow for quarterly updates:
     - The first action is "_mintShares_", which create shares in the DAO for each new member address (1 share per member)
     - The second action is "_batchNewMember_", which interacts with the external membership registry / contract, adding new member addresses, and setting their activity modifiers and start date (or adjusting the activity modifier for existing members).
 
-At this point, the proposal flow is complete, but the Splits contract has not been updated yet. This can be done via the "Update" function in the custom frontend, which calculates _timeActive_ to get the normalized weights per member, and then updates the 0xSplits Split contract.
+At this point, the proposal flow is complete, but the Split contract has not been updated yet. This can be done via the "Update" function in the custom frontend, which calculates _timeActive_ to get the normalized weights per member, and then updates the 0xSplits Split contract.
 
 ![Update](https://github.com/cheeky-gorilla/protocol-guild-contracts/assets/76262359/7704e136-dbe4-4492-9ac8-205d52df5ac1)
 
@@ -129,7 +129,7 @@ At this point, the proposal flow is complete, but the Splits contract has not be
       - Assuming updates are done quarterly, if a member is a full-time contributor, but only worked 2 months in the quarter, their timeWeighting for that quarter would be 67 (2/3 expressed as a whole number).
 2. Then the contract goes through the registry to perform two calculation loops: once to take the sum of the square root of each member's total, then again to calculate the square root of each member's total as a proportion of the total, to allow us to get the percent allocated per member for 0xSplits.
     - Members whose activity multiplier = 0 are skipped in the calculation loops
-3. At this point there are two arrays (the accounts and their percentages), which are passed to the Splits contract, to update it.
+3. At this point there are two arrays (the accounts and their percentages), which are passed to the Split contract, to update it.
 
 **A note on the timing of creating proposals, "Update" and "Distribute":**
 
@@ -139,7 +139,7 @@ This is important because both "Update" (in the registry frontend) and "Distribu
 
 So, whenever a proposal is made to update the registry, newer members and members returning from time off are financially incentivized to "Update" the 0xSplits contract, while more long-term members are financially incentivized to "Distribute" vested funds. Given that there will be gas fees associated with each function, it's good that there are different incentives in different PG cohorts to Update and Distribute, as it means that potentially the person proposing the registry update doesn't need to Update and Distribute as well.
 
-That being said, there are open questions about the "correct" flow in terms of distributing the Splits contract \*before or after\* the Splits contract update.
+That being said, there are open questions about the "correct" flow in terms of distributing the Split contract \*before or after\* the Split contract update.
 
 1. Currently distributions are done before the Split is updated, with the rational that it's the existing membership cohort that is entitled to the vested funds from the last three months, so it makes sense to pay them first, then add new members.
 2. Argument for doing the opposite, i.e. updating first then distributing: if funds are from the last three months, then you want the weights to reflect the last three months. If you do the opposite (distribute and then update), you're potentially distributing based on old weights. Could result in situations where people are not getting credit for work they've done the last few months (if updating quarterly).
@@ -156,14 +156,14 @@ This section will be expanded upon once DAOHaus shares more information on its i
 
 ### V2 tradeoffs
 
-**0xSplits** Splits and Vesting contracts continue to handle all finances (donations, vesting + distributions):
+**0xSplits** Split and Vesting contracts continue to handle all finances (donations, vesting + distributions):
 
 - Pros:
   - 0xSplits has proven itself extremely effective for handling donations, vesting and distributions over the course of the pilot
-  - Allows the onchain membership registry to be the "Controller" of the Vesting and Splits contract, instead of the current multisig
+  - Allows the onchain membership registry to be the "Controller" of the Vesting and Split contract, instead of the current multisig
   - Updating Split contract recipients is automated via DAO proposals
   - No code / UI modifications required to 0xSplits
-  - 0xSplits may be able to disable "Withdraw for all" in the Guild's Splits contract UI
+  - 0xSplits may be able to disable "Withdraw for all" in the Guild's Split contract UI
   - 0xSplits is planning future upgrades to 1) enable custom withdrawal logic (e.g. disallow third parties to distribute on recipients behalf), 2) introduce [new incentive mechanisms](https://docs.google.com/document/d/1RlWcD149Zj-AwdskyWVcpWIxRIBqcKfpPmsrLcKlvkw/edit?usp=sharing) to make third-party distributions more competitive and 3) make contracts more gas efficient
   - 0xSplits team built the Vesting module for the Guild, and are willing to make more modifications / help out as needed
   - 0xSplits has been deployed on Optimism, Arbitrum and Polygon
@@ -186,7 +186,7 @@ This section will be expanded upon once DAOHaus shares more information on its i
     - Requires more engagement from members to vote (e.g. quarterly) - though votes can be delegated if preferred
     - Proposing, voting and executing proposals will require members to pay gas (though gasless voting could be achieved via [Snapshot](https://snapshot.org/#/))
 
-**Onchain membership registry**, updated via DAO proposals, fed into Splits contract:
+**Onchain membership registry**, updated via DAO proposals, fed into Split contract:
 
 - Pros:
     - Registry becomes "Controller" of 0xSplits contracts, instead of multisig
