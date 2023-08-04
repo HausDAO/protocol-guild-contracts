@@ -3,6 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types';
 
 import { deploymentConfig } from '../constants';
 import { NetworkRegistrySummoner } from '../types';
+import { Baal } from '@daohaus/baal-contracts';
 
 // import { PGRegistry } from '../src/types';
 
@@ -24,6 +25,14 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const summoner = (await ethers.getContractAt('NetworkRegistrySummoner', summonerDeployed.address, signer)) as NetworkRegistrySummoner;
 
     console.log('networkConfig', networkConfig);
+
+    let safeAddress = networkConfig.safe;
+    if (networkConfig.moloch && !networkConfig.safe) {
+      const baal = (await ethers.getContractAt('Baal', networkConfig.moloch, signer)) as Baal;
+      safeAddress = await baal.avatar();
+    }
+    const owner = networkConfig.l2 ? ethers.constants.AddressZero : (safeAddress || deployer);
+    console.log('Registry will be owned by', networkConfig.l2 ? ethers.constants.AddressZero : owner, 'Is Safe?', owner === safeAddress);
     
     const initializationParams = ethers.utils.defaultAbiCoder.encode(
       ['address', 'uint32', 'address', 'address', 'address', 'address'],
@@ -33,7 +42,7 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         networkConfig.l2 ? deploymentConfig[parentChainId].pgRegistry : ethers.constants.AddressZero,
         networkConfig.splitMain,
         networkConfig.split,
-        networkConfig.l2 ? ethers.constants.AddressZero : (networkConfig.moloch || networkConfig.safe || deployer),
+        owner,
       ]
     );
 
