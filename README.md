@@ -55,7 +55,7 @@ If someone new is **added** to the Split contract, they will be eligible for the
 To achieve these goals, the Guild's architecture will be modularized as follows:
 
 1. **0xSplits** Split and Vesting contracts continue to handle all finances (donations, vesting + distributions)
-2. **Moloch v3 DAO** used for governance (voting on and executing membership changes)
+2. **Moloch V3 DAO** used for governance (voting on and executing membership changes)
 3. **Onchain membership registry** updated via DAO proposals, fed into Split contract
 4. **Connext state bridging** allows the mainnet DAO to control membership registries, Vesting and Split contracts on L2s
 
@@ -78,9 +78,9 @@ Please help us audit these contracts!
 
 ### Process Flow
 
-V2 will have two frontends - [one specifically for PG V2 smart contracts (to interact with the membership registry)](https://ipfs.io/ipfs/bafybeia4o2lfias2kfnxmvsdoerxvtnrgurjk5gwhchmfnty6ph3xeptnq/#/), and another which is the "normal" Moloch V3 DAO UI. Separate frontends makes everything easier to compartmentalize for now, but it could make sense to unify everything for [future iterations of PGs smart contract architecture](https://docs.google.com/document/d/1BL8MaCCrrqjdIfpaZnvlp6IEZc0y1uxVr97qJ3MaqDo/edit).
+V2 will have two frontends - [one specifically for the membership registry](https://ipfs.io/ipfs/bafybeia4o2lfias2kfnxmvsdoerxvtnrgurjk5gwhchmfnty6ph3xeptnq/#/), and another which is the "normal" Moloch V3 DAO UI. Separate frontends makes everything easier to compartmentalize for now, but it could make sense to unify everything for [future iterations of PGs smart contract architecture](https://docs.google.com/document/d/1BL8MaCCrrqjdIfpaZnvlp6IEZc0y1uxVr97qJ3MaqDo/edit).
 
-Here's the process flow for quarterly updates:
+Here's the process flow for quarterly membership updates:
 
 1. Members can use the custom [frontend](https://ipfs.io/ipfs/bafybeia4o2lfias2kfnxmvsdoerxvtnrgurjk5gwhchmfnty6ph3xeptnq/#/) to interact with the membership registry, which 1) shows the state of the membership registries (on mainnet and L2s), 2) allows the creation of proposals to update the registries, and 3) update the Split contracts (on mainnet and L2s).
 
