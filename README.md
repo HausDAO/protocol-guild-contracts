@@ -112,7 +112,7 @@ Here's the process flow for quarterly membership updates:
           - Makes it harder (but not impossible) to know who is voting for what
         - Cons of being able to delegate to any account:
           - Members could delegate their votes to non-members
-      - **Important**: The Moloch V3 contract takes a snapshot of delegation when a proposal is sponsored. So if you delegate to someone mid-proposal (i.e. after the proposal is sponsored), then you must still vote for the existing proposal yourself, as delegation will first come into effect from the subsequent proposal.
+      - **Important**: The Moloch V3 contract takes a snapshot of delegation when a proposal is sponsored. So if a member delegates to someone mid-proposal (i.e. after the proposal is sponsored), they must still vote for the existing proposal, as delegation will first come into effect from the subsequent proposal.
 6. Once the vote passes, there's a grace period before the proposal can be executed. The grace period will become more relevant if PG adopts a legal wrapper.
 7. Once executed, the proposal does several things;
     - The first action is "_mintShares_", which create shares in the DAO for each new member address (1 share per member)
@@ -150,7 +150,7 @@ That being said, there are open questions about the "correct" flow in terms of d
 
 [Connext](https://www.connext.network/) allows us to deploy registries, Vesting and Split contracts on various L2 and EVM chains, which are all controlled by the Moloch DAO on mainnet.
 
-This section will be expanded upon once DAOHaus shares more information on its implementation. You can see the notes from the first call [here](https://docs.google.com/document/d/1PB9VQzBhvVpnbRwEFXWwBhv26y3xecFIrQFY3JLRIQU/edit#).
+This section will be expanded upon once DAOHaus shares more information on its implementation. Notes from the first call can be seen [here](https://docs.google.com/document/d/1PB9VQzBhvVpnbRwEFXWwBhv26y3xecFIrQFY3JLRIQU/edit#).
 
 [Mimic](https://mimic.fi/) was previously considered as a potential solution to enabling L2 donations, as it would have allowed PG to consolidate all funds donated on L2s onto mainnet. However, Connext seems like a more neutral, future-proof implementation, as it allows PG to embrace Ethereum's L2 ecosystem and benefit from gas savings and liquidity on those chains.
 
