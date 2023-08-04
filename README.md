@@ -52,7 +52,7 @@ If someone new is **added** to the Split contract, they will be eligible for the
 
 ### Summary
 
-To achieve these goals, the Guild's offchain components will be modularized onchain:
+To achieve these goals, the Guild's architecture will be modularized as follows:
 
 1. **0xSplits** Split and Vesting contracts continue to handle all finances (donations, vesting + distributions)
 2. **Moloch v3 DAO** used for governance (voting on and executing membership changes)
