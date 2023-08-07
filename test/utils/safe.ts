@@ -1,9 +1,15 @@
-import { ethers } from "ethers";
+import { MultiSend } from "@daohaus/baal-contracts";
 import { BigNumber } from "@ethersproject/bignumber";
-import { encodeMultiSend, MetaTransaction } from "@gnosis.pm/safe-contracts";
-import { MultiSend } from "@daohaus/baal-contracts"
+import { MetaTransaction, encodeMultiSend } from "@gnosis.pm/safe-contracts";
+import { ethers } from "ethers";
 
-export const encodeMultiAction = (multisend: MultiSend, actions: string[], tos: string[], values: BigNumber[], operations: number[]) => {
+export const encodeMultiAction = (
+  multisend: MultiSend,
+  actions: string[],
+  tos: string[],
+  values: BigNumber[],
+  operations: number[],
+) => {
   const metatransactions: MetaTransaction[] = [];
   for (let index = 0; index < actions.length; index++) {
     metatransactions.push({
@@ -14,7 +20,7 @@ export const encodeMultiAction = (multisend: MultiSend, actions: string[], tos: 
     });
   }
   const encodedMetatransactions = encodeMultiSend(metatransactions);
-  const multi_action = multisend.interface.encodeFunctionData('multiSend', [encodedMetatransactions]);
+  const multi_action = multisend.interface.encodeFunctionData("multiSend", [encodedMetatransactions]);
   return multi_action;
 };
 
@@ -24,20 +30,26 @@ export const decodeMultiAction = (multisend: MultiSend, encoded: string) => {
   const VALUE = 64;
   const DATA_LENGTH = 64;
 
-  const actions = multisend.interface.decodeFunctionData('multiSend', encoded);
+  const actions = multisend.interface.decodeFunctionData("multiSend", encoded);
   let transactionsEncoded = (actions[0] as string).slice(2);
 
   const transactions: MetaTransaction[] = [];
 
   while (transactionsEncoded.length >= OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH) {
-    const thisTxLengthHex = transactionsEncoded.slice(OPERATION_TYPE + ADDRESS + VALUE, OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH);
-    const thisTxLength = BigNumber.from('0x' + thisTxLengthHex).toNumber();
+    const thisTxLengthHex = transactionsEncoded.slice(
+      OPERATION_TYPE + ADDRESS + VALUE,
+      OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH,
+    );
+    const thisTxLength = BigNumber.from("0x" + thisTxLengthHex).toNumber();
     transactions.push({
-      to: '0x' + transactionsEncoded.slice(2, OPERATION_TYPE + ADDRESS),
-      value: '0x' + transactionsEncoded.slice(OPERATION_TYPE + ADDRESS, OPERATION_TYPE + ADDRESS + VALUE),
+      to: "0x" + transactionsEncoded.slice(2, OPERATION_TYPE + ADDRESS),
+      value: "0x" + transactionsEncoded.slice(OPERATION_TYPE + ADDRESS, OPERATION_TYPE + ADDRESS + VALUE),
       data:
-        '0x' +
-        transactionsEncoded.slice(OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH, OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH + thisTxLength * 2),
+        "0x" +
+        transactionsEncoded.slice(
+          OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH,
+          OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH + thisTxLength * 2,
+        ),
       operation: parseInt(transactionsEncoded.slice(0, 2)),
     });
     transactionsEncoded = transactionsEncoded.slice(OPERATION_TYPE + ADDRESS + VALUE + DATA_LENGTH + thisTxLength * 2);
@@ -48,7 +60,7 @@ export const decodeMultiAction = (multisend: MultiSend, encoded: string) => {
 
 export const hashOperation = (transactions: string): string => {
   const abiCoder = ethers.utils.defaultAbiCoder;
-  const encoded = abiCoder.encode(['bytes'], [transactions]);
-  const hashed = ethers.utils.solidityKeccak256(['bytes'], [encoded]);
+  const encoded = abiCoder.encode(["bytes"], [transactions]);
+  const hashed = ethers.utils.solidityKeccak256(["bytes"], [encoded]);
   return hashed;
 };

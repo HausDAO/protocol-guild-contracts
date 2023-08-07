@@ -1,2 +1,2 @@
-export * from './config';
-export * from './splits';
+export * from "./config";
+export * from "./splits";

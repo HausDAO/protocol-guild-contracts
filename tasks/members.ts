@@ -95,15 +95,15 @@ task("memberlist:generate", "Generate a PG memberlist for testing purposes")
   .addParam("output", "Output file location", "memberlist.json")
   .setAction(async (taskArguments: TaskArguments, { ethers }) => {
     const fileuri = taskArguments.output;
-    const percentAllocations = getRandomAllocations(rgaddrsUnsorted.length)
+    const percentAllocations = getRandomAllocations(rgaddrsUnsorted.length);
     const memberList: Array<Member> = rgaddrsUnsorted.map((memberAddress, idx) => {
       return {
         memberAddress,
         shares: ethers.utils.parseUnits("1.0", "ether").toString(),
-        activityModifier: idx < 3 ? 100 : (idx % 5 === 0 ? 0 : (Math.floor(Math.random() * 100) > 50 ? 100 : 50)),
+        activityModifier: idx < 3 ? 100 : idx % 5 === 0 ? 0 : Math.floor(Math.random() * 100) > 50 ? 100 : 50,
         percentAllocation: percentAllocations[idx],
       };
     });
     fs.writeFileSync(fileuri, JSON.stringify(memberList));
-    console.log('Generated member list stored at', fileuri);
+    console.log("Generated member list stored at", fileuri);
   });

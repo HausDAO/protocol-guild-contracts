@@ -1,15 +1,14 @@
-import csv from 'csv-parser';
-import fs from 'fs';
-import { round, sum } from 'lodash';
+import csv from "csv-parser";
+import fs from "fs";
+import { round, sum } from "lodash";
 
-import { PERCENTAGE_SCALE } from '../constants';
-
+import { PERCENTAGE_SCALE } from "../constants";
 
 export type Member = {
-    memberAddress: string;
-    shares: string;
-    activityModifier: number;
-    percentAllocation: number;
+  memberAddress: string;
+  shares: string;
+  activityModifier: number;
+  percentAllocation: number;
 };
 
 export type SampleSplit = {
@@ -26,44 +25,36 @@ export type SampleSplit = {
 export const getRandomAllocations = (count: number): number[] => {
   const allocations = Array.from({ length: count }, () => Math.random());
   const totalAllocation = sum(allocations);
-  const scaledAllocations = allocations.map((alloc) =>
-    round((PERCENTAGE_SCALE.toNumber() * alloc) / totalAllocation),
-  );
+  const scaledAllocations = allocations.map((alloc) => round((PERCENTAGE_SCALE.toNumber() * alloc) / totalAllocation));
   // fix precision / rounding errors before converting to BN
-  scaledAllocations[0] =
-    PERCENTAGE_SCALE.toNumber() - sum(scaledAllocations.slice(1));
-  if (scaledAllocations.some((alloc) => alloc === 0))
-    return getRandomAllocations(count)
-  return scaledAllocations
+  scaledAllocations[0] = PERCENTAGE_SCALE.toNumber() - sum(scaledAllocations.slice(1));
+  if (scaledAllocations.some((alloc) => alloc === 0)) return getRandomAllocations(count);
+  return scaledAllocations;
 };
 
-export const readSampleSplit =
-  async (csvFilePath: string): Promise<Array<SampleSplit>> => {
-    const results: Array<SampleSplit> = [];
-    return new Promise((resolve, reject) => {
-      fs.createReadStream(csvFilePath)
-        .pipe(csv())
-        .on('data', (data) => {
-          results.push(
-            {
-              address: data.address,
-              startDateSeconds: Number(data.startDateSeconds),
-              secondsActive: Number(data.secondsActive),
-              activityMultiplier: Number(data.activityMultiplier),
-              calcContribution: Number(data.calcContribution.replace(',', '')),
-              allocation: Number(data.allocation),
-              splitAllocation: Number(data.splitAllocation.replace(',', '')),
-            }
-          );
-        })
-        .on('end', () => resolve(results))
-        .on('error', (error) => reject(error));
-    });
-  };
+export const readSampleSplit = async (csvFilePath: string): Promise<Array<SampleSplit>> => {
+  const results: Array<SampleSplit> = [];
+  return new Promise((resolve, reject) => {
+    fs.createReadStream(csvFilePath)
+      .pipe(csv())
+      .on("data", (data) => {
+        results.push({
+          address: data.address,
+          startDateSeconds: Number(data.startDateSeconds),
+          secondsActive: Number(data.secondsActive),
+          activityMultiplier: Number(data.activityMultiplier),
+          calcContribution: Number(data.calcContribution.replace(",", "")),
+          allocation: Number(data.allocation),
+          splitAllocation: Number(data.splitAllocation.replace(",", "")),
+        });
+      })
+      .on("end", () => resolve(results))
+      .on("error", (error) => reject(error));
+  });
+};
 
-export const arrayToFile = 
-  async (array: Array<any>) => {
-    const stream = fs.createWriteStream('output.log')
-    array.forEach((val: any) => stream.write(`${val}\n`));
-    stream.end();
-  };
+export const arrayToFile = async (array: Array<any>) => {
+  const stream = fs.createWriteStream("output.log");
+  array.forEach((val: any) => stream.write(`${val}\n`));
+  stream.end();
+};

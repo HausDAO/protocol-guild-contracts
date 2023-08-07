@@ -3,6 +3,7 @@
 .coverage_cache
 .coverage_contracts
 artifacts
+deployments
 build
 cache
 coverage
@@ -16,6 +17,7 @@ types
 .DS_Store
 .pnp.*
 coverage.json
+memberlist.json
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
