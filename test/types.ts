@@ -1,4 +1,5 @@
 import { BigNumberish } from "ethers";
+
 // import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 // type Fixture<T> = () => Promise<T>;
@@ -22,7 +23,7 @@ export type NetworkRegistryArgs = {
   splitMain: string;
   split: string;
   owner: string;
-}
+};
 
 export type NetworkRegistryShamanArgs = {
   connext: string;
@@ -33,11 +34,11 @@ export type NetworkRegistryShamanArgs = {
   baal: string;
   sharesToMint: BigNumberish;
   burnShares: boolean;
-}
+};
 
 export type Member = {
   account: string;
   secondsActive?: BigNumberish;
   startDate: BigNumberish;
   activityMultiplier: BigNumberish;
-}
+};

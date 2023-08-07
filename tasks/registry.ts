@@ -1,4 +1,8 @@
-import { /*SdkBase, */SdkConfig, create } from "@connext/sdk";
+import {
+  /*SdkBase, */
+  SdkConfig,
+  create,
+} from "@connext/sdk";
 import { BigNumber } from "ethers";
 import { task } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";

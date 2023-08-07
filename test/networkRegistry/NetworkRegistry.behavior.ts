@@ -1,18 +1,16 @@
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers, getUnnamedAccounts } from "hardhat";
 
-import { time } from "@nomicfoundation/hardhat-network-helpers";
-
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
-import { ConnextMock, NetworkRegistrySummoner, NetworkRegistry, SplitMain, TestERC20 } from "../../types";
+import { ConnextMock, NetworkRegistry, NetworkRegistrySummoner, SplitMain, TestERC20 } from "../../types";
 import { summonRegistry } from "../utils/networkRegistry";
 import { deploySplit, hashSplit } from "../utils/split";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistry E2E tests", function () {
-
   let summoner: NetworkRegistrySummoner;
   let registrySingleton: NetworkRegistry;
   // let registryShamanSingleton: NetworkRegistryShaman;
@@ -40,17 +38,16 @@ describe("NetworkRegistry E2E tests", function () {
   const defaultRelayerFee = ethers.utils.parseEther("0.001");
 
   // NOTICE: 1 token extra as 0xSplits always leave dust token balance for gas efficiency
-  const initialSplitDeposit =
-    ethers.utils.parseEther((Number(20_000_000).toString())).add(BigNumber.from(1));
+  const initialSplitDeposit = ethers.utils.parseEther(Number(20_000_000).toString()).add(BigNumber.from(1));
 
   let sampleSplit: SampleSplit[];
 
-  const CUTOFF_DATE = (Date.parse('01 Jul 2023') / 1000);
+  const CUTOFF_DATE = Date.parse("01 Jul 2023") / 1000;
 
   this.beforeAll(async function () {
-    sampleSplit = await readSampleSplit('pgsplit.csv');
+    sampleSplit = await readSampleSplit("pgsplit.csv");
     // NOTICE: set the block timestamp to a month before cutoff date
-    await time.setNextBlockTimestamp((Date.parse('01 Jun 2023') / 1000));
+    await time.setNextBlockTimestamp(Date.parse("01 Jun 2023") / 1000);
   });
 
   beforeEach(async function () {
@@ -69,7 +66,13 @@ describe("NetworkRegistry E2E tests", function () {
     members = accounts.slice(0, splitConfig.percentAllocations.length);
 
     // Deploy Split on L1
-    l1SplitAddress = await deploySplit(l1SplitMain, members, splitConfig.percentAllocations, splitConfig.distributorFee, users.owner.address);
+    l1SplitAddress = await deploySplit(
+      l1SplitMain,
+      members,
+      splitConfig.percentAllocations,
+      splitConfig.distributorFee,
+      users.owner.address,
+    );
 
     // Deposit funds to Split
     const l1DepositTx = await l1Token.transfer(l1SplitAddress, initialSplitDeposit);
@@ -87,9 +90,9 @@ describe("NetworkRegistry E2E tests", function () {
         split: l1SplitAddress,
         owner: users.owner.address,
       },
-      'Mainnet Registry'
+      "Mainnet Registry",
     );
-    l1NetworkRegistry = (await ethers.getContractAt('NetworkRegistry', l1RegistryAddress, signer)) as NetworkRegistry;
+    l1NetworkRegistry = (await ethers.getContractAt("NetworkRegistry", l1RegistryAddress, signer)) as NetworkRegistry;
 
     // Transfer Split control to L1 NetworkRegistry
     const tx_controller_l1 = await l1SplitMain.transferControl(l1SplitAddress, l1RegistryAddress);
@@ -102,7 +105,7 @@ describe("NetworkRegistry E2E tests", function () {
       members,
       splitConfig.percentAllocations,
       splitConfig.distributorFee,
-      users.owner.address
+      users.owner.address,
     );
 
     // Deposit funds to Split
@@ -119,11 +122,11 @@ describe("NetworkRegistry E2E tests", function () {
         updaterAddress: l1NetworkRegistry.address,
         splitMain: l2Registry.splitMain.address,
         split: l2SplitAddress,
-        owner: ethers.constants.AddressZero, // renounceOwnership 
+        owner: ethers.constants.AddressZero, // renounceOwnership
       },
-      'L2 Registry'
+      "L2 Registry",
     );
-    l2NetworkRegistry = (await ethers.getContractAt('NetworkRegistry', l2RegistryAddress, signer)) as NetworkRegistry;
+    l2NetworkRegistry = (await ethers.getContractAt("NetworkRegistry", l2RegistryAddress, signer)) as NetworkRegistry;
 
     // Add replica registry to main
     const networkRegistry = {
@@ -146,7 +149,6 @@ describe("NetworkRegistry E2E tests", function () {
   });
 
   describe("0xSplit + NetworkRegistry", function () {
-
     beforeEach(async function () {
       // Syncing a batch of members
       const newMmembers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
@@ -162,7 +164,7 @@ describe("NetworkRegistry E2E tests", function () {
         startDates,
         chainIds,
         relayerFees,
-        { value: totalValue }
+        { value: totalValue },
       );
       await batchTx.wait();
       // const blockNo = await time.latestBlock();
@@ -184,21 +186,22 @@ describe("NetworkRegistry E2E tests", function () {
       await txUpdate.wait();
 
       // member list must be sorted
-      memberList.sort((a: string, b: string) => a.toLowerCase() > b.toLowerCase() ? 1 : - 1);
+      memberList.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
 
       // Validate member's activity
-      const expectedSecondsActive =
-        memberList.map((member: string) => {
-          const split = sampleSplit.find((split: SampleSplit) => split.address === member);
-          return split ? (split.secondsActive * split.activityMultiplier / 100) : 0;
-        });
+      const expectedSecondsActive = memberList.map((member: string) => {
+        const split = sampleSplit.find((split: SampleSplit) => split.address === member);
+        return split ? (split.secondsActive * split.activityMultiplier) / 100 : 0;
+      });
       const l1SecondsActive = await Promise.all(
-        memberList.map(async (memberAddress: string) =>
-          (await l1NetworkRegistry.getMember(memberAddress)).secondsActive)
+        memberList.map(
+          async (memberAddress: string) => (await l1NetworkRegistry.getMember(memberAddress)).secondsActive,
+        ),
       );
       const l2SecondsActive = await Promise.all(
-        memberList.map(async (memberAddress: string) =>
-          (await l2NetworkRegistry.getMember(memberAddress)).secondsActive)
+        memberList.map(
+          async (memberAddress: string) => (await l2NetworkRegistry.getMember(memberAddress)).secondsActive,
+        ),
       );
       expect(expectedSecondsActive).to.eql(l1SecondsActive);
       expect(expectedSecondsActive).to.eql(l2SecondsActive);
@@ -209,7 +212,7 @@ describe("NetworkRegistry E2E tests", function () {
         splitDistributorFee,
         chainIds,
         relayerFees,
-        { value: totalValue }
+        { value: totalValue },
       );
       await txSplits.wait();
 
@@ -224,24 +227,27 @@ describe("NetworkRegistry E2E tests", function () {
       expect(await l1SplitMain.getHash(l1SplitAddress)).to.be.equal(l1SplitHash);
       expect(await l2Registry.splitMain.getHash(l2SplitAddress)).to.be.equal(l2SplitHash);
 
-      // Validate qualified receivers            
-      const expectedRecipients =
-        memberList
-          .map((member: string) => sampleSplit.find((split: SampleSplit) => split.address === member))
-          // NOTICE: get active recipients only
-          .filter((split?: SampleSplit) => (split ? (split.secondsActive * split.activityMultiplier / 100) : 0) > 0)
-          .map((split?: SampleSplit) => split?.address);
+      // Validate qualified receivers
+      const expectedRecipients = memberList
+        .map((member: string) => sampleSplit.find((split: SampleSplit) => split.address === member))
+        // NOTICE: get active recipients only
+        .filter((split?: SampleSplit) => (split ? (split.secondsActive * split.activityMultiplier) / 100 : 0) > 0)
+        .map((split?: SampleSplit) => split?.address);
 
       expect(expectedRecipients).to.eql(l1Splits._receivers);
       expect(expectedRecipients).to.eql(l2Splits._receivers);
 
       // Validate member's percent allocation
       const calcContributions = await Promise.all(
-        l1Splits._receivers.map(async (member: string) => (await l1NetworkRegistry["calculateContributionOf(address)"](member)))
+        l1Splits._receivers.map(
+          async (member: string) => await l1NetworkRegistry["calculateContributionOf(address)"](member),
+        ),
       );
       const totalContributions = await l1NetworkRegistry.calculateTotalContributions();
 
-      const expectedAllocations = calcContributions.map((c: BigNumber) => c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber());
+      const expectedAllocations = calcContributions.map((c: BigNumber) =>
+        c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
+      );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
       // NOTICE: dust (remainder) should be added to the first member en the ordered list
       expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
@@ -256,18 +262,18 @@ describe("NetworkRegistry E2E tests", function () {
         l1Splits._receivers,
         l1Splits._percentAllocations,
         splitDistributorFee,
-        ethers.constants.AddressZero
+        ethers.constants.AddressZero,
       );
 
       await distributeL1Tx.wait();
 
       await expect(distributeL1Tx)
-        .to.emit(l1SplitMain, 'DistributeERC20')
+        .to.emit(l1SplitMain, "DistributeERC20")
         .withArgs(
           l1SplitAddress,
           l1Token.address,
           initialSplitDeposit.sub(BigNumber.from(1)), // NOTICE: subtract dust balance
-          ethers.constants.AddressZero
+          ethers.constants.AddressZero,
         );
 
       const distributeL2Tx = await l2Registry.splitMain.distributeERC20(
@@ -276,30 +282,35 @@ describe("NetworkRegistry E2E tests", function () {
         l2Splits._receivers,
         l2Splits._percentAllocations,
         splitDistributorFee,
-        ethers.constants.AddressZero
+        ethers.constants.AddressZero,
       );
 
       await distributeL2Tx.wait();
       await expect(distributeL2Tx)
-        .to.emit(l2Registry.splitMain, 'DistributeERC20')
+        .to.emit(l2Registry.splitMain, "DistributeERC20")
         .withArgs(
           l2SplitAddress,
           l2Registry.token.address,
           initialSplitDeposit.sub(BigNumber.from(1)), // NOTICE: subtract dust balance
-          ethers.constants.AddressZero
+          ethers.constants.AddressZero,
         );
 
       // Validate member's balance
       const expectedBalances = await Promise.all(
-        l1Splits._percentAllocations.map((allocation: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
+        l1Splits._percentAllocations.map((allocation: number) =>
+          initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE),
+        ),
       );
       const l1Balances = await Promise.all(
-        memberList
-          .map(async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address))
+        memberList.map(
+          async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
+        ),
       );
       const l2Balances = await Promise.all(
-        memberList
-          .map(async (memberAddress: string) => await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address))
+        memberList.map(
+          async (memberAddress: string) =>
+            await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
+        ),
       );
 
       expect(expectedBalances).to.eql(l1Balances);
@@ -317,25 +328,28 @@ describe("NetworkRegistry E2E tests", function () {
       await time.setNextBlockTimestamp(CUTOFF_DATE);
 
       // member list must be sorted
-      memberList.sort((a: string, b: string) => a.toLowerCase() > b.toLowerCase() ? 1 : - 1);
+      memberList.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
 
       // Update seconds active across registries
-      const txSplits = await l1NetworkRegistry.syncUpdateAll(memberList, splitDistributorFee, chainIds, relayerFees, { value: totalValue });
+      const txSplits = await l1NetworkRegistry.syncUpdateAll(memberList, splitDistributorFee, chainIds, relayerFees, {
+        value: totalValue,
+      });
       await txSplits.wait();
 
       // Validate member's activity
-      const expectedSecondsActive =
-        memberList.map((member: string) => {
-          const split = sampleSplit.find((split: SampleSplit) => split.address === member);
-          return split ? (split.secondsActive * split.activityMultiplier / 100) : 0;
-        });
+      const expectedSecondsActive = memberList.map((member: string) => {
+        const split = sampleSplit.find((split: SampleSplit) => split.address === member);
+        return split ? (split.secondsActive * split.activityMultiplier) / 100 : 0;
+      });
       const l1SecondsActive = await Promise.all(
-        memberList.map(async (memberAddress: string) =>
-          (await l1NetworkRegistry.getMember(memberAddress)).secondsActive)
+        memberList.map(
+          async (memberAddress: string) => (await l1NetworkRegistry.getMember(memberAddress)).secondsActive,
+        ),
       );
       const l2SecondsActive = await Promise.all(
-        memberList.map(async (memberAddress: string) =>
-          (await l2NetworkRegistry.getMember(memberAddress)).secondsActive)
+        memberList.map(
+          async (memberAddress: string) => (await l2NetworkRegistry.getMember(memberAddress)).secondsActive,
+        ),
       );
       expect(expectedSecondsActive).to.eql(l1SecondsActive);
       expect(expectedSecondsActive).to.eql(l2SecondsActive);
@@ -351,24 +365,27 @@ describe("NetworkRegistry E2E tests", function () {
       expect(await l1SplitMain.getHash(l1SplitAddress)).to.be.equal(l1SplitHash);
       expect(await l2Registry.splitMain.getHash(l2SplitAddress)).to.be.equal(l2SplitHash);
 
-      // Validate qualified receivers            
-      const expectedRecipients =
-        memberList
-          .map((member: string) => sampleSplit.find((split: SampleSplit) => split.address === member))
-          // NOTICE: get active recipients only
-          .filter((split?: SampleSplit) => (split ? (split.secondsActive * split.activityMultiplier / 100) : 0) > 0)
-          .map((split?: SampleSplit) => split?.address);
+      // Validate qualified receivers
+      const expectedRecipients = memberList
+        .map((member: string) => sampleSplit.find((split: SampleSplit) => split.address === member))
+        // NOTICE: get active recipients only
+        .filter((split?: SampleSplit) => (split ? (split.secondsActive * split.activityMultiplier) / 100 : 0) > 0)
+        .map((split?: SampleSplit) => split?.address);
 
       expect(expectedRecipients).to.eql(l1Splits._receivers);
       expect(expectedRecipients).to.eql(l2Splits._receivers);
 
       // Validate member's percent allocation
       const calcContributions = await Promise.all(
-        l1Splits._receivers.map(async (member: string) => (await l1NetworkRegistry["calculateContributionOf(address)"](member)))
+        l1Splits._receivers.map(
+          async (member: string) => await l1NetworkRegistry["calculateContributionOf(address)"](member),
+        ),
       );
       const totalContributions = await l1NetworkRegistry.calculateTotalContributions();
 
-      const expectedAllocations = calcContributions.map((c: BigNumber) => c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber());
+      const expectedAllocations = calcContributions.map((c: BigNumber) =>
+        c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
+      );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
       // NOTICE: dust (remainder) should be added to the first member en the ordered list
       expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
@@ -383,18 +400,18 @@ describe("NetworkRegistry E2E tests", function () {
         l1Splits._receivers,
         l1Splits._percentAllocations,
         splitDistributorFee,
-        ethers.constants.AddressZero
+        ethers.constants.AddressZero,
       );
 
       await distributeL1Tx.wait();
 
       await expect(distributeL1Tx)
-        .to.emit(l1SplitMain, 'DistributeERC20')
+        .to.emit(l1SplitMain, "DistributeERC20")
         .withArgs(
           l1SplitAddress,
           l1Token.address,
           initialSplitDeposit.sub(BigNumber.from(1)), // NOTICE: subtract dust balance
-          ethers.constants.AddressZero
+          ethers.constants.AddressZero,
         );
 
       const distributeL2Tx = await l2Registry.splitMain.distributeERC20(
@@ -403,30 +420,35 @@ describe("NetworkRegistry E2E tests", function () {
         l2Splits._receivers,
         l2Splits._percentAllocations,
         splitDistributorFee,
-        ethers.constants.AddressZero
+        ethers.constants.AddressZero,
       );
 
       await distributeL2Tx.wait();
       await expect(distributeL2Tx)
-        .to.emit(l2Registry.splitMain, 'DistributeERC20')
+        .to.emit(l2Registry.splitMain, "DistributeERC20")
         .withArgs(
           l2SplitAddress,
           l2Registry.token.address,
           initialSplitDeposit.sub(BigNumber.from(1)), // NOTICE: subtract dust balance
-          ethers.constants.AddressZero
+          ethers.constants.AddressZero,
         );
 
       // Validate member's balance
       const expectedBalances = await Promise.all(
-        l1Splits._percentAllocations.map((allocation: number) => initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE))
+        l1Splits._percentAllocations.map((allocation: number) =>
+          initialSplitDeposit.mul(allocation).div(PERCENTAGE_SCALE),
+        ),
       );
       const l1Balances = await Promise.all(
-        memberList
-          .map(async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address))
+        memberList.map(
+          async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
+        ),
       );
       const l2Balances = await Promise.all(
-        memberList
-          .map(async (memberAddress: string) => await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address))
+        memberList.map(
+          async (memberAddress: string) =>
+            await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
+        ),
       );
 
       expect(expectedBalances).to.eql(l1Balances);

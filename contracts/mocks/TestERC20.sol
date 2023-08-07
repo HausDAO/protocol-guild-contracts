@@ -5,12 +5,9 @@ import { ERC20PresetFixedSupply } from "@openzeppelin/contracts/token/ERC20/pres
 
 /// @notice Basic ERC20 implementation.
 contract TestERC20 is ERC20PresetFixedSupply {
-
     constructor(
         string memory _name,
         string memory _symbol,
         uint256 _totalSupply
-    ) ERC20PresetFixedSupply(_name, _symbol, _totalSupply, msg.sender) {
-
-    }
+    ) ERC20PresetFixedSupply(_name, _symbol, _totalSupply, msg.sender) {}
 }

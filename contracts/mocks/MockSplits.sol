@@ -7,28 +7,18 @@ contract MockSplits {
         uint32[] memory percentAllocations,
         uint32 distributorsFee,
         address controller
-    ) external {
-
-    }
+    ) external {}
 
     function updateSplit(
         address split,
         address[] memory accounts,
         uint32[] memory percentAllocations,
         uint32 distributorsFee
-    ) external {
+    ) external {}
 
-    }
+    function transferControl(address split, address newController) external {}
 
-    function transferControl(address split, address newController) external {
+    function acceptControl(address split) external {}
 
-    }
-
-    function acceptControl(address split) external {
-
-    }
-
-    function cancelControlTransfer(address split) external {
-        
-    }
+    function cancelControlTransfer(address split) external {}
 }

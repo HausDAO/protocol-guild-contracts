@@ -1,20 +1,20 @@
-import { config as dotenvConfig } from "dotenv";
 import "@nomicfoundation/hardhat-toolbox";
+import { config as dotenvConfig } from "dotenv";
+import "hardhat-deploy";
 import type { HardhatUserConfig } from "hardhat/config";
 import type { NetworkUserConfig } from "hardhat/types";
-import "hardhat-deploy";
 import { resolve } from "path";
 
 import "./tasks/accounts";
-import "./tasks/taskDeploy";
 import "./tasks/members";
 import "./tasks/registry";
+import "./tasks/taskDeploy";
 
 const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || "./.env";
 dotenvConfig({ path: resolve(__dirname, dotenvConfigPath) });
 
 // Ensure that we have all the environment variables we need.
-const mnemonic: string = process.env.MNEMONIC || '';
+const mnemonic: string = process.env.MNEMONIC || "";
 if (!mnemonic) {
   throw new Error("Please set your MNEMONIC in a .env file");
 }
@@ -41,26 +41,26 @@ const chainIds = {
 const explorerApiKey = (networkName: keyof typeof chainIds) => {
   const fromEnv = () => {
     switch (networkName) {
-      case 'mainnet':
-      case 'goerli':
+      case "mainnet":
+      case "goerli":
         return process.env.ETHERSCAN_APIKEY;
-      case 'gnosis':
+      case "gnosis":
         return process.env.GNOSISSCAN_APIKEY;
-      case 'polygon-mainnet':
-      case 'polygon-mumbai':
+      case "polygon-mainnet":
+      case "polygon-mumbai":
         return process.env.POLYGONSCAN_APIKEY;
-      case 'optimism-mainnet':
-      case 'optimism-goerli':
+      case "optimism-mainnet":
+      case "optimism-goerli":
         return process.env.OPTIMISTICSCAN_APIKEY;
-      case 'arbitrum-mainnet':
-      case 'arbitrum-goerli':
+      case "arbitrum-mainnet":
+      case "arbitrum-goerli":
         return process.env.ARBISCAN_APIKEY;
       default:
         break;
     }
-  }
-  return fromEnv() || '';
-}
+  };
+  return fromEnv() || "";
+};
 
 const getNodeURI = (networkName: keyof typeof chainIds) => {
   switch (networkName) {
@@ -68,7 +68,7 @@ const getNodeURI = (networkName: keyof typeof chainIds) => {
       return "https://rpc.ankr.com/arbitrum";
     case "arbitrum-goerli":
       return "https://goerli-rollup.arbitrum.io/rpc";
-      // return "https://arbitrum-goerli.publicnode.com";
+    // return "https://arbitrum-goerli.publicnode.com";
     case "optimism-mainnet":
       return "https://rpc.ankr.com/optimism";
     case "optimism-goerli":
@@ -80,7 +80,7 @@ const getNodeURI = (networkName: keyof typeof chainIds) => {
     default:
       return "https://" + networkName + ".infura.io/v3/" + infuraApiKey;
   }
-}
+};
 
 function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
   const jsonRpcUrl: string = getNodeURI(chain);
@@ -88,10 +88,10 @@ function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
     accounts: process.env.ACCOUNT_PK
       ? [process.env.ACCOUNT_PK]
       : {
-        count: 10,
-        mnemonic,
-        path: "m/44'/60'/0'/0",
-      },
+          count: 10,
+          mnemonic,
+          path: "m/44'/60'/0'/0",
+        },
     chainId: chainIds[chain],
     url: jsonRpcUrl,
     verify: {
@@ -140,9 +140,9 @@ const config: HardhatUserConfig = {
           }
         : undefined,
       companionNetworks: {
-        l2: 'hardhat',
+        l2: "hardhat",
       },
-      initialDate: '01 May 2023',
+      initialDate: "01 May 2023",
     },
     // ganache: {
     //   accounts: {
@@ -169,7 +169,7 @@ const config: HardhatUserConfig = {
     arbitrumGoerli: {
       ...getChainConfig("arbitrum-goerli"),
       companionNetworks: {
-        'l1': 'goerli',
+        l1: "goerli",
       },
       initialBaseFeePerGas: 1635190000,
       gasPrice: 1635190000,
@@ -179,7 +179,7 @@ const config: HardhatUserConfig = {
     optimismGoerli: {
       ...getChainConfig("optimism-goerli"),
       companionNetworks: {
-        'l1': 'goerli',
+        l1: "goerli",
       },
     },
     polygon: getChainConfig("polygon-mainnet"),
@@ -195,7 +195,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.4',
+        version: "0.8.4",
         settings: {
           optimizer: {
             enabled: true,
@@ -204,7 +204,7 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: '0.8.7',
+        version: "0.8.7",
         settings: {
           optimizer: {
             enabled: true,
@@ -213,7 +213,7 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: '0.8.13',
+        version: "0.8.13",
         settings: {
           optimizer: {
             enabled: true,
@@ -237,7 +237,7 @@ const config: HardhatUserConfig = {
           },
         },
       },
-    ]
+    ],
   },
   typechain: {
     outDir: "types",
@@ -246,10 +246,10 @@ const config: HardhatUserConfig = {
   external: {
     contracts: [
       {
-        artifacts: 'node_modules/@daohaus/baal-contracts/export/artifacts',
-        deploy: 'node_modules/@daohaus/baal-contracts/export/deploy'
-      }
-    ]
+        artifacts: "node_modules/@daohaus/baal-contracts/export/artifacts",
+        deploy: "node_modules/@daohaus/baal-contracts/export/deploy",
+      },
+    ],
   },
 };
 
