@@ -1,11 +1,11 @@
-import { expect } from "chai";
-import { BigNumber } from "ethers";
-import { parseEther } from "ethers/lib/utils";
-import { ethers, getUnnamedAccounts, network } from "hardhat";
 import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
 import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { expect } from "chai";
+import { BigNumber } from "ethers";
+import { parseEther } from "ethers/lib/utils";
+import { ethers, getUnnamedAccounts, network } from "hardhat";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
@@ -18,7 +18,7 @@ import {
   SplitMain,
   TestERC20,
 } from "../../types";
-import { deploySplit, hashSplit, summonRegistry, summonRegistryShaman } from '../utils';
+import { deploySplit, hashSplit, summonRegistry, summonRegistryShaman } from "../utils";
 // TODO: this should be fixed in the baal-contracts repo
 import { defaultDAOSettings, submitAndProcessProposal } from "../utils";
 import { NetworkRegistryProps, User, registryFixture } from "./NetworkRegistry.fixture";

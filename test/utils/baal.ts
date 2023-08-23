@@ -1,6 +1,6 @@
+import { Baal, moveForwardPeriods } from "@daohaus/baal-contracts";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
-import { Baal, moveForwardPeriods } from "@daohaus/baal-contracts";
 
 export type DAOSettings = {
   PROPOSAL_OFFERING: any;
@@ -46,7 +46,7 @@ export const submitAndProcessProposal = async ({
   encodedAction: string;
   proposal: ProposalType;
   proposalId?: BigNumberish;
-  daoSettings?: DAOSettings
+  daoSettings?: DAOSettings;
 }) => {
   await baal.submitProposal(encodedAction, proposal.expiration, proposal.baalGas, ethers.utils.id(proposal.details));
   const id = proposalId ? proposalId : await baal.proposalCount();

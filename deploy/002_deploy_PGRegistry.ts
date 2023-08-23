@@ -39,14 +39,7 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       ? networkConfig.registryOwner || ethers.constants.AddressZero
       : safeAddress || deployer;
 
-    console.log(
-      "Registry will be owned by",
-      owner,
-      "Is L2?",
-      networkConfig.l2,
-      "Is Safe?",
-      owner === safeAddress,
-    );
+    console.log("Registry will be owned by", owner, "Is L2?", networkConfig.l2, "Is Safe?", owner === safeAddress);
 
     const initializationParams = ethers.utils.defaultAbiCoder.encode(
       ["address", "uint32", "address", "address", "address", "address"],
