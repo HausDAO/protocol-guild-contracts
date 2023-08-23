@@ -1,10 +1,11 @@
-import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { ethers, getUnnamedAccounts, network } from "hardhat";
+import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
+import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
@@ -17,9 +18,9 @@ import {
   SplitMain,
   TestERC20,
 } from "../../types";
-import { ProposalType, baalSetup, defaultDAOSettings, encodeMultiAction, submitAndProcessProposal } from "../utils";
-import { summonRegistry, summonRegistryShaman } from "../utils/networkRegistry";
-import { deploySplit, hashSplit } from "../utils/split";
+import { deploySplit, hashSplit, summonRegistry, summonRegistryShaman } from '../utils';
+// TODO: this should be fixed in the baal-contracts repo
+import { defaultDAOSettings, submitAndProcessProposal } from "../utils";
 import { NetworkRegistryProps, User, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistryShaman E2E tests", function () {
@@ -92,7 +93,9 @@ describe("NetworkRegistryShaman E2E tests", function () {
     users = setup.users;
 
     // MUST run after registryFixture due to how chain snaphost works on hardhat
-    const setupBaal = await baalSetup({});
+    const setupBaal = await baalSetup({
+      daoSettings: defaultDAOSettings,
+    });
     baal = setupBaal.Baal;
     daoSafe = setupBaal.GnosisSafe;
     sharesToken = setupBaal.Shares;
@@ -154,6 +157,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       baal,
       encodedAction,
       proposal,
+      daoSettings: defaultDAOSettings,
     });
     await tx_set_manager.wait();
     await expect(tx_set_manager).to.emit(baal, "ShamanSet").withArgs(l1RegistryAddress, "2");
@@ -175,6 +179,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       baal,
       encodedAction,
       proposal,
+      daoSettings: defaultDAOSettings,
     });
     await tx_accept_control.wait();
     await expect(tx_accept_control)
@@ -246,6 +251,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       baal,
       encodedAction,
       proposal,
+      daoSettings: defaultDAOSettings,
     });
     await tx.wait();
     const action = l2NetworkRegistry.interface.getSighash("acceptSplitControl");
@@ -296,6 +302,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       await tx_batch1.wait();
       // for (let i = 0; i < batchSize; i++) {
@@ -320,6 +327,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       await tx_batch2.wait();
       // for (let i = batchSize; i < newMembers.length; i++) {
@@ -377,6 +385,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       action = l2NetworkRegistry.interface.getSighash("updateSecondsActive");
       await expect(tx_update_secs)
@@ -422,6 +431,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       action = l2NetworkRegistry.interface.getSighash("updateSplits(address[],uint32)");
       await expect(tx_update_splits)
@@ -566,6 +576,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       const action = l2NetworkRegistry.interface.getSighash("updateAll");
       await expect(tx_update_all)
@@ -717,6 +728,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       await tx_batch.wait();
       const action = l2NetworkRegistry.interface.getSighash("batchUpdateMember(address[],uint32[])");

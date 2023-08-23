@@ -1,14 +1,13 @@
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber, Event } from "ethers";
 import { ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { ConnextMock, NetworkRegistry, NetworkRegistryShaman, NetworkRegistrySummoner, SplitMain } from "../../types";
 import { Member } from "../types";
-import { generateMemberBatch, summonRegistry } from "../utils/networkRegistry";
-import { deploySplit, hashSplit } from "../utils/split";
+import { deploySplit, generateMemberBatch, hashSplit, summonRegistry } from "../utils";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistry", function () {

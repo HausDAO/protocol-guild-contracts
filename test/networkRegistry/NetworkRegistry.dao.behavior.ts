@@ -1,17 +1,18 @@
-import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { ethers, getUnnamedAccounts, network } from "hardhat";
+import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
+import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
 import { ConnextMock, GnosisSafe, NetworkRegistry, NetworkRegistrySummoner, SplitMain, TestERC20 } from "../../types";
-import { ProposalType, baalSetup, defaultDAOSettings, encodeMultiAction, submitAndProcessProposal } from "../utils";
-import { summonRegistry } from "../utils/networkRegistry";
-import { deploySplit, hashSplit } from "../utils/split";
+import { deploySplit, hashSplit, summonRegistry } from '../utils';
+// TODO: this should be fixed in the baal-contracts repo
+import { defaultDAOSettings, submitAndProcessProposal } from "../utils";
 import { NetworkRegistryProps, User, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistry + DAO E2E tests", function () {
@@ -82,7 +83,9 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     users = setup.users;
 
     // MUST run after registryFixture due to how chain snaphost works on hardhat
-    const setupBaal = await baalSetup({});
+    const setupBaal = await baalSetup({
+      daoSettings: defaultDAOSettings,
+    });
     baal = setupBaal.Baal;
     daoSafe = setupBaal.GnosisSafe;
     sharesToken = setupBaal.Shares;
@@ -146,6 +149,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
       baal,
       encodedAction,
       proposal,
+      daoSettings: defaultDAOSettings,
     });
     await tx_accept_control.wait();
     await expect(tx_accept_control)
@@ -217,6 +221,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
       baal,
       encodedAction,
       proposal,
+      daoSettings: defaultDAOSettings,
     });
     await tx.wait();
     const action = l2NetworkRegistry.interface.getSighash("acceptSplitControl");
@@ -271,6 +276,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       const action = l2NetworkRegistry.interface.getSighash("batchNewMember(address[],uint32[],uint32[])");
       await expect(tx_batch)
@@ -286,6 +292,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         baal,
         encodedAction: encodeMultiAction(multisend, [mintShares2Encoded], [baal.address], [BigNumber.from(0)], [0]),
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       await expect(tx_batch2).to.emit(baal, "ProcessProposal").withArgs(anyValue, true, false);
       // const blockNo = await time.latestBlock();
@@ -336,6 +343,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       action = l2NetworkRegistry.interface.getSighash("updateSecondsActive");
       await expect(tx_update_secs)
@@ -381,6 +389,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       action = l2NetworkRegistry.interface.getSighash("updateSplits(address[],uint32)");
       await expect(tx_update_splits)
@@ -525,6 +534,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         baal,
         encodedAction,
         proposal,
+        daoSettings: defaultDAOSettings,
       });
       const action = l2NetworkRegistry.interface.getSighash("updateAll");
       await expect(tx_update_all)

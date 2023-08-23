@@ -1,13 +1,12 @@
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers, getUnnamedAccounts } from "hardhat";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
 import { ConnextMock, NetworkRegistry, NetworkRegistrySummoner, SplitMain, TestERC20 } from "../../types";
-import { summonRegistry } from "../utils/networkRegistry";
-import { deploySplit, hashSplit } from "../utils/split";
+import { deploySplit, hashSplit, summonRegistry } from "../utils";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistry E2E tests", function () {
