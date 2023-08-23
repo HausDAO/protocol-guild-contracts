@@ -35,10 +35,15 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       const baal = (await ethers.getContractAt("Baal", networkConfig.moloch, signer)) as Baal;
       safeAddress = await baal.avatar();
     }
-    const owner = networkConfig.l2 ? ethers.constants.AddressZero : safeAddress || deployer;
+    const owner = networkConfig.l2
+      ? networkConfig.registryOwner || ethers.constants.AddressZero
+      : safeAddress || deployer;
+
     console.log(
       "Registry will be owned by",
-      networkConfig.l2 ? ethers.constants.AddressZero : owner,
+      owner,
+      "Is L2?",
+      networkConfig.l2,
       "Is Safe?",
       owner === safeAddress,
     );

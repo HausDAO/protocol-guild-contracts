@@ -20,40 +20,48 @@ export const deploymentConfig: { [key: string]: any } = {
     l2: true,
     domainId: 6778479,
     connext: "0x5bB83e95f63217CDa6aE3D181BA580Ef377D2109",
+    registryOwner: "", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
     split: "", // TODO:
+    pgRegistry: "", // TODO:
   },
   "137": {
     // polygon
     l2: true,
     domainId: 1886350457,
     connext: "0x11984dc4465481512eb5b777E44061C158CF2259",
+    registryOwner: "", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
     split: "", // TODO:
+    pgRegistry: "", // TODO:
   },
   "42161": {
     // arbitrum
     l2: true,
     domainId: 1634886255,
     connext: "0xEE9deC2712cCE65174B561151701Bf54b99C24C8",
+    registryOwner: "", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
     split: "", // TODO:
+    pgRegistry: "", // TODO:
   },
   "10": {
     // optimism
     l2: true,
     domainId: 1869640809,
     connext: "0x8f7492DE823025b4CfaAB1D34c58963F2af5DEDA",
+    registryOwner: "", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
     split: "", // TODO:
+    pgRegistry: "", // TODO:
   },
   "5": {
     // goerli
@@ -70,16 +78,19 @@ export const deploymentConfig: { [key: string]: any } = {
     l2: true,
     domainId: 9991,
     connext: "0x2334937846Ab2A3FCE747b32587e1A1A2f6EEC5a",
+    registryOwner: "", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
     split: "", // TODO:
+    pgRegistry: "", // TODO:
   },
   "420": {
     // optimismGoerli
     l2: true,
     domainId: 1735356532,
     connext: "0x5Ea1bb242326044699C3d81341c5f535d5Af1504",
+    registryOwner: "", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitsMain: "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE",
@@ -92,6 +103,7 @@ export const deploymentConfig: { [key: string]: any } = {
     l2: true,
     domainId: 1734439522,
     connext: "0x2075c9E31f973bb53CAE5BAC36a8eeB4B082ADC2",
+    registryOwner: "", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,

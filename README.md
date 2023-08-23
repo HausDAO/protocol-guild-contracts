@@ -267,13 +267,13 @@ pnpm hardhat --network arbitrumGoerli deploy --tags Summoner
 pnpm hardhat --network arbitrumGoerli etherscan-verify
 ```
 
-- Deploy Main Registry. Then update the resulting contract address on `./constants/config.ts`
+- Deploy Main Registry. Then update the resulting contract address on `./constants/config.ts`. The registry will be owned either `safe` address, or `moloch`.avatar() address, otherwise the `deployer` is set as owner by default.
 
 ```
 pnpm hardhat --network goerli deploy --tags PGNetworkRegistry
 ```
 
-- Deploy Replica registries on relevant L2's. Then update the resulting contract address on `./constants/config.ts`
+- Deploy Replica registries on relevant L2's. Then update the resulting contract address on `./constants/config.ts`. The registry would be owned by a temporary `registryOwner` address if set, otherwise deployer will renounce ownership (AddressZero) by default.
 
 ```
 pnpm hardhat --network optimismGoerli deploy --tags PGNetworkRegistry
