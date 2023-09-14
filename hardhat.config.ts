@@ -77,6 +77,8 @@ const getNodeURI = (networkName: keyof typeof chainIds) => {
       return "https://rpc.ankr.com/polygon";
     case "polygon-mumbai":
       return "https://rpc.ankr.com/polygon_mumbai";
+    case "gnosis":
+      return "https://rpc.gnosischain.com";
     default:
       return "https://" + networkName + ".infura.io/v3/" + infuraApiKey;
   }
@@ -183,7 +185,12 @@ const config: HardhatUserConfig = {
       },
     },
     polygon: getChainConfig("polygon-mainnet"),
-    mumbai: getChainConfig("polygon-mumbai"),
+    mumbai: {
+      ...getChainConfig("polygon-mumbai"),
+      companionNetworks: {
+        l1: "goerli",
+      },
+    },
     sepolia: getChainConfig("sepolia"),
   },
   paths: {
