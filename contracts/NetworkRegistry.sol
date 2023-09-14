@@ -48,11 +48,11 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /// @dev In case of a main registry, the updater domain must be set to 0
     /// @dev In case of a replica, the Connext Domain ID must match to the network where main registry lives
     uint32 public updaterDomain;
-    /// @notice Address of the updater contract that updates the registry through the Connext bridge
-    /// @dev In case of a main registry, the updater contract must be set to address(0)
-    /// @dev In case of a replica, the updater contract must be the main NetworkRegistry address
+    /// @notice Address of the updater role that can update the registry through the Connext bridge
+    /// @dev In case of a main registry, the updater role must not be assigned to anyone (address(0))
+    /// @dev In case of a replica deployed on a L2, the updater role must be the main NetworkRegistry address
     address public updater;
-    /// @notice replica registries tied to the current contract
+    /// @notice replicas tied to the current registry
     /// @dev chainId => Registry
     // solhint-disable-next-line named-parameters-mapping
     mapping(uint32 => Registry) public networkRegistry;
@@ -97,7 +97,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /**
      * @notice A modifier for methods that should be called by owner or main regsitry only
      * @dev (updater != address(0) && _msgSender() == address(this)) means method is called
-     * through xReveive
+     * through xReveive function
      */
     modifier onlyOwnerOrUpdater() {
         require(
@@ -945,7 +945,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Accepts incoming sync messages from the main registry
+     * @notice Accepts incoming sync messages from the main registry via Connext authenticated calls
      * @dev Forwared messages can only be executed if their function selector is listed as valid action
      * @param _transferId transfer ID set by Connext to identify the incoming xcall message
      * @param _originSender main registry address that forwarded the xcall message through the Connext bridge
