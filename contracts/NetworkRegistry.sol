@@ -768,7 +768,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         }
 
         // if there was any loss add it to the first account.
-        if (runningTotal != PERCENTAGE_SCALE) {
+        if (activeMembers > 0 && runningTotal != PERCENTAGE_SCALE) {
             _percentAllocations[0] += uint32(PERCENTAGE_SCALE - runningTotal);
         }
     }
