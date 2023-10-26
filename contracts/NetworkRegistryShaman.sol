@@ -90,7 +90,8 @@ contract NetworkRegistryShaman is NetworkRegistry {
     function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwnerOrUpdater {
         burnShares = _burnShares;
         sharesToMint = _sharesToMint;
-        // TODO: temporarily disabled to avoid reaching maximum contract size. This will be enabled in the next iteration
+        // TODO: temporarily disabled to avoid reaching maximum contract size.
+        // This should be enabled in the next iteration
         // emit ShamanConfigUpdated(sharesToMint, burnShares);
     }
 

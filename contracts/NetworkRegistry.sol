@@ -114,8 +114,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * through the xReceive function
      */
     modifier onlyUpdater() {
-        if (updater == address(0) || _msgSender() != address(this))
-            revert NetworkRegistry__OnlyUpdater();
+        if (updater == address(0) || _msgSender() != address(this)) revert NetworkRegistry__OnlyUpdater();
         _;
     }
 
@@ -838,7 +837,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         if (replicaRegistry[_chainId].registryAddress != address(0) && _newRegistry.registryAddress == address(0)) {
             delete replicaRegistry[_chainId];
         } else {
-            if (_newRegistry.domainId == 0 || _newRegistry.registryAddress == address(0)) revert NetworkRegistry__InvalidReplica();
+            if (_newRegistry.domainId == 0 || _newRegistry.registryAddress == address(0))
+                revert NetworkRegistry__InvalidReplica();
             replicaRegistry[_chainId] = _newRegistry;
         }
         emit NetworkRegistryUpdated(
@@ -929,8 +929,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] memory _newControllers,
         uint256[] memory _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
-        if (_newControllers.length != _chainIds.length)
-            revert NetWorkRegistry__ParamsSizeMismatch();
+        if (_newControllers.length != _chainIds.length) revert NetWorkRegistry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.transferSplitControl.selector;
         for (uint256 i = 0; i < _chainIds.length; ) {
             bytes memory callData = abi.encode(action, _newControllers[i]);
