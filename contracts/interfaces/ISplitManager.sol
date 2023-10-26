@@ -19,7 +19,7 @@ interface ISplitManager {
      *  - Total allocations from all members must be equal to 0xSplit PERCENTAGE_SCALE
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @return _receivers list of eligible recipients (non-zero allocation) for the next split distribution
-     * @return _percentAllocations list of split allocations for each eligible recipeint
+     * @return _percentAllocations list of split allocations for each eligible recipient
      */
     function calculate(address[] memory _sortedList) external view returns (address[] memory, uint32[] memory);
 
@@ -39,7 +39,7 @@ interface ISplitManager {
     function calculateTotalContributions() external view returns (uint256 total);
 
     /**
-     * @notice Updates the 0xsplit distribution based on member activity during the last epoch.
+     * @notice Updates the 0xSplit distribution based on member activity during the last epoch.
      * @dev permissionless action, however the registry must hold the controller role of the 0xSplit contract
      * Verify if the address list is sorted, has no duplicates and is valid.
      * Addresses in _sortedList must be in the member registry
@@ -77,13 +77,13 @@ interface ISplitManager {
 
     /**
      * @notice Accepts control of the current 0xSplit contract
-     * @dev should accept control of the current 0xsplit in the state
+     * @dev should accept control of the current 0xSplit in the state
      */
     function acceptSplitControl() external;
 
     /**
      * @notice Cancel controller transfer of the current 0xSplit contract
-     * @dev should cancel a previous request to update the controller of the current 0xsplit contract
+     * @dev should cancel a previous request to update the controller of the current 0xSplit contract
      */
     function cancelSplitControlTransfer() external;
 }

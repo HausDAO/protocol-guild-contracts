@@ -30,7 +30,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
     IBaal public baal;
     /// @notice The amount of shares to mint to new members
     uint256 public sharesToMint;
-    /// @notice Wether or not to burn shares if a memeber activityMultiplier is set to zero
+    /// @notice Wether or not to burn shares if a member activityMultiplier is set to zero
     bool public burnShares;
 
     /**
@@ -79,7 +79,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @notice Updates shaman config parameters
      * @dev Must only be called by owner or updater (latter should never apply)
      * @param _sharesToMint The amount of shares to mint to new members
-     * @param _burnShares Wether or not to burn shares if a memeber activityMultiplier is set to zero
+     * @param _burnShares Wether or not to burn shares if a member activityMultiplier is set to zero
      */
     function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwnerOrUpdater {
         burnShares = _burnShares;

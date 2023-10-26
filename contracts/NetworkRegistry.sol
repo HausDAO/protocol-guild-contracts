@@ -16,7 +16,7 @@ import "./registry/MemberRegistry.sol";
  * CUSTOM ERRORS
  */
 
-/// @notice Member list size doens't match the current amount of members in the regsitry
+/// @notice Member list size doesn't match the current amount of members in the registry
 error InvalidSplit__MemberListSizeMismatch();
 /// @notice Member list must be sorted in ascending order
 /// @param _index index where a member address is not properly sorted
@@ -39,7 +39,7 @@ error Split_ControlNotHandedOver();
  * - A replica NetworkRegistry should not be owned by anyone so it can only be controlled by the main registry (updater)
  *   however another Safe or DAO in the replica network can act as a trusted delegate in case of a halt of the Connext
  *   bridge which could potentially froze the 0xSplit funds as the replica NetworkRegistry and thus its controller will
- *   become innacessible.
+ *   become inaccessible.
  */
 contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegistry, MemberRegistry {
     /// @notice Connext contract in the current domain
@@ -63,7 +63,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /// @dev 0xSplitWallet contract
     address public split;
 
-    /// @dev constant to scale uints into percentages (1e6 == 100%)
+    /// @dev constant to scale UINT values into percentages (1e6 == 100%)
     uint256 internal constant PERCENTAGE_SCALE = 1e6;
 
     /// @dev used to store individual members contributions prior getting overall split percentages
@@ -82,7 +82,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      *    1) The originating call comes from the expected origin domain.
      *    2) The originating call comes from the expected source contract.
      *    3) The call to this contract comes from Connext.
-     * This is useful when sending cros-chain messages for syncing replica registries.
+     * This is useful when sending cross-chain messages for syncing replica registries.
      * @param _originSender source contract or updater
      * @param _origin origin domain ID
      */
@@ -95,9 +95,9 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice A modifier for methods that should be called by owner or main regsitry only
+     * @notice A modifier for methods that should be called by owner or main registry only
      * @dev (updater != address(0) && _msgSender() == address(this)) means method is called
-     * through xReveive function
+     * through the xReceive function
      */
     modifier onlyOwnerOrUpdater() {
         require(
@@ -129,8 +129,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
 
     /**
      * @notice A modifier to validates there's a replica NetworkRegistry setup for the `_chainId` chainId
-     * @dev networkRegistry delegate is related Connext xcall but it is not being used so always set to address(0)
-     * It it very unlikely for this use case to get a failed tx on the replica if it doens't revert
+     * @dev networkRegistry delegate is related Connext xCall but it is not being used so always set to address(0)
+     * It it very unlikely for this use case to get a failed tx on the replica if it doesn't revert
      * in the main registry first.
      * More info at https://docs.connext.network/developers/guides/handling-failures#increasing-slippage-tolerance
      */
@@ -148,7 +148,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
 
     /**
      * @notice emitted after the connection to the main registry (updater) domain & address are updated
-     * @dev this should be emmited on replica registried only
+     * @dev this should be emitted by replica registries only
      * @param _connext Connext contract address
      * @param _updaterDomain new Updater domain ID
      * @param _updater new updater contract address
@@ -181,8 +181,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      */
     event SplitsUpdated(address _split, bytes32 _splitHash, uint32 _splitDistributorFee);
     /**
-     * @notice emitted when a registry synchronization message is forwared through the Connext bridge
-     * @param _transferId Transfer ID returned by Connext to identify the executed xcall
+     * @notice emitted when a registry synchronization message is forwarded through the Connext bridge
+     * @param _transferId Transfer ID returned by Connext to identify the executed xCall
      * @param _chainId chainId of the destination network
      * @param _action Selector of the function to be executed on the replica
      * @param _registryAddress replica contract address
@@ -195,7 +195,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     );
     /**
      * @notice emitted when a registry synchronization message is received and executed on a replica
-     * @param _transferId transfer ID returned by Connext that identifies the received xcall message
+     * @param _transferId transfer ID returned by Connext that identifies the received xCall message
      * @param _originDomain Connext domain ID that correspond to the network where the the sync message was submitted
      * @param _action selector of the function that was executed on the replica
      * @param _success flag whether or not the execution of the sync function succeeded
@@ -262,7 +262,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Initializs the registry contract
+     * @notice Initializes the registry contract
      * @dev Initialization parameters are abi-encoded through the NetworkRegistrySummoner contract
      * @param _initializationParams abi-encoded parameters
      */
@@ -284,7 +284,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _chainId Network chainId where the replica lives
      * @param _callData Function calldata to forward
      * @param _relayerFee Fee to be paid to the Connext relayer
-     * @return transferId ID returned by Connext that identifies the submitted xcall message
+     * @return transferId ID returned by Connext that identifies the submitted xCall message
      */
     function _executeXCall(
         uint32 _chainId,
@@ -568,7 +568,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Updates the 0xsplit distribution based on member activity during the last epoch.
+     * @notice Updates the 0xSplit distribution based on member activity during the last epoch.
      * Consider calling {updateSecondsActive} prior or after applying a 0xSplit distribution update
      * @dev permissionless action, however the registry must hold the controller role of the 0xSplit contract
      * Addresses in _sortedList must be in the member registry
@@ -585,7 +585,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Updates the 0xsplit distribution across all networks based on member activity during the last epoch.
+     * @notice Updates the 0xSplit distribution across all networks based on member activity during the last epoch.
      * Consider calling {syncUpdateSecondsActive} prior or after applying a 0xSplit distribution update
      * @dev permissionless action, however the registry must hold the controller role of the 0xSplit contract
      * {validNetworkParams} verifies for matching network param sizes & {msg.value}
@@ -651,7 +651,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      *  - Total allocations from all members must be equal to 0xSplit PERCENTAGE_SCALE
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @return _receivers list of eligible recipients (non-zero allocation) for the next split distribution
-     * @return _percentAllocations list of split allocations for each eligible recipeint
+     * @return _percentAllocations list of split allocations for each eligible recipient
      */
     function calculate(
         address[] memory _sortedList
@@ -695,11 +695,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         // define variables for second loop
         uint32 runningTotal;
         uint256 nonZeroIndex; // index counter for non zero allocations
-        // fill 0xsplits arrays with sorted list
+        // fill 0xSplits arrays with sorted list
         for (uint256 i = 0; i < _sortedList.length; ) {
-            // uint256 memberIdx = memberIdxs[_sortedList[i]];
-            // Member memory _member = members[memberIdx - 1];
-            // if (_member.activityMultiplier > 0) {
             if (memberDistribution[i].calcContribution > 0) {
                 _receivers[nonZeroIndex] = memberDistribution[i].receiverAddress;
                 _percentAllocations[nonZeroIndex] = uint32(
@@ -725,7 +722,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /**
      * @notice Calculates individual contribution based on member activity
      * @dev Contribution is calculated as SQRT(member.secondsActive)
-     * However this function can be overriden to include other variables stored in state prior call
+     * However this function can be overridden to include other variables stored in state prior call
      * (e.g.) off-chain data via oracles
      * @param _member Member metadata
      * @return calculated contribution as uin256 value
@@ -811,8 +808,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /**
      * @notice Updates the addresses for the 0xSplitMain proxy and 0xSplit contract
      * @dev Must only be called by owner or updater.
-     * Should verify the 0xSplit contract exists and that it isn't immutable (no owner)
-     * Also makes sure controller has been already handed over to the registry or it's waiting to be accepted.
+     * Should verify the 0xSplit contract exists and that it isn't immutable (no renounced ownership)
+     * Also makes sure controller has already been handed over to the registry or it's waiting to be accepted.
      * If manager is already a potential controller, call acceptSplitControl()
      * @param _splitMain The address of the 0xSplitMain
      * @param _split The address of the 0xSplit contract

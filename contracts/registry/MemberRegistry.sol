@@ -38,7 +38,7 @@ abstract contract MemberRegistry {
     struct Member {
         /// @notice member address
         address account;
-        /// @notice active time in seconds
+        /// @notice total active time in seconds
         uint32 secondsActive;
         /// @notice timestamp where member started activities
         /// @dev timestamp format in seconds
@@ -139,7 +139,7 @@ abstract contract MemberRegistry {
      * @notice Updates seconds active for each member in the registry since the last update epoch
      * @dev manages a lastActivityUpdate state variable to update activity based on last update epoch.
      * However for new members it should update seconds based each member startDate.
-     * Notice function is set as virtual so base functionality can be overriden by the implementer
+     * Notice function is set as virtual so base functionality can be overridden by the implementer
      */
     function _updateSecondsActive() internal virtual {
         uint32 currentDate = uint32(block.timestamp);

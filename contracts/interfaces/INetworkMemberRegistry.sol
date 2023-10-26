@@ -24,9 +24,9 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     }
 
     /**
-     * @notice Initializs the registry contract
+     * @notice Initializes the registry contract
      * @dev Initialization parameters are abi-encoded through the NetworkRegistrySummoner contract.
-     * It should also call initialzer methods from parent contracts
+     * It should also call initializer methods from parent contracts
      * @param _initializationParams abi-encoded parameters
      */
     function initialize(bytes memory _initializationParams) external;
@@ -142,7 +142,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     function syncUpdateSecondsActive(uint32[] calldata _chainIds, uint256[] calldata _relayerFees) external payable;
 
     /**
-     * @notice Updates the 0xsplit distribution on all networks based on member activity during the last epoch.
+     * @notice Updates the 0xSplit distribution on all networks based on member activity during the last epoch.
      * @dev It should forward messages to sync all registered replicas
      * - The registry must hold the controller role of the 0xSplit contract
      * - Addresses in _sortedList must be in the member registry
