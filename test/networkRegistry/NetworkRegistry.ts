@@ -252,7 +252,7 @@ describe("NetworkRegistry", function () {
     });
 
     it("Should have an L2 NetworkRegistry setup", async () => {
-      const replicaRegistry = await l1NetworkRegistry.networkRegistry(replicaChainId);
+      const replicaRegistry = await l1NetworkRegistry.replicaRegistry(replicaChainId);
       expect(replicaRegistry).to.have.ordered.members([
         replicaDomainId,
         l2NetworkRegistry.address,
@@ -274,15 +274,21 @@ describe("NetworkRegistry", function () {
           delegate: ethers.constants.AddressZero,
         }),
       ).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(applicantRegistry.setSplit(l1SplitMain.address, l1SplitAddress)).to.be.revertedWith(
-        "NetworkRegistry: !owner || !updater",
+      await expect(applicantRegistry.setSplit(l1SplitMain.address, l1SplitAddress)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyOwnerOrUpdater",
       );
-      await expect(applicantRegistry.transferSplitControl(users.applicant.address)).to.be.revertedWith(
-        "NetworkRegistry: !owner || !updater",
+      await expect(applicantRegistry.transferSplitControl(users.applicant.address)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyOwnerOrUpdater",
       );
-      await expect(applicantRegistry.acceptSplitControl()).to.be.revertedWith("NetworkRegistry: !owner || !updater");
-      await expect(applicantRegistry.cancelSplitControlTransfer()).to.be.revertedWith(
-        "NetworkRegistry: !owner || !updater",
+      await expect(applicantRegistry.acceptSplitControl()).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyOwnerOrUpdater",
+      );
+      await expect(applicantRegistry.cancelSplitControlTransfer()).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyOwnerOrUpdater",
       );
 
       await expect(
@@ -334,7 +340,7 @@ describe("NetworkRegistry", function () {
           networkRegistry.delegate,
         );
 
-      const netRegistry = await l1NetworkRegistry.networkRegistry(newReplicaChainId);
+      const netRegistry = await l1NetworkRegistry.replicaRegistry(newReplicaChainId);
       expect(netRegistry).to.eql(Object.values(networkRegistry));
     });
 
@@ -357,8 +363,9 @@ describe("NetworkRegistry", function () {
 
     it("Should not be able to set a non-existent 0xSplit contract", async () => {
       const dummySplitAddress = users.applicant.address;
-      await expect(l1NetworkRegistry.setSplit(l1SplitMain.address, dummySplitAddress)).to.be.revertedWith(
-        "NetworkRegistry: !exists || immutable",
+      await expect(l1NetworkRegistry.setSplit(l1SplitMain.address, dummySplitAddress)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__InvalidOrImmutableSplit",
       );
 
       const newSplitAddress = await deploySplit(
@@ -368,8 +375,9 @@ describe("NetworkRegistry", function () {
         splitConfig.distributorFee,
         ethers.constants.AddressZero, // immutable
       );
-      await expect(l1NetworkRegistry.setSplit(l1SplitMain.address, newSplitAddress)).to.be.revertedWith(
-        "NetworkRegistry: !exists || immutable",
+      await expect(l1NetworkRegistry.setSplit(l1SplitMain.address, newSplitAddress)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__InvalidOrImmutableSplit",
       );
     });
 
@@ -494,17 +502,20 @@ describe("NetworkRegistry", function () {
     it("Should not be able to update the registry if not an owner", async () => {
       const signer = await ethers.getSigner(users.applicant.address);
       const applicantRegistry = l1NetworkRegistry.connect(signer);
-      await expect(applicantRegistry.setNewMember(users.applicant.address, 100, 0)).to.be.revertedWith(
-        "NetworkRegistry: !owner || !updater",
+      await expect(applicantRegistry.setNewMember(users.applicant.address, 100, 0)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyOwnerOrUpdater",
       );
-      await expect(applicantRegistry.updateMember(users.applicant.address, 100)).to.be.revertedWith(
-        "NetworkRegistry: !owner || !updater",
+      await expect(applicantRegistry.updateMember(users.applicant.address, 100)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyOwnerOrUpdater",
       );
-      await expect(applicantRegistry.batchNewMember([users.applicant.address], [100], [0])).to.be.revertedWith(
-        "NetworkRegistry: !owner || !updater",
-      );
-      await expect(applicantRegistry.batchUpdateMember([users.applicant.address], [100])).to.be.revertedWith(
-        "NetworkRegistry: !owner || !updater",
+      await expect(
+        applicantRegistry.batchNewMember([users.applicant.address], [100], [0]),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyOwnerOrUpdater");
+      await expect(applicantRegistry.batchUpdateMember([users.applicant.address], [100])).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyOwnerOrUpdater",
       );
     });
 
@@ -546,7 +557,7 @@ describe("NetworkRegistry", function () {
       );
     });
 
-    it("Should be able to update an existing member with correct paramters", async () => {
+    it("Should be able to update an existing member with correct parameters", async () => {
       const [, , , member1, member2] = await getUnnamedAccounts();
       const activityMultiplier = 100;
       const modActivityMultiplier = activityMultiplier / 2;
@@ -566,14 +577,27 @@ describe("NetworkRegistry", function () {
         "InvalidMember__ActivityMultiplier",
       );
 
-      const tx = await l1NetworkRegistry.updateMember(member1, modActivityMultiplier);
-      await expect(tx).to.emit(l1NetworkRegistry, "UpdateMember").withArgs(member1, modActivityMultiplier);
+      let member = await l1NetworkRegistry.getMember(member1);
 
+      const tx = await l1NetworkRegistry.updateMember(member1, modActivityMultiplier);
+      await expect(tx)
+        .to.emit(l1NetworkRegistry, "UpdateMember")
+        .withArgs(member1, modActivityMultiplier, member.startDate);
+
+      member = await l1NetworkRegistry.getMember(member1);
       const totalMembersAfter = await l1NetworkRegistry.totalMembers();
       expect(totalMembersBefore).to.be.equal(totalMembersAfter);
 
-      const member = await l1NetworkRegistry.getMember(member1);
       expect(member).to.have.ordered.members([member1, 0, Number(startDate), modActivityMultiplier]);
+    });
+
+    it("Should not be able to add new members in batch if param sizes mismatch", async () => {
+      await expect(
+        l1NetworkRegistry.batchNewMember([ethers.constants.AddressZero], [10], []),
+        // ).to.revertedWithPanic(
+        //   "0x32",
+        // ); // Array accessed at an out-of-bounds or negative index
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
     });
 
     it("Should be able to add new members in batch", async () => {
@@ -587,10 +611,13 @@ describe("NetworkRegistry", function () {
           .to.emit(l1NetworkRegistry, "NewMember")
           .withArgs(newMembers[i].account, Number(newMembers[i].startDate), newMembers[i].activityMultiplier);
       }
+    });
 
-      await expect(l1NetworkRegistry.batchNewMember([ethers.constants.AddressZero], [10], [])).to.revertedWithPanic(
-        "0x32",
-      ); // Array accessed at an out-of-bounds or negative index
+    it("Should not be able to add new members in batch if param sizes mismatch", async () => {
+      await expect(
+        l1NetworkRegistry.batchUpdateMember(members.slice(0, 1), []),
+        // ).to.revertedWithPanic("0x32"); // Array accessed at an out-of-bounds or negative index
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
     });
 
     it("Should be able to update members in batch", async () => {
@@ -606,10 +633,8 @@ describe("NetworkRegistry", function () {
       for (let i = 0; i < newMembers.length; i++) {
         await expect(tx)
           .to.emit(l1NetworkRegistry, "UpdateMember")
-          .withArgs(newMembers[i].account, modActivityMultipliers[i]);
+          .withArgs(newMembers[i].account, modActivityMultipliers[i], newMembers[i].startDate);
       }
-
-      await expect(l1NetworkRegistry.batchUpdateMember(members.slice(0, 1), [])).to.revertedWithPanic("0x32"); // Array accessed at an out-of-bounds or negative index
     });
 
     it("Should be able to update members activity", async () => {
@@ -708,9 +733,7 @@ describe("NetworkRegistry", function () {
       const activeMembers = newMembers.filter((member: Member) => Number(member.activityMultiplier) > 0);
       // fetch last calculated contributions on registry
       const contributions = await Promise.all(
-        activeMembers.map(
-          async (member: Member) => await l1NetworkRegistry["calculateContributionOf(address)"](member.account),
-        ),
+        activeMembers.map(async (member: Member) => await l1NetworkRegistry["calculateContributionOf"](member.account)),
       );
       const totalContributions = contributions.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
@@ -808,7 +831,7 @@ describe("NetworkRegistry", function () {
       expect(await l1NetworkRegistry.updaterDomain()).to.equal(0);
       expect(await l1NetworkRegistry.updater()).to.equal(ethers.constants.AddressZero);
       expect(await l1NetworkRegistry.isMainRegistry()).to.equal(true);
-      const l2Registry = await l1NetworkRegistry.networkRegistry(replicaChainId);
+      const l2Registry = await l1NetworkRegistry.replicaRegistry(replicaChainId);
       expect(l2Registry).to.have.deep.members([
         replicaDomainId,
         l2NetworkRegistry.address,
@@ -831,7 +854,7 @@ describe("NetworkRegistry", function () {
           parentDomainId,
           "0x",
         ),
-      ).to.be.revertedWith("NetworkRegistry: !updaterDomain || !updater || !Connext");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ConnextOnly");
       const connextCaller = await ethers.getSigner(users.applicant.address);
       const l2RegistryAddress = await summonRegistry(
         summoner,
@@ -860,7 +883,7 @@ describe("NetworkRegistry", function () {
           parentDomainId,
           "0x",
         ),
-      ).to.be.revertedWith("NetworkRegistry: !updaterDomain || !updater || !Connext");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ConnextOnly");
     });
 
     it("Should not be able to sync the registry if not called by the updater", async () => {
@@ -897,7 +920,7 @@ describe("NetworkRegistry", function () {
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
       await expect(
         l1NetworkRegistry.syncBatchNewMember(
           [member],
@@ -907,14 +930,14 @@ describe("NetworkRegistry", function () {
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
       await expect(
         l1NetworkRegistry.syncNetworkMemberRegistry(
           [parentDomainId, replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
       await expect(
         l1NetworkRegistry.syncUpdateMember(
           member,
@@ -923,7 +946,7 @@ describe("NetworkRegistry", function () {
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
       await expect(
         l1NetworkRegistry.syncBatchUpdateMember(
           [member],
@@ -932,14 +955,14 @@ describe("NetworkRegistry", function () {
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
       await expect(
         l1NetworkRegistry.syncUpdateSecondsActive(
           [parentDomainId, replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
       await expect(
         l1NetworkRegistry.syncUpdateSplits(
           [users.applicant.address],
@@ -948,7 +971,7 @@ describe("NetworkRegistry", function () {
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
       await expect(
         l1NetworkRegistry.syncUpdateAll(
           [users.applicant.address],
@@ -957,7 +980,7 @@ describe("NetworkRegistry", function () {
           [defaultRelayerFee], // relayerFees
           { value: defaultRelayerFee },
         ),
-      ).to.be.revertedWith("NetworkRegistry: params size mismatch");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
     });
 
     it("Should not be able to execute sync actions if not enough ETH is sent to cover relayer fees", async () => {
@@ -972,7 +995,7 @@ describe("NetworkRegistry", function () {
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
       await expect(
         l1NetworkRegistry.syncBatchNewMember(
           [member],
@@ -981,13 +1004,13 @@ describe("NetworkRegistry", function () {
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
       await expect(
         l1NetworkRegistry.syncNetworkMemberRegistry(
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
       await expect(
         l1NetworkRegistry.syncUpdateMember(
           member,
@@ -995,7 +1018,7 @@ describe("NetworkRegistry", function () {
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
       await expect(
         l1NetworkRegistry.syncBatchUpdateMember(
           [member],
@@ -1003,13 +1026,13 @@ describe("NetworkRegistry", function () {
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
       await expect(
         l1NetworkRegistry.syncUpdateSecondsActive(
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
       await expect(
         l1NetworkRegistry.syncUpdateSplits(
           [users.applicant.address],
@@ -1017,7 +1040,7 @@ describe("NetworkRegistry", function () {
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
       await expect(
         l1NetworkRegistry.syncUpdateAll(
           [users.applicant.address],
@@ -1025,7 +1048,7 @@ describe("NetworkRegistry", function () {
           [replicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
         ),
-      ).to.be.revertedWith("NetworkRegistry: msg.value < relayerFees");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
     });
 
     it("Should be able to update 0xSplit contract on a replica registry and get control over it", async () => {
@@ -1043,6 +1066,9 @@ describe("NetworkRegistry", function () {
 
       const txTransfer = await l2Registry.splitMain.transferControl(newSplitAddress, l2NetworkRegistry.address);
       await txTransfer.wait();
+
+      const newPotentialController = await l2Registry.splitMain.getNewPotentialController(newSplitAddress);
+      expect(newPotentialController).to.be.equal(l2NetworkRegistry.address);
 
       const action = l2NetworkRegistry.interface.getSighash("setSplit(address,address)");
       const syncTx = await l1NetworkRegistry.updateNetworkSplit(
@@ -1242,12 +1268,9 @@ describe("NetworkRegistry", function () {
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
         .withArgs(transferId, parentDomainId, action, true, l1NetworkRegistry.address);
 
-      await expect(syncTx).to.emit(l1NetworkRegistry, "UpdateMember").withArgs(member, updatedMultiplier);
-      await expect(syncTx).to.emit(l2NetworkRegistry, "UpdateMember").withArgs(member, updatedMultiplier);
+      await expect(syncTx).to.emit(l1NetworkRegistry, "UpdateMember").withArgs(member, updatedMultiplier, startDate);
+      await expect(syncTx).to.emit(l2NetworkRegistry, "UpdateMember").withArgs(member, updatedMultiplier, startDate);
 
-      // const l1Member = await l1NetworkRegistry.members(l1CurrentMemberId);
-      // const l2Member = await l2NetworkRegistry.members(l2CurrentMemberId);
-      // expect(l1Member).to.eql(l2Member);
       expect(await l1NetworkRegistry.getMember(member)).to.eql(await l2NetworkRegistry.getMember(member));
     });
 
@@ -1354,10 +1377,10 @@ describe("NetworkRegistry", function () {
       for (let i = 0; i < newMembers.length; i++) {
         await expect(tx)
           .to.emit(l1NetworkRegistry, "UpdateMember")
-          .withArgs(newMembers[i].account, modActivityMultipliers[i]);
+          .withArgs(newMembers[i].account, modActivityMultipliers[i], newMembers[i].startDate);
         await expect(tx)
           .to.emit(l2NetworkRegistry, "UpdateMember")
-          .withArgs(newMembers[i].account, modActivityMultipliers[i]);
+          .withArgs(newMembers[i].account, modActivityMultipliers[i], newMembers[i].startDate);
       }
     });
 
