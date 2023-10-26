@@ -41,7 +41,7 @@ contract NetworkRegistrySummoner {
         NetworkRegistry registry = NetworkRegistry(registryAddress);
         registry.initialize(_initializationParams);
         emit NetworkRegistrySummoned(registryAddress, _details, _initializationParams);
-        return address(registryAddress);
+        return registryAddress;
     }
 
     /**
