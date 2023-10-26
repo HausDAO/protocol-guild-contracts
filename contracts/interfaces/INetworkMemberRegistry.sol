@@ -91,7 +91,8 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
 
     /**
      * @notice Adds a new set of members to the registry and sync with replicas
-     * @dev It should forward messages to sync all registered replicas
+     * @dev Must be used only if registries are in sync. It can only be called by the main registry owner
+     * {validNetworkParams} verifies for matching network param sizes & {msg.value}
      * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
      * @param _members A list of member addresses to be added to the registry
      * @param _activityMultipliers Activity multipliers for each new member
@@ -118,7 +119,8 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
 
     /**
      * @notice Updates the activity multiplier for a set of existing members and sync with replicas
-     * @dev It should forward messages to sync all registered replicas
+     * @dev Must be used only if registries are in sync. It can only be called by the main registry owner
+     * {validNetworkParams} verifies for matching network param sizes & {msg.value}
      * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
      * @param _members A list of existing members
      * @param _activityMultipliers New activity multipliers for each member

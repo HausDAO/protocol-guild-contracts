@@ -58,6 +58,22 @@ interface IMemberRegistry {
     function batchUpdateMember(address[] memory _members, uint32[] memory _activityMultipliers) external;
 
     /**
+     * @notice Adds and/or updates a set of members on the registry
+     * @dev Make sure array parameters are of the same length
+     * Activity multiplier could be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time)
+     * but it's up to the implementer to establish the multiplier boundaries
+     * @param _members A list of member addresses to be added to the registry
+     * @param _activityMultipliers Activity multipliers for each new member
+     * @param _startDates A list of dates when each member got active
+     */
+
+    function addOrUpdateMembersBatch(
+        address[] memory _members,
+        uint32[] memory _activityMultipliers,
+        uint32[] memory _startDates
+    ) external;
+
+    /**
      * @notice Updates seconds active for each member in the registry since the last update epoch
      * @dev manages a lastActivityUpdate state variable to update activity based on last update epoch.
      * However for new members it should update seconds based each member startDate.

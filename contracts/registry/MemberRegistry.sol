@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@prb/math/src/UD60x18.sol";
-
 // import "hardhat/console.sol";
 
 /**
@@ -78,8 +76,9 @@ abstract contract MemberRegistry {
      * @notice emitted after the an existing member is updated
      * @param _member member address
      * @param _activityMultiplier new member activity multiplier
+     * @param _startDate timestamp the member started activities in seconds
      */
-    event UpdateMember(address indexed _member, uint32 _activityMultiplier);
+    event UpdateMember(address indexed _member, uint32 _activityMultiplier, uint32 _startDate);
     /**
      * @notice emitted after each time a member registry activity is updated
      * @param _member member address
@@ -132,7 +131,7 @@ abstract contract MemberRegistry {
         Member storage member = members[memberIdxs[_member] - 1];
         member.activityMultiplier = _activityMultiplier;
 
-        emit UpdateMember(_member, _activityMultiplier);
+        emit UpdateMember(_member, _activityMultiplier, member.startDate);
     }
 
     /**
@@ -143,24 +142,24 @@ abstract contract MemberRegistry {
      */
     function _updateSecondsActive() internal virtual {
         uint32 currentDate = uint32(block.timestamp);
+        uint256 membersLength = totalMembers();
         // update struct with total seconds active and seconds in last claim
-        uint256 i;
-        for (i = 0; i < members.length; ) {
+        for (uint256 i = 0; i < membersLength; ) {
             Member storage _member = members[i];
             uint32 newSecondsActive = 0;
             if (_member.activityMultiplier > 0) {
                 uint32 initDate = _member.secondsActive > 0 ? lastActivityUpdate : _member.startDate;
-                uint256 activeSeconds = currentDate - initDate;
+                uint256 totalSeconds = currentDate - initDate;
                 // multiply by modifier and divide by 100 to get modifier % of seconds
-                newSecondsActive = uint32((activeSeconds * _member.activityMultiplier) / 100);
+                newSecondsActive = uint32((totalSeconds * _member.activityMultiplier) / 100);
             }
             _member.secondsActive += newSecondsActive;
             emit UpdateMemberSeconds(_member.account, newSecondsActive);
             unchecked {
-                i++; // gas optimization: very unlikely to overflow
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
-        emit RegistryActivityUpdate(currentDate, i);
+        emit RegistryActivityUpdate(currentDate, membersLength);
         lastActivityUpdate = currentDate;
     }
 
@@ -201,12 +200,13 @@ abstract contract MemberRegistry {
         address[] memory _members = new address[](members.length);
         uint32[] memory _activityMultipliers = new uint32[](members.length);
         uint32[] memory _startDates = new uint32[](members.length);
-        for (uint256 i = 0; i < members.length; ) {
+        uint256 membersLength = totalMembers();
+        for (uint256 i = 0; i < membersLength; ) {
             _members[i] = members[i].account;
             _activityMultipliers[i] = members[i].activityMultiplier;
             _startDates[i] = members[i].startDate;
             unchecked {
-                i++;
+                ++i;
             }
         }
         return (_members, _activityMultipliers, _startDates);
