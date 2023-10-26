@@ -240,7 +240,7 @@ const config: HardhatUserConfig = {
           // https://hardhat.org/hardhat-network/#solidity-optimizer-support
           optimizer: {
             enabled: true,
-            runs: 200, // 800
+            runs: 10, // Trade-off to avoid getting Contract code size warnings
           },
         },
       },
