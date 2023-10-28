@@ -72,7 +72,7 @@ contract SplitMain is ISplitMain {
      * STORAGE - CONSTANTS & IMMUTABLES
      */
 
-    /// @notice constant to scale uints into percentages (1e6 == 100%)
+    /// @notice constant to scale UINT values into percentages (1e6 == 100%)
     uint256 public constant PERCENTAGE_SCALE = 1e6;
     /// @notice maximum distributor fee; 1e5 = 10% * PERCENTAGE_SCALE
     uint256 internal constant MAX_DISTRIBUTOR_FEE = 1e5;

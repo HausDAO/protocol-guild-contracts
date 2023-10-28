@@ -24,9 +24,9 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     }
 
     /**
-     * @notice Initializs the registry contract
+     * @notice Initializes the registry contract
      * @dev Initialization parameters are abi-encoded through the NetworkRegistrySummoner contract.
-     * It should also call initialzer methods from parent contracts
+     * It should also call initializer methods from parent contracts
      * @param _initializationParams abi-encoded parameters
      */
     function initialize(bytes memory _initializationParams) external;
@@ -91,7 +91,8 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
 
     /**
      * @notice Adds a new set of members to the registry and sync with replicas
-     * @dev It should forward messages to sync all registered replicas
+     * @dev Must be used only if registries are in sync. It can only be called by the main registry owner
+     * {validNetworkParams} verifies for matching network param sizes & {msg.value}
      * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
      * @param _members A list of member addresses to be added to the registry
      * @param _activityMultipliers Activity multipliers for each new member
@@ -118,7 +119,8 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
 
     /**
      * @notice Updates the activity multiplier for a set of existing members and sync with replicas
-     * @dev It should forward messages to sync all registered replicas
+     * @dev Must be used only if registries are in sync. It can only be called by the main registry owner
+     * {validNetworkParams} verifies for matching network param sizes & {msg.value}
      * {msg.value} must match the total fees required to pay the Connext relayer to execute messages on the destination
      * @param _members A list of existing members
      * @param _activityMultipliers New activity multipliers for each member
@@ -142,7 +144,7 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     function syncUpdateSecondsActive(uint32[] calldata _chainIds, uint256[] calldata _relayerFees) external payable;
 
     /**
-     * @notice Updates the 0xsplit distribution on all networks based on member activity during the last epoch.
+     * @notice Updates the 0xSplit distribution on all networks based on member activity during the last epoch.
      * @dev It should forward messages to sync all registered replicas
      * - The registry must hold the controller role of the 0xSplit contract
      * - Addresses in _sortedList must be in the member registry

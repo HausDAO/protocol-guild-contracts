@@ -41,14 +41,14 @@ contract NetworkRegistrySummoner {
         NetworkRegistry registry = NetworkRegistry(registryAddress);
         registry.initialize(_initializationParams);
         emit NetworkRegistrySummoned(registryAddress, _details, _initializationParams);
-        return address(registryAddress);
+        return registryAddress;
     }
 
     /**
      * @notice Summons a new NetworkRegistry deterministically using the create2 opcode
      * @dev Singleton contract must inherit NetworkRegistry
      * Using the same {_singleton} {salt} multiple time will revert
-     * @param _singleton NetoworkRegistry singleton contract address
+     * @param _singleton NetworkRegistry singleton contract address
      * @param _details registry name/details as string
      * @param _initializationParams abi-encoded parameters used to setup the registry
      * @param _saltNonce unique salt nonce for the contract deployment

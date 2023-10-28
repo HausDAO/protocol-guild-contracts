@@ -50,7 +50,7 @@ contract ConnextMock {
 
     /**
      * @notice Emitted when `xcall` is called on the origin domain of a transfer.
-     * @param transferId - The unique identifier of the crosschain transfer.
+     * @param transferId - The unique identifier of the cross-chain transfer.
      * @param nonce - The bridge nonce of the transfer on the origin domain.
      * @param messageHash - The hash of the message bytes (containing all transfer info) that were bridged.
      * @param params - The `TransferInfo` provided to the function.
@@ -125,7 +125,7 @@ contract ConnextMock {
      * to this chain), we will custody the tokens here.
      *
      * @param _params - The TransferInfo arguments.
-     * @return bytes32 - The transfer ID of the newly created crosschain transfer.
+     * @return bytes32 - The transfer ID of the newly created cross-chain transfer.
      */
     function _xcall(
         TransferInfo memory _params,
@@ -256,7 +256,7 @@ contract ConnextMock {
             }
         }
 
-        // Send the crosschain message.
+        // Send the cross-chain message.
         _sendMessageAndEmit(
             transferId,
             _params,

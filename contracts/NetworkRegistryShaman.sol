@@ -2,10 +2,13 @@
 pragma solidity ^0.8.13;
 
 import { IBaal } from "@daohaus/baal-contracts/contracts/interfaces/IBaal.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { NetworkRegistry } from "./NetworkRegistry.sol";
 
 // import "hardhat/console.sol";
+
+error NetworkRegistryShaman_NotManagerShaman();
 
 /**
  * @title A cross-chain network registry and Baal shaman module to distribute funds escrowed in 0xSplit based
@@ -30,24 +33,27 @@ contract NetworkRegistryShaman is NetworkRegistry {
     IBaal public baal;
     /// @notice The amount of shares to mint to new members
     uint256 public sharesToMint;
-    /// @notice Wether or not to burn shares if a memeber activityMultiplier is set to zero
+    /// @notice Wether or not to burn shares if a member activityMultiplier is set to zero
     bool public burnShares;
 
     /**
      * @notice A modifier to check if the registry has been setup as a manager shaman module
      */
     modifier isManagerShaman() {
-        if (isMainRegistry()) {
-            require(
-                address(baal) != address(0) && baal.isManager(address(this)),
-                "NetworkRegistryShaman: !init || ! manager"
-            );
-        }
+        if (!isMainRegistry() || address(baal) == address(0) || !baal.isManager(address(this)))
+            revert NetworkRegistryShaman_NotManagerShaman();
         _;
     }
 
+    // /**
+    //  * @notice emitted when the shaman config is updated
+    //  * @param _sharesToMint new amount of shares to mint to registered members
+    //  * @param _burnShares wether or not to burn shares to inactive members
+    //  */
+    // event ShamanConfigUpdated(uint256 _sharesToMint, bool _burnShares);
+
     /**
-     * @notice Initializs the registry shaman contract
+     * @notice Initializes the registry shaman contract
      * @dev Initialization parameters are abi-encoded through the NetworkRegistrySummoner contract
      * @param _initializationParams abi-encoded parameters
      */
@@ -79,11 +85,14 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @notice Updates shaman config parameters
      * @dev Must only be called by owner or updater (latter should never apply)
      * @param _sharesToMint The amount of shares to mint to new members
-     * @param _burnShares Wether or not to burn shares if a memeber activityMultiplier is set to zero
+     * @param _burnShares Wether or not to burn shares if a member activityMultiplier is set to zero
      */
     function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwnerOrUpdater {
         burnShares = _burnShares;
         sharesToMint = _sharesToMint;
+        // TODO: temporarily disabled to avoid reaching maximum contract size.
+        // This should be enabled in the next iteration
+        // emit ShamanConfigUpdated(sharesToMint, burnShares);
     }
 
     /**
@@ -99,13 +108,11 @@ contract NetworkRegistryShaman is NetworkRegistry {
         uint32 _startDate
     ) internal override isManagerShaman {
         super._setNewMember(_member, _activityMultiplier, _startDate);
-        if (isMainRegistry()) {
-            address[] memory _receivers = new address[](1);
-            _receivers[0] = _member;
-            uint256[] memory _amounts = new uint256[](1);
-            _amounts[0] = sharesToMint;
-            baal.mintShares(_receivers, _amounts);
-        }
+        address[] memory _receivers = new address[](1);
+        _receivers[0] = _member;
+        uint256[] memory _amounts = new uint256[](1);
+        _amounts[0] = sharesToMint;
+        baal.mintShares(_receivers, _amounts);
     }
 
     /**
@@ -116,12 +123,14 @@ contract NetworkRegistryShaman is NetworkRegistry {
      */
     function _updateMember(address _member, uint32 _activityMultiplier) internal override isManagerShaman {
         super._updateMember(_member, _activityMultiplier);
-        if (_activityMultiplier == 0 && isMainRegistry() && burnShares) {
-            address[] memory _from = new address[](1);
-            _from[0] = _member;
-            uint256[] memory _amounts = new uint256[](1);
-            _amounts[0] = sharesToMint;
-            baal.burnShares(_from, _amounts);
+        address[] memory _to = new address[](1);
+        _to[0] = _member;
+        uint256[] memory _amounts = new uint256[](1);
+        _amounts[0] = sharesToMint;
+        if (_activityMultiplier > 0 && IERC20(baal.sharesToken()).balanceOf(_member) == 0) {
+            baal.mintShares(_to, _amounts);
+        } else if (_activityMultiplier == 0 && burnShares) {
+            baal.burnShares(_to, _amounts);
         }
     }
 }

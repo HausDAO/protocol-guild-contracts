@@ -238,9 +238,7 @@ describe("NetworkRegistry E2E tests", function () {
 
       // Validate member's percent allocation
       const calcContributions = await Promise.all(
-        l1Splits._receivers.map(
-          async (member: string) => await l1NetworkRegistry["calculateContributionOf(address)"](member),
-        ),
+        l1Splits._receivers.map(async (member: string) => await l1NetworkRegistry["calculateContributionOf"](member)),
       );
       const totalContributions = await l1NetworkRegistry.calculateTotalContributions();
 
@@ -376,9 +374,7 @@ describe("NetworkRegistry E2E tests", function () {
 
       // Validate member's percent allocation
       const calcContributions = await Promise.all(
-        l1Splits._receivers.map(
-          async (member: string) => await l1NetworkRegistry["calculateContributionOf(address)"](member),
-        ),
+        l1Splits._receivers.map(async (member: string) => await l1NetworkRegistry["calculateContributionOf"](member)),
       );
       const totalContributions = await l1NetworkRegistry.calculateTotalContributions();
 

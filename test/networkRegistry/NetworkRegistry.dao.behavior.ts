@@ -304,7 +304,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
       expect(await l2NetworkRegistry.owner()).to.be.equal(ethers.constants.AddressZero);
       expect(await l1SplitMain.getController(l1SplitAddress)).to.be.equal(l1NetworkRegistry.address);
       expect(await l2Registry.splitMain.getController(l2SplitAddress)).to.be.equal(l2NetworkRegistry.address);
-      expect(await l1NetworkRegistry.networkRegistry(replicaChainId)).to.have.ordered.members([
+      expect(await l1NetworkRegistry.replicaRegistry(replicaChainId)).to.have.ordered.members([
         replicaDomainId,
         l2NetworkRegistry.address,
         ethers.constants.AddressZero,
@@ -419,9 +419,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
 
       // Validate member's percent allocation
       const calcContributions = await Promise.all(
-        l1Splits._receivers.map(
-          async (member: string) => await l1NetworkRegistry["calculateContributionOf(address)"](member),
-        ),
+        l1Splits._receivers.map(async (member: string) => await l1NetworkRegistry["calculateContributionOf"](member)),
       );
       const totalContributions = await l1NetworkRegistry.calculateTotalContributions();
 
@@ -582,9 +580,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
 
       // Validate member's percent allocation
       const calcContributions = await Promise.all(
-        l1Splits._receivers.map(
-          async (member: string) => await l1NetworkRegistry["calculateContributionOf(address)"](member),
-        ),
+        l1Splits._receivers.map(async (member: string) => await l1NetworkRegistry["calculateContributionOf"](member)),
       );
       const totalContributions = await l1NetworkRegistry.calculateTotalContributions();
 
