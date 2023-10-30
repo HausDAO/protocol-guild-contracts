@@ -10,8 +10,6 @@ import { IMemberRegistry, INetworkMemberRegistry, ISplitManager } from "./interf
 import { ISplitMain } from "./interfaces/ISplitMain.sol";
 import { MemberRegistry } from "./registry/MemberRegistry.sol";
 
-// import "hardhat/console.sol";
-
 /**
  * CUSTOM ERRORS
  */
@@ -557,11 +555,11 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _startDates
     ) public onlyUpdater {
         for (uint256 i = 0; i < _members.length; ) {
-            uint256 memberId = memberIdxs[_members[i]];
+            uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
                 _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
             } else {
-                Member storage member = members[memberId - 1];
+                Member storage member = _getMemberById(memberId);
                 // overrides member startDate and syncs it with the main registry
                 member.startDate = _startDates[i];
                 _updateMember(_members[i], _activityMultipliers[i]);
