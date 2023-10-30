@@ -45,12 +45,12 @@ contract NetworkRegistryShaman is NetworkRegistry {
         _;
     }
 
-    // /**
-    //  * @notice emitted when the shaman config is updated
-    //  * @param _sharesToMint new amount of shares to mint to registered members
-    //  * @param _burnShares wether or not to burn shares to inactive members
-    //  */
-    // event ShamanConfigUpdated(uint256 _sharesToMint, bool _burnShares);
+    /**
+     * @notice emitted when the shaman config is updated
+     * @param _sharesToMint new amount of shares to mint to registered members
+     * @param _burnShares wether or not to burn shares to inactive members
+     */
+    event ShamanConfigUpdated(uint256 _sharesToMint, bool _burnShares);
 
     /**
      * @notice Initializes the registry shaman contract
@@ -90,9 +90,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
     function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwnerOrUpdater {
         burnShares = _burnShares;
         sharesToMint = _sharesToMint;
-        // TODO: temporarily disabled to avoid reaching maximum contract size.
-        // This should be enabled in the next iteration
-        // emit ShamanConfigUpdated(sharesToMint, burnShares);
+        emit ShamanConfigUpdated(sharesToMint, burnShares);
     }
 
     /**
