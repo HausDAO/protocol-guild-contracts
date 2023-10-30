@@ -49,7 +49,7 @@ abstract contract MemberRegistry {
         uint32 activityMultiplier;
     }
 
-    /// @dev Data model to store a registry of Members 
+    /// @dev Data model to store a registry of Members
     struct Members {
         /// @notice list of members in the registry
         Member[] db;
@@ -185,7 +185,7 @@ abstract contract MemberRegistry {
      * @return Member metadata
      */
     function _getMemberByIndex(uint256 _memberIdx) internal view returns (Member storage) {
-        if (members.db.length >= _memberIdx) revert Member__IndexOutOfBounds();
+        if (_memberIdx >= members.db.length) revert Member__IndexOutOfBounds();
         return members.db[_memberIdx];
     }
 

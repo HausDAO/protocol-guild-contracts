@@ -32,7 +32,6 @@ struct MemberContribution {
  * member's metadata
  */
 library PGContribCalculator {
-
     /**
      * @notice Calculate split allocations
      * @dev Verifies if the address list is sorted, has no duplicates and is valid.
@@ -47,6 +46,7 @@ library PGContribCalculator {
         MemberRegistry.Members storage self,
         address[] memory _sortedList
     ) public view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
+        // solhint-disable-next-line var-name-mixedcase
         uint256 PERCENTAGE_SCALE = 1e6;
         uint256 activeMembers;
         uint256 total;
@@ -138,5 +138,4 @@ library PGContribCalculator {
     ) public pure returns (uint256) {
         return UD60x18.unwrap(UD60x18.wrap(_member.secondsActive).sqrt());
     }
-
 }

@@ -552,6 +552,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _activityMultipliers,
         uint32[] calldata _startDates
     ) public onlyUpdater {
+        if (_members.length != _activityMultipliers.length || _members.length != _startDates.length)
+            revert NetWorkRegistry__ParamsSizeMismatch();
         for (uint256 i = 0; i < _members.length; ) {
             uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
