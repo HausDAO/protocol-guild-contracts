@@ -12,11 +12,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface ISplitManager {
     /**
-     * @notice Calculate split allocations
+     * @notice Calculate 0xSplit allocations
      * @dev Verify if the address list is sorted, has no duplicates and is valid.
-     * Formula to calculate individual allocations:
-     *  - (SQRT(secondsActive * activityMultiplier) * PERCENTAGE_SCALE) / totalContributions
-     *  - Total allocations from all members must be equal to 0xSplit PERCENTAGE_SCALE
+     * The function could use on-chain metadata or off-chain data via oracles.
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @return _receivers list of eligible recipients (non-zero allocation) for the next split distribution
      * @return _percentAllocations list of split allocations for each eligible recipient
