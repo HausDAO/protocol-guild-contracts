@@ -18,11 +18,21 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     log: true,
   });
 
+  const calculatorLibraryDeployed = await deploy("PGContribCalculator", {
+    contract: "PGContribCalculator",
+    from: deployer,
+    args: [],
+    log: true,
+  });
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const registrySingletonDeployed = await deploy("NetworkRegistry", {
     contract: "NetworkRegistry",
     from: deployer,
     args: [],
+    libraries: {
+      PGContribCalculator: calculatorLibraryDeployed.address,
+    },
     log: true,
   });
 
@@ -31,6 +41,9 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     contract: "NetworkRegistryShaman",
     from: deployer,
     args: [],
+    libraries: {
+      PGContribCalculator: calculatorLibraryDeployed.address,
+    },
     log: true,
   });
 
