@@ -7,6 +7,7 @@ import {
   NetworkRegistry,
   NetworkRegistryShaman,
   NetworkRegistrySummoner,
+  PGContribCalculator,
   SplitMain,
   TestERC20,
 } from "../../types";
@@ -21,6 +22,7 @@ export type User = {
 };
 
 export type NetworkRegistryProps = {
+  calculatorLibrary: PGContribCalculator;
   connext: ConnextMock;
   splitMain: SplitMain;
   summoner: NetworkRegistrySummoner;
@@ -54,6 +56,11 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       deployed["NetworkRegistrySummoner"].address,
       signer,
     )) as NetworkRegistrySummoner;
+    const l1CalculatorLibrary = (await ethers.getContractAt(
+      "PGContribCalculator",
+      deployed["PGContribCalculator"].address,
+      signer,
+    )) as PGContribCalculator;
     const l1RegistrySingleton = (await ethers.getContractAt(
       "NetworkRegistry",
       deployed["NetworkRegistry"].address,
@@ -96,10 +103,20 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       signer,
     )) as NetworkRegistrySummoner;
 
+    const calculatorLibraryDeployed = await deployments.deploy("PGContribCalculator", {
+      contract: "PGContribCalculator",
+      from: deployer,
+      args: [],
+      log: true,
+    });
+
     const pgNetRegistryDeployed = await deployments.deploy("NetworkRegistry", {
       contract: "NetworkRegistry",
       from: deployer,
       args: [],
+      libraries: {
+        PGContribCalculator: calculatorLibraryDeployed.address,
+      },
       log: false,
     });
     const pgRegistrySingleton = (await ethers.getContractAt(
@@ -112,6 +129,9 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       contract: "NetworkRegistryShaman",
       from: deployer,
       args: [],
+      libraries: {
+        PGContribCalculator: calculatorLibraryDeployed.address,
+      },
       log: false,
     });
     const pgRegistryShamanSingleton = (await ethers.getContractAt(
@@ -119,6 +139,12 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       pgregistryShamanDeployed.address,
       signer,
     )) as NetworkRegistryShaman;
+
+    const l2CalculatorLibrary = (await ethers.getContractAt(
+      "PGContribCalculator",
+      calculatorLibraryDeployed.address,
+      signer,
+    )) as PGContribCalculator;
 
     // Deploy 0xSplit Main contract on L2
     const l2splitMainDeployed = await deployments.deploy("SplitMain", {
@@ -147,6 +173,7 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
     const l2Token = (await ethers.getContractAt("TestERC20", l2TokenDeployed.address, signer)) as TestERC20;
 
     return {
+      calculatorLibrary: l1CalculatorLibrary,
       connext,
       splitMain: l1SplitMain,
       summoner: l1Summoner,
@@ -154,6 +181,7 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       pgRegistryShamanSingleton: l1RegistryShamanSingleton,
       token: l1Token,
       l2: {
+        calculatorLibrary: l2CalculatorLibrary,
         connext,
         splitMain: l2splitMain,
         summoner,

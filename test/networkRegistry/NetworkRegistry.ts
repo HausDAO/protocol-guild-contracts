@@ -5,7 +5,14 @@ import { BigNumber, Event } from "ethers";
 import { ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
 import { PERCENTAGE_SCALE } from "../../constants";
-import { ConnextMock, NetworkRegistry, NetworkRegistryShaman, NetworkRegistrySummoner, SplitMain } from "../../types";
+import {
+  ConnextMock,
+  NetworkRegistry,
+  NetworkRegistryShaman,
+  NetworkRegistrySummoner,
+  PGContribCalculator,
+  SplitMain,
+} from "../../types";
 import { Member } from "../types";
 import { deploySplit, generateMemberBatch, hashSplit, summonRegistry } from "../utils";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
@@ -15,6 +22,7 @@ describe("NetworkRegistry", function () {
   let registrySingleton: NetworkRegistry;
   let registryShamanSingleton: NetworkRegistryShaman;
   let connext: ConnextMock;
+  let l1CalculatorLibrary: PGContribCalculator;
   let l1SplitMain: SplitMain;
   let l1SplitAddress: string;
   let l2Registry: NetworkRegistryProps;
@@ -40,6 +48,7 @@ describe("NetworkRegistry", function () {
     summoner = setup.summoner;
     registrySingleton = setup.pgRegistrySingleton;
     registryShamanSingleton = setup.pgRegistryShamanSingleton;
+    l1CalculatorLibrary = setup.calculatorLibrary;
     connext = setup.connext;
     l1SplitMain = setup.splitMain;
     l2Registry = setup.l2;
@@ -699,12 +708,12 @@ describe("NetworkRegistry", function () {
 
       await expect(
         l1NetworkRegistry.updateSplits(members.slice(0, 5), splitDistributorFee),
-      ).to.be.revertedWithCustomError(l1NetworkRegistry, "InvalidSplit__MemberListSizeMismatch");
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "InvalidSplit__MemberListSizeMismatch");
       await expect(l1NetworkRegistry.updateSplits([deployer, ...members.slice(1)], splitDistributorFee))
-        .to.be.revertedWithCustomError(l1NetworkRegistry, "Member__NotRegistered")
+        .to.be.revertedWithCustomError(l1CalculatorLibrary, "Member__NotRegistered")
         .withArgs(deployer);
       await expect(l1NetworkRegistry.updateSplits(members, splitDistributorFee)).to.be.revertedWithCustomError(
-        l1NetworkRegistry,
+        l1CalculatorLibrary,
         "InvalidSplit__AccountsOutOfOrder",
       );
     });
@@ -1196,11 +1205,14 @@ describe("NetworkRegistry", function () {
 
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
-      expect(await l1NetworkRegistry.memberIdxs(member)).to.equal(0);
-      expect(await l2NetworkRegistry.memberIdxs(member)).to.equal(0);
-
-      const l1CurrentMemberId = await l1NetworkRegistry.totalMembers();
-      const l2CurrentMemberId = await l2NetworkRegistry.totalMembers();
+      await expect(l1NetworkRegistry.getMember(member)).to.revertedWithCustomError(
+        l1NetworkRegistry,
+        "Member__NotRegistered",
+      );
+      await expect(l2NetworkRegistry.getMember(member)).to.revertedWithCustomError(
+        l2NetworkRegistry,
+        "Member__NotRegistered",
+      );
 
       const syncTx = await l1NetworkRegistry.syncSetNewMember(
         member,
@@ -1226,8 +1238,8 @@ describe("NetworkRegistry", function () {
         .to.emit(l2NetworkRegistry, "NewMember")
         .withArgs(member, Number(startDate), activityMultiplier);
 
-      const l1Member = await l1NetworkRegistry.members(l1CurrentMemberId);
-      const l2Member = await l2NetworkRegistry.members(l2CurrentMemberId);
+      const l1Member = await l1NetworkRegistry.getMember(member);
+      const l2Member = await l2NetworkRegistry.getMember(member);
       expect(l1Member).to.eql(l2Member);
       expect(await l1NetworkRegistry.getMember(member)).to.eql(l1Member);
       expect(await l1NetworkRegistry.totalMembers()).to.equal(1);
@@ -1254,7 +1266,7 @@ describe("NetworkRegistry", function () {
       );
       await syncNewTx.wait();
 
-      const updatedMultiplier = activityMultiplier / 2; // half-time
+      const updatedMultiplier = activityMultiplier / 2; // part-time
 
       const syncTx = await l1NetworkRegistry.syncUpdateMember(member, updatedMultiplier, chainIds, relayerFees, {
         value: totalValue,
