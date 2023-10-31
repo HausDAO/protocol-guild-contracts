@@ -69,7 +69,7 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     return;
   }
-  console.error("Not supported Network!");
+  console.error("PGRegistry: Not supported Network!");
 };
 
 export default deployFn;

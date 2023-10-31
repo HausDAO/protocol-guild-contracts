@@ -8,9 +8,8 @@ import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
 import { IMemberRegistry, INetworkMemberRegistry, ISplitManager } from "./interfaces/INetworkMemberRegistry.sol";
 import { ISplitMain } from "./interfaces/ISplitMain.sol";
+import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
 import { MemberRegistry } from "./registry/MemberRegistry.sol";
-
-// import "hardhat/console.sol";
 
 /**
  * CUSTOM ERRORS
@@ -26,11 +25,6 @@ error NetworkRegistry__OnlyUpdater();
 error NetworkRegistry__ValueSentLessThanRelayerFees();
 /// @notice No replica registered on network with ID `_chainId`
 error NetworkRegistry__NoReplicaOnNetwork(uint32 _chainId);
-/// @notice Member list size doesn't match the current amount of members in the registry
-error InvalidSplit__MemberListSizeMismatch();
-/// @notice Member list must be sorted in ascending order
-/// @param _index index where a member address is not properly sorted
-error InvalidSplit__AccountsOutOfOrder(uint256 _index);
 /// @notice Control of 0xSplit contract hasn't been transferred to the registry
 error Split_ControlNotHandedOver();
 /// @notice Function array parameter size mismatch
@@ -58,6 +52,8 @@ error NetworkRegistry__InvalidOrImmutableSplit();
  *   become inaccessible.
  */
 contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegistry, MemberRegistry {
+    using PGContribCalculator for MemberRegistry.Members;
+
     /// @notice Connext contract in the current domain
     IConnext public connext;
     /// @notice Connext domain ID where the updater contract is deployed
@@ -556,12 +552,14 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _activityMultipliers,
         uint32[] calldata _startDates
     ) public onlyUpdater {
+        if (_members.length != _activityMultipliers.length || _members.length != _startDates.length)
+            revert NetWorkRegistry__ParamsSizeMismatch();
         for (uint256 i = 0; i < _members.length; ) {
-            uint256 memberId = memberIdxs[_members[i]];
+            uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
                 _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
             } else {
-                Member storage member = members[memberId - 1];
+                Member storage member = _getMemberById(memberId);
                 // overrides member startDate and syncs it with the main registry
                 member.startDate = _startDates[i];
                 _updateMember(_members[i], _activityMultipliers[i]);
@@ -697,11 +695,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Calculate split allocations
-     * @dev Verifies if the address list is sorted, has no duplicates and is valid.
-     * Formula to calculate individual allocations:
-     *  - (SQRT(secondsActive * activityMultiplier) * PERCENTAGE_SCALE) / totalContributions
-     *  - Total allocations from all members must be equal to 0xSplit PERCENTAGE_SCALE
+     * @notice Calculate 0xSplit allocations based on member calculated contributions
+     * @dev It uses the PGContribCalculator library to calculate active member individual allocations.
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @return _receivers list of eligible recipients (non-zero allocation) for the next split distribution
      * @return _percentAllocations list of split allocations for each eligible recipient
@@ -709,90 +704,18 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     function calculate(
         address[] memory _sortedList
     ) public view virtual returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
-        uint256 activeMembers;
-        uint256 total;
-        address previous;
-
-        // verify list is current members and is sorted
-        if (_sortedList.length != members.length) revert InvalidSplit__MemberListSizeMismatch();
-        MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
-        for (uint256 i = 0; i < _sortedList.length; ) {
-            address memberAddress = _sortedList[i];
-            Member memory member = getMember(memberAddress);
-            if (previous >= memberAddress) revert InvalidSplit__AccountsOutOfOrder(i);
-
-            // ignore inactive members
-            if (member.activityMultiplier > 0) {
-                memberDistribution[i] = MemberContribution({
-                    receiverAddress: memberAddress,
-                    calcContribution: _calculateContributionOf(member)
-                });
-                // get the total seconds in the last period
-                // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
-                total += memberDistribution[i].calcContribution;
-                unchecked {
-                    // gas optimization: very unlikely to overflow
-                    activeMembers++;
-                }
-                previous = memberAddress;
-            }
-            unchecked {
-                ++i;
-            }
-        }
-
-        // define variables for split params
-        _receivers = new address[](activeMembers);
-        _percentAllocations = new uint32[](activeMembers);
-
-        // define variables for second loop
-        uint32 runningTotal;
-        uint256 nonZeroIndex; // index counter for non zero allocations
-        // fill 0xSplits arrays with sorted list
-        for (uint256 i = 0; i < _sortedList.length; ) {
-            if (memberDistribution[i].calcContribution > 0) {
-                _receivers[nonZeroIndex] = memberDistribution[i].receiverAddress;
-                _percentAllocations[nonZeroIndex] = uint32(
-                    (memberDistribution[i].calcContribution * PERCENTAGE_SCALE) / total
-                );
-
-                runningTotal += _percentAllocations[nonZeroIndex];
-                unchecked {
-                    nonZeroIndex++;
-                }
-            }
-            unchecked {
-                ++i;
-            }
-        }
-
-        // if there was any loss add it to the first account.
-        if (activeMembers > 0 && runningTotal != PERCENTAGE_SCALE) {
-            _percentAllocations[0] += uint32(PERCENTAGE_SCALE - runningTotal);
-        }
+        (_receivers, _percentAllocations) = members.calculate(_sortedList);
     }
 
     /**
      * @notice Calculates individual contribution based on member activity
-     * @dev Contribution is calculated as SQRT(member.secondsActive)
-     * However this function can be overridden to include other variables stored in state prior call
-     * (e.g.) off-chain data via oracles
-     * @param _member Member metadata
-     * @return calculated contribution as uin256 value
-     */
-    function _calculateContributionOf(Member memory _member) internal pure virtual returns (uint256) {
-        return UD60x18.unwrap(UD60x18.wrap(_member.secondsActive).sqrt());
-    }
-
-    /**
-     * @notice Calculates individual contribution based on member activity
-     * @dev It must call calculateContributionOf(Member memory)
+     * @dev It uses the PGContribCalculator library
      * @param _memberAddress member address
      * @return calculated contribution as uin256 value
      */
     function calculateContributionOf(address _memberAddress) public view returns (uint256) {
         Member memory member = getMember(_memberAddress);
-        return _calculateContributionOf(member);
+        return members.calculateContributionOf(member);
     }
 
     /**
@@ -803,8 +726,9 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     function calculateTotalContributions() public view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();
         for (uint256 i = 0; i < totalRegistryMembers; ) {
-            if (members[i].activityMultiplier > 0) {
-                total += _calculateContributionOf(members[i]);
+            Member memory member = _getMemberByIndex(i);
+            if (member.activityMultiplier > 0) {
+                total += members.calculateContributionOf(member);
                 unchecked {
                     ++i;
                 }
