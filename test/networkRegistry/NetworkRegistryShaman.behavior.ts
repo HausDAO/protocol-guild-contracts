@@ -364,7 +364,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       const burnShares = false;
       const batchEncoded = l1NetworkRegistry.interface.encodeFunctionData("setShamanConfig", [
         sharesToMint,
-        burnShares
+        burnShares,
       ]);
 
       const encodedAction = encodeMultiAction(
@@ -381,10 +381,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         daoSettings: defaultDAOSettings,
       });
       await tx_batch.wait();
-      await expect(tx_batch)
-        .to.emit(l1NetworkRegistry, "ShamanConfigUpdated")
-        .withArgs(sharesToMint, burnShares);
-
+      await expect(tx_batch).to.emit(l1NetworkRegistry, "ShamanConfigUpdated").withArgs(sharesToMint, burnShares);
     });
 
     it("Should sync update seconds active and update splits prior distribution", async () => {

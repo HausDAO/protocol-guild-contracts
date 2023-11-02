@@ -1073,57 +1073,53 @@ describe("NetworkRegistry", function () {
           startDate,
           [unregisteredReplicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
-          { value: defaultRelayerFee }
+          { value: defaultRelayerFee },
         ),
       )
-        .to.be
-        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
         .withArgs(unregisteredReplicaChainId);
       await expect(
-          l1NetworkRegistry.syncBatchNewMember(
-            [member, member2, member3],
-            [activityMultiplier, activityMultiplier, activityMultiplier],
-            [startDate, startDate, startDate],
-            [unregisteredReplicaChainId], // chainIds
-            [defaultRelayerFee], // relayerFees
-            { value: defaultRelayerFee }
-          ),
-        )
-          .to.be
-          .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
-          .withArgs(unregisteredReplicaChainId);
+        l1NetworkRegistry.syncBatchNewMember(
+          [member, member2, member3],
+          [activityMultiplier, activityMultiplier, activityMultiplier],
+          [startDate, startDate, startDate],
+          [unregisteredReplicaChainId], // chainIds
+          [defaultRelayerFee], // relayerFees
+          { value: defaultRelayerFee },
+        ),
+      )
+        .to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .withArgs(unregisteredReplicaChainId);
       await expect(
         l1NetworkRegistry.syncNetworkMemberRegistry(
           [unregisteredReplicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
-          { value: defaultRelayerFee }
+          { value: defaultRelayerFee },
         ),
       )
-        .to.be
-        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
         .withArgs(unregisteredReplicaChainId);
-      
+
       const tx = await l1NetworkRegistry.syncBatchNewMember(
         [member, member2, member3],
         [activityMultiplier, activityMultiplier, activityMultiplier],
         [startDate, startDate, startDate],
         [replicaChainId], // chainIds
         [defaultRelayerFee], // relayerFees
-        { value: defaultRelayerFee }
+        { value: defaultRelayerFee },
       );
       await tx.wait();
-      
+
       await expect(
         l1NetworkRegistry.syncUpdateMember(
           member,
           activityMultiplier,
           [unregisteredReplicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
-          { value: defaultRelayerFee }
+          { value: defaultRelayerFee },
         ),
       )
-        .to.be
-        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
         .withArgs(unregisteredReplicaChainId);
       await expect(
         l1NetworkRegistry.syncBatchUpdateMember(
@@ -1131,21 +1127,19 @@ describe("NetworkRegistry", function () {
           [activityMultiplier],
           [unregisteredReplicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
-          { value: defaultRelayerFee }
+          { value: defaultRelayerFee },
         ),
       )
-        .to.be
-        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
         .withArgs(unregisteredReplicaChainId);
       await expect(
         l1NetworkRegistry.syncUpdateSecondsActive(
           [unregisteredReplicaChainId], // chainIds
           [defaultRelayerFee], // relayerFees
-          { value: defaultRelayerFee }
+          { value: defaultRelayerFee },
         ),
       )
-        .to.be
-        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
         .withArgs(unregisteredReplicaChainId);
     });
 
@@ -1460,7 +1454,7 @@ describe("NetworkRegistry", function () {
       const batchL2Tx = await l2NetworkRegistry.batchNewMember(
         members1.map((m: Member) => m.account),
         members1.map((m: Member) => m.activityMultiplier),
-        members1.map((m: Member) => m.startDate)
+        members1.map((m: Member) => m.startDate),
       );
       await batchL2Tx.wait();
 
@@ -1476,9 +1470,9 @@ describe("NetworkRegistry", function () {
         .withArgs(transferId, parentDomainId, action, true, l1NetworkRegistry.address);
 
       for (let i = 0; i < members1.length; i++) {
-          await expect(tx)
-            .to.emit(l2NetworkRegistry, "UpdateMember")
-            .withArgs(members1[i].account, members1[i].activityMultiplier, Number(members1[i].startDate));
+        await expect(tx)
+          .to.emit(l2NetworkRegistry, "UpdateMember")
+          .withArgs(members1[i].account, members1[i].activityMultiplier, Number(members1[i].startDate));
       }
 
       for (let i = members1.length; i < newMembers.length; i++) {
