@@ -1060,6 +1060,95 @@ describe("NetworkRegistry", function () {
       ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ValueSentLessThanRelayerFees");
     });
 
+    it("Should not be to submit a sync message to an unregistered replica", async () => {
+      const [, , , member, member2, member3] = await getUnnamedAccounts();
+      const activityMultiplier = 100;
+      const startDate = await time.latest();
+      const unregisteredReplicaChainId = Number("0xdeadbeef");
+
+      await expect(
+        l1NetworkRegistry.syncSetNewMember(
+          member,
+          activityMultiplier,
+          startDate,
+          [unregisteredReplicaChainId], // chainIds
+          [defaultRelayerFee], // relayerFees
+          { value: defaultRelayerFee }
+        ),
+      )
+        .to.be
+        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .withArgs(unregisteredReplicaChainId);
+      await expect(
+          l1NetworkRegistry.syncBatchNewMember(
+            [member, member2, member3],
+            [activityMultiplier, activityMultiplier, activityMultiplier],
+            [startDate, startDate, startDate],
+            [unregisteredReplicaChainId], // chainIds
+            [defaultRelayerFee], // relayerFees
+            { value: defaultRelayerFee }
+          ),
+        )
+          .to.be
+          .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+          .withArgs(unregisteredReplicaChainId);
+      await expect(
+        l1NetworkRegistry.syncNetworkMemberRegistry(
+          [unregisteredReplicaChainId], // chainIds
+          [defaultRelayerFee], // relayerFees
+          { value: defaultRelayerFee }
+        ),
+      )
+        .to.be
+        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .withArgs(unregisteredReplicaChainId);
+      
+      const tx = await l1NetworkRegistry.syncBatchNewMember(
+        [member, member2, member3],
+        [activityMultiplier, activityMultiplier, activityMultiplier],
+        [startDate, startDate, startDate],
+        [replicaChainId], // chainIds
+        [defaultRelayerFee], // relayerFees
+        { value: defaultRelayerFee }
+      );
+      await tx.wait();
+      
+      await expect(
+        l1NetworkRegistry.syncUpdateMember(
+          member,
+          activityMultiplier,
+          [unregisteredReplicaChainId], // chainIds
+          [defaultRelayerFee], // relayerFees
+          { value: defaultRelayerFee }
+        ),
+      )
+        .to.be
+        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .withArgs(unregisteredReplicaChainId);
+      await expect(
+        l1NetworkRegistry.syncBatchUpdateMember(
+          [member],
+          [activityMultiplier],
+          [unregisteredReplicaChainId], // chainIds
+          [defaultRelayerFee], // relayerFees
+          { value: defaultRelayerFee }
+        ),
+      )
+        .to.be
+        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .withArgs(unregisteredReplicaChainId);
+      await expect(
+        l1NetworkRegistry.syncUpdateSecondsActive(
+          [unregisteredReplicaChainId], // chainIds
+          [defaultRelayerFee], // relayerFees
+          { value: defaultRelayerFee }
+        ),
+      )
+        .to.be
+        .revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NoReplicaOnNetwork")
+        .withArgs(unregisteredReplicaChainId);
+    });
+
     it("Should be able to update 0xSplit contract on a replica registry and get control over it", async () => {
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];
@@ -1347,6 +1436,52 @@ describe("NetworkRegistry", function () {
         .withArgs(transferId, parentDomainId, action, true, l1NetworkRegistry.address);
 
       for (let i = 0; i < newMembers.length; i++) {
+        await expect(tx)
+          .to.emit(l2NetworkRegistry, "NewMember")
+          .withArgs(newMembers[i].account, Number(newMembers[i].startDate), newMembers[i].activityMultiplier);
+      }
+    });
+
+    it("Should be able to fully sync an already initialized replica registry from current state in main", async () => {
+      const totalMembers = 10;
+      const newMembers = await generateMemberBatch(totalMembers);
+      const members1 = newMembers.slice(0, totalMembers / 2);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
+      const startDates = newMembers.map((m: Member) => m.startDate);
+      const chainIds = [replicaChainId];
+      const relayerFees = [defaultRelayerFee];
+      const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const batchTx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
+      await batchTx.wait();
+
+      // Adding a few members on l2 replica before and then sync registries
+      const batchL2Tx = await l2NetworkRegistry.batchNewMember(
+        members1.map((m: Member) => m.account),
+        members1.map((m: Member) => m.activityMultiplier),
+        members1.map((m: Member) => m.startDate)
+      );
+      await batchL2Tx.wait();
+
+      const tx = await l1NetworkRegistry.syncNetworkMemberRegistry(chainIds, relayerFees, { value: totalValue });
+      const receipt = await tx.wait();
+
+      await expect(tx).to.emit(l1NetworkRegistry, "SyncMessageSubmitted");
+      const event = receipt.events?.find((e: Event) => e.event === "SyncMessageSubmitted");
+      const transferId = event?.topics?.[1];
+      const action = event?.topics?.[3].substring(0, 10);
+      await expect(tx)
+        .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+        .withArgs(transferId, parentDomainId, action, true, l1NetworkRegistry.address);
+
+      for (let i = 0; i < members1.length; i++) {
+          await expect(tx)
+            .to.emit(l2NetworkRegistry, "UpdateMember")
+            .withArgs(members1[i].account, members1[i].activityMultiplier, Number(members1[i].startDate));
+      }
+
+      for (let i = members1.length; i < newMembers.length; i++) {
         await expect(tx)
           .to.emit(l2NetworkRegistry, "NewMember")
           .withArgs(newMembers[i].account, Number(newMembers[i].startDate), newMembers[i].activityMultiplier);
