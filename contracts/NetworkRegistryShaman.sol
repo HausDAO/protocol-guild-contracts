@@ -87,7 +87,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @param _sharesToMint The amount of shares to mint to new members
      * @param _burnShares Wether or not to burn shares if a member activityMultiplier is set to zero
      */
-    function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwnerOrUpdater {
+    function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwner {
         burnShares = _burnShares;
         sharesToMint = _sharesToMint;
         emit ShamanConfigUpdated(sharesToMint, burnShares);
