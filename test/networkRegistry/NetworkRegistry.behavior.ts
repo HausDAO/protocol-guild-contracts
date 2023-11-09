@@ -62,7 +62,9 @@ describe("NetworkRegistry E2E tests", function () {
 
     const signer = await ethers.getSigner(users.owner.address);
     const accounts = await getUnnamedAccounts();
-    members = accounts.slice(0, splitConfig.percentAllocations.length);
+    members = accounts
+      .slice(0, splitConfig.percentAllocations.length)
+      .sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
 
     // Deploy Split on L1
     l1SplitAddress = await deploySplit(

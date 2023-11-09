@@ -93,7 +93,9 @@ describe("NetworkRegistry + DAO E2E tests", function () {
 
     const signer = await ethers.getSigner(users.owner.address);
     const accounts = await getUnnamedAccounts();
-    members = accounts.slice(0, splitConfig.percentAllocations.length);
+    members = accounts
+      .slice(0, splitConfig.percentAllocations.length)
+      .sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
 
     // NOTICE: Fund the DAO Safe so it can pay for relayer fees
     await signer.sendTransaction({
