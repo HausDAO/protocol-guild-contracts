@@ -59,7 +59,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
 
   let sampleSplit: SampleSplit[];
 
-  const CUTOFF_DATE = Date.parse("01 Jul 2023") / 1000;
+  const CUTOFF_DATE = Date.parse("2023-07-01T00:00:00.000-05:00") / 1000;
 
   this.beforeAll(async function () {
     sampleSplit = await readSampleSplit("pgsplit.csv");
@@ -249,7 +249,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
 
       // NOTICE: set the block timestamp to a month before cutoff date
       await time.setNextBlockTimestamp(
-        Date.parse("01 Jun 2023") / 1000 -
+        Date.parse("2023-06-01T00:00:00.000-05:00") / 1000 -
           defaultDAOSettings.VOTING_PERIOD_IN_SECONDS * 2 - // voting + grace period before execution
           3, // 3 actions / second - submit proposal -> vote -> execute
       );
