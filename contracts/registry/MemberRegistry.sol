@@ -91,7 +91,7 @@ abstract contract MemberRegistry {
     /**
      * @notice emitted after each time a member registry activity is updated
      * @param _memberAddress member address
-     * @param _secondsActive updated activity in seconds since last registry update
+     * @param _secondsActive member activity in seconds since last registry update
      */
     event UpdateMemberSeconds(address indexed _memberAddress, uint32 _secondsActive);
     /**
@@ -219,10 +219,8 @@ abstract contract MemberRegistry {
      * @param _memberAddress member address
      * @return member metadata
      */
-    function getMember(address _memberAddress) public view returns (Member memory) {
-        uint256 memberId = _getMemberId(_memberAddress);
-        if (memberId == 0) revert Member__NotRegistered(_memberAddress);
-        return _getMemberById(memberId);
+    function getMember(address _memberAddress) public view returns (Member memory member) {
+        member = _getMember(_memberAddress);
     }
 
     /**
