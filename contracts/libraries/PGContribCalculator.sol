@@ -14,15 +14,6 @@ error InvalidSplit__AccountsOutOfOrder(uint256 _index);
 /// @param _member member address
 error Member__NotRegistered(address _member);
 
-/// @dev used to store individual members contributions prior getting overall split percentages
-struct MemberContribution {
-    /// @notice member address
-    address receiverAddress;
-    /// @notice member calculated contribution
-    /// @dev use calculateContributionOf(member)
-    uint256 calcContribution;
-}
-
 /**
  * @title A helper library to calculate member contributions and 0xSplit allocations using
  * the Protocol Guild MemberRegistry
@@ -32,12 +23,22 @@ struct MemberContribution {
  * member's metadata
  */
 library PGContribCalculator {
+    /// @dev used to store individual members contributions prior getting overall split percentages
+    struct MemberContribution {
+        /// @notice member address
+        address receiverAddress;
+        /// @notice member calculated contribution
+        /// @dev use calculateContributionOf(member)
+        uint256 calcContribution;
+    }
+
     /**
      * @notice Calculate split allocations
      * @dev Verifies if the address list is sorted, has no duplicates and is valid.
      * Formula to calculate individual allocations:
      *  - (SQRT(secondsActive * activityMultiplier) * PERCENTAGE_SCALE) / totalContributions
      *  - Total allocations from all members must be equal to 0xSplit PERCENTAGE_SCALE
+     * The goal of the weighting formula is to reduce the total variance range of every member weight (hence using SQRT)
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @return _receivers list of eligible recipients (non-zero allocation) for the next split distribution
      * @return _percentAllocations list of split allocations for each eligible recipient
@@ -130,7 +131,7 @@ library PGContribCalculator {
      * @notice Calculates individual contribution based on member activity
      * @dev Contribution is calculated as SQRT(member.secondsActive)
      * @param _member Member metadata
-     * @return calculated contribution as uin256 value
+     * @return calculated contribution as uint256 value
      */
     function calculateContributionOf(
         MemberRegistry.Members storage /*self*/,
