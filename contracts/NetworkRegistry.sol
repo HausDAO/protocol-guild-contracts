@@ -133,7 +133,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         for (uint256 i = 0; i < _chainIds.length; ) {
             totalRelayerFees += _relayerFees[i];
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
         if (msg.value < totalRelayerFees) revert NetworkRegistry__ValueSentLessThanRelayerFees();
@@ -345,7 +345,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         for (uint256 i = 0; i < _chainIds.length; ) {
             _execSyncAction(_action, _callData, _chainIds[i], _relayerFees[i]);
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
@@ -438,7 +438,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         for (uint256 i = 0; i < _members.length; ) {
             _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
@@ -495,7 +495,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         for (uint256 i = 0; i < _members.length; ) {
             _updateMember(_members[i], _activityMultipliers[i]);
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
@@ -564,7 +564,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
                 _updateMember(_members[i], _activityMultipliers[i]);
             }
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
@@ -728,11 +728,19 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             Member memory member = _getMemberByIndex(i);
             if (member.activityMultiplier > 0) {
                 total += members.calculateContributionOf(member);
-                unchecked {
-                    ++i;
-                }
+            }
+            unchecked {
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
+    }
+
+    /**
+     * @notice Returns True if the registry has been setup as Main or Replica
+     * @dev Verifies if updater params are set to zero
+     */
+    function isMainRegistry() public view returns (bool) {
+        return updaterDomain == 0 && updater == address(0);
     }
 
     /**
@@ -770,14 +778,6 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             _newRegistry.domainId,
             _newRegistry.delegate
         );
-    }
-
-    /**
-     * @notice Returns True if the registry has been setup as Main or Replica
-     * @dev Verifies if updater params are set to zero
-     */
-    function isMainRegistry() public view returns (bool) {
-        return updaterDomain == 0 && updater == address(0);
     }
 
     /**
@@ -824,7 +824,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             bytes memory callData = abi.encode(action, _splitsMain[i], _splits[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
@@ -858,7 +858,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             bytes memory callData = abi.encode(action, _newControllers[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
