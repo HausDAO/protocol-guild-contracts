@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.21;
 
 import { IMemberRegistry } from "./IMemberRegistry.sol";
 import { ISplitManager } from "./ISplitManager.sol";
@@ -32,8 +32,9 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     function initialize(bytes memory _initializationParams) external;
 
     /**
-     * @notice Set connext and updater config parameters to setup the contract as a replica registry
-     * @dev Must only be called by contract owner. Zero values will setup the contract as a main registry
+     * @notice Update connext and updater settings on a replica registry
+     * @dev Must only be called by a fallback contract owner.
+     * - A main registry cannot set itself as a replica.
      * @param _connext Connext contract address
      * @param _updaterDomain Connext domain ID where the updater contract is deployed
      * @param _updater Main NetworkRegistry address that will update the registry through the Connext bridge

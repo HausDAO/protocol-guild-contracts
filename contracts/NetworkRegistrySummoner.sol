@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.21;
 
-import { IBaal } from "@daohaus/baal-contracts/contracts/interfaces/IBaal.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import { NetworkRegistry } from "./NetworkRegistry.sol";
