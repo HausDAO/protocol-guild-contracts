@@ -15,6 +15,10 @@ import { MemberRegistry } from "./registry/MemberRegistry.sol";
  * CUSTOM ERRORS
  */
 
+/// @notice Connext address cannot be 0x0
+error NetworkRegistry__InvalidConnextAddress();
+/// @notice Network Registry must have an owner or updater address assigned.
+error NetworkRegistry__NeitherOwnableNorReplicaUpdater();
 /// @notice The function is callable through Connext only.
 error NetworkRegistry__ConnextOnly();
 /// @notice The function is callable only by contract owner or updater contract.
@@ -271,10 +275,14 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address _split,
         address _owner
     ) internal onlyInitializing {
-        __Ownable_init();
+        if (_connext == address(0)) revert NetworkRegistry__InvalidConnextAddress();
+        address registryOwner = _owner == address(0) ? _msgSender() : _owner;
+        __Ownable_init(registryOwner);
+        if (_owner == address(0)) {
+            if (_updater == address(0)) revert NetworkRegistry__NeitherOwnableNorReplicaUpdater();
+            renounceOwnership();
+        }
         __NetworkRegistry_init_unchained(_connext, _updaterDomain, _updater, _splitMain, _split);
-        if (_owner == address(0)) renounceOwnership();
-        else transferOwnership(_owner);
     }
 
     /**
