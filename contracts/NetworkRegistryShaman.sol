@@ -6,9 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { NetworkRegistry } from "./NetworkRegistry.sol";
 
-// import "hardhat/console.sol";
-
-error NetworkRegistryShaman_NotManagerShaman();
+error NetworkRegistryShaman__NotManagerShaman();
+error NetworkRegistryShaman__InvalidBaalAddress();
 
 /**
  * @title A cross-chain network registry and Baal shaman module to distribute funds escrowed in 0xSplit based
@@ -40,8 +39,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @notice A modifier to check if the registry has been setup as a manager shaman module
      */
     modifier isManagerShaman() {
-        if (!isMainRegistry() || address(baal) == address(0) || !baal.isManager(address(this)))
-            revert NetworkRegistryShaman_NotManagerShaman();
+        if (!isMainRegistry() || !baal.isManager(address(this))) revert NetworkRegistryShaman__NotManagerShaman();
         _;
     }
 
@@ -68,6 +66,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
             uint256 _sharesToMint,
             bool _burnShares
         ) = abi.decode(_initializationParams, (address, uint32, address, address, address, address, uint256, bool));
+        if (_baal == address(0)) revert NetworkRegistryShaman__InvalidBaalAddress();
         baal = IBaal(_baal);
         __NetworkRegistry_init(
             _connext,
