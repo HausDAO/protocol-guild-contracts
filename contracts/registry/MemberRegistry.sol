@@ -171,14 +171,6 @@ abstract contract MemberRegistry {
     }
 
     /**
-     * @notice gets a list of current members in the registry including all metadata
-     * @return an array of Members in the registry
-     */
-    function getMembers() public view returns (Member[] memory) {
-        return members.db;
-    }
-
-    /**
      * @dev Fetch a member by Members.db index position
      * It should revert if _memberIdx is greater than db size.
      * @param _memberIdx member index position in Members.db
@@ -253,13 +245,22 @@ abstract contract MemberRegistry {
         uint32[] memory _activityMultipliers = new uint32[](membersLength);
         uint32[] memory _startDates = new uint32[](membersLength);
         for (uint256 i = 0; i < membersLength; ) {
-            _memberAddresses[i] = members.db[i].account;
-            _activityMultipliers[i] = members.db[i].activityMultiplier;
-            _startDates[i] = members.db[i].startDate;
+            Member memory member = members.db[i];
+            _memberAddresses[i] = member.account;
+            _activityMultipliers[i] = member.activityMultiplier;
+            _startDates[i] = member.startDate;
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
         return (_memberAddresses, _activityMultipliers, _startDates);
+    }
+
+    /**
+     * @notice gets a list of current members in the registry including all metadata
+     * @return an array of Members in the registry
+     */
+    function getMembers() external view returns (Member[] memory) {
+        return members.db;
     }
 }
