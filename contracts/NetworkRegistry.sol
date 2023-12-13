@@ -141,7 +141,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
                 ++i;
             }
         }
-        if (msg.value != totalRelayerFees) revert NetworkRegistry__ValueSentLessThanRelayerFees();
+        if (msg.value < totalRelayerFees) revert NetworkRegistry__ValueSentLessThanRelayerFees();
         _;
     }
 
