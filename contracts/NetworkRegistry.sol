@@ -359,7 +359,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _activityMultiplier member activity multiplier
      * @param _startDate timestamp (in seconds) when the member got active
      */
-    function setNewMember(address _member, uint32 _activityMultiplier, uint32 _startDate) public onlyOwnerOrUpdater {
+    function setNewMember(address _member, uint32 _activityMultiplier, uint32 _startDate) external onlyOwnerOrUpdater {
         _setNewMember(_member, _activityMultiplier, _startDate);
     }
 
@@ -395,7 +395,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _member member address
      * @param _activityMultiplier member new activity multiplier
      */
-    function updateMember(address _member, uint32 _activityMultiplier) public onlyOwnerOrUpdater {
+    function updateMember(address _member, uint32 _activityMultiplier) external onlyOwnerOrUpdater {
         _updateMember(_member, _activityMultiplier);
     }
 
@@ -456,7 +456,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] memory _members,
         uint32[] memory _activityMultipliers,
         uint32[] memory _startDates
-    ) public onlyOwnerOrUpdater {
+    ) external onlyOwnerOrUpdater {
         _batchNewMember(_members, _activityMultipliers, _startDates);
     }
 
@@ -511,7 +511,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     function batchUpdateMember(
         address[] memory _members,
         uint32[] memory _activityMultipliers
-    ) public onlyOwnerOrUpdater {
+    ) external onlyOwnerOrUpdater {
         _batchUpdateMember(_members, _activityMultipliers);
     }
 
@@ -550,7 +550,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] calldata _members,
         uint32[] calldata _activityMultipliers,
         uint32[] calldata _startDates
-    ) public onlyUpdater {
+    ) external onlyUpdater {
         if (_members.length != _activityMultipliers.length || _members.length != _startDates.length)
             revert NetWorkRegistry__ParamsSizeMismatch();
         for (uint256 i = 0; i < _members.length; ) {
@@ -712,7 +712,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _memberAddress member address
      * @return calculated contribution as uin256 value
      */
-    function calculateContributionOf(address _memberAddress) public view returns (uint256) {
+    function calculateContributionOf(address _memberAddress) external view returns (uint256) {
         Member memory member = getMember(_memberAddress);
         return members.calculateContributionOf(member);
     }
@@ -722,7 +722,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @dev omit members with activityMultiplier == 0
      * @return total total calculated contributions from active members
      */
-    function calculateTotalContributions() public view returns (uint256 total) {
+    function calculateTotalContributions() external view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();
         for (uint256 i = 0; i < totalRegistryMembers; ) {
             Member memory member = _getMemberByIndex(i);
@@ -789,7 +789,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _splitMain The address of the 0xSplitMain
      * @param _split The address of the 0xSplit contract
      */
-    function setSplit(address _splitMain, address _split) public onlyOwnerOrUpdater {
+    function setSplit(address _splitMain, address _split) external onlyOwnerOrUpdater {
         splitMain = ISplitMain(_splitMain);
         address currentController = splitMain.getController(_split);
         if (currentController == address(0)) revert NetworkRegistry__InvalidOrImmutableSplit();
@@ -834,7 +834,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @dev Must only be called by the owner or updater
      * @param _newController new controller address
      */
-    function transferSplitControl(address _newController) public onlyOwnerOrUpdater {
+    function transferSplitControl(address _newController) external onlyOwnerOrUpdater {
         splitMain.transferControl(split, _newController);
     }
 
@@ -891,7 +891,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @notice Cancel controller transfer of the current 0xSplit contract
      * @dev Must only be called by the owner or updater
      */
-    function cancelSplitControlTransfer() public onlyOwnerOrUpdater {
+    function cancelSplitControlTransfer() external onlyOwnerOrUpdater {
         splitMain.cancelControlTransfer(split);
     }
 
