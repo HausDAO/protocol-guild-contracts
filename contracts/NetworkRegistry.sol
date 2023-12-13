@@ -82,15 +82,6 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /// @dev constant to scale UINT values into percentages (1e6 == 100%)
     uint256 internal constant PERCENTAGE_SCALE = 1e6;
 
-    /// @dev used to store individual members contributions prior getting overall split percentages
-    struct MemberContribution {
-        /// @notice member address
-        address receiverAddress;
-        /// @notice member calculated contribution
-        /// @dev use calculateContributionOf(member)
-        uint256 calcContribution;
-    }
-
     /**
      * @notice A modifier for authenticated calls coming from the Connext bridge.
      * @dev This is an important security consideration. If the target contract
