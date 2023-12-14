@@ -148,7 +148,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * More info at https://docs.connext.network/developers/guides/handling-failures#increasing-slippage-tolerance
      */
     modifier validNetworkRegistry(uint32 _chainId) {
-        if (replicaRegistry[_chainId].domainId == 0 || replicaRegistry[_chainId].registryAddress == address(0))
+        if (replicaRegistry[_chainId].registryAddress == address(0))
             revert NetworkRegistry__NoReplicaOnNetwork(_chainId);
         _;
     }
