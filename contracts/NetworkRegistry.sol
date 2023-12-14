@@ -797,9 +797,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         if (currentController != address(this) && newController != address(this)) revert Split_ControlNotHandedOver();
         split = _split;
         emit SplitUpdated(_splitMain, split);
-        if (newController == address(this)) {
-            acceptSplitControl();
-        }
+        acceptSplitControl();
     }
 
     /**
