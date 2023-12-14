@@ -150,17 +150,17 @@ abstract contract MemberRegistry {
     function _updateSecondsActive() internal virtual {
         uint32 currentDate = uint32(block.timestamp);
         uint256 membersLength = totalMembers();
-        // update struct with total seconds active and seconds in last claim
+        // update Member total seconds active
         for (uint256 i = 0; i < membersLength; ) {
             Member storage _member = _getMemberByIndex(i);
             uint32 newSecondsActive = 0;
             if (_member.activityMultiplier > 0) {
                 uint32 initDate = _member.secondsActive > 0 ? lastActivityUpdate : _member.startDate;
                 uint256 totalSeconds = currentDate - initDate;
-                // multiply by modifier and divide by 100 to get modifier % of seconds
+                // divide activityMultiplier by 100 -> then multiply seconds active by "modifier %"
                 newSecondsActive = uint32((totalSeconds * _member.activityMultiplier) / MULTIPLIER_UPPER_BOUND);
+                _member.secondsActive += newSecondsActive;
             }
-            _member.secondsActive += newSecondsActive;
             emit UpdateMemberSeconds(_member.account, newSecondsActive);
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
