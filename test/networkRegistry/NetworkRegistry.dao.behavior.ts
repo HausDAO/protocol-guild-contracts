@@ -482,12 +482,12 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),
@@ -643,12 +643,12 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),

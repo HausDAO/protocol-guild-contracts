@@ -1,5 +1,10 @@
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import {
+  impersonateAccount,
+  setBalance,
+  stopImpersonatingAccount,
+  time,
+} from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber, Event } from "ethers";
 import { ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
@@ -79,7 +84,6 @@ describe("NetworkRegistry", function () {
         updaterAddress: ethers.constants.AddressZero, // Main Registry -> no updater
         splitMain: l1SplitMain.address,
         split: l1SplitAddress,
-        // owner: deployer,
         owner: users.owner.address,
       },
       "Mainnet Registry",
@@ -130,35 +134,87 @@ describe("NetworkRegistry", function () {
     await tx_controller_l2.wait();
   });
 
-  describe("NetworkRegistrySummoner", function () {
+  // ################################################################################################################
+  // #################################                         ######################################################
+  // ################################# NetworkRegistrySummoner ######################################################
+  // #################################                         ######################################################
+  // ################################################################################################################
+  // ################################################################################################################
+  // ################################################################################################################
+
+  describe("NetworkRegistry + Summoner", function () {
     it("Should not be able to initialize a singleton", async () => {
       const l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
         ["address", "uint32", "address", "address", "address", "address"],
         [
           connext.address,
-          0, // Main Registry -> no domainId
-          ethers.constants.AddressZero, // Main Registry -> no updater
+          0, // no domainId -> Main Registry
+          ethers.constants.AddressZero, // no updater -> Main Registry
           l1SplitMain.address,
           l1SplitAddress,
-          // deployer,
           users.owner.address,
         ],
       );
-      await expect(registrySingleton.initialize(l1InitializationParams)).to.be.revertedWith(
-        "Initializable: contract is already initialized",
+      await expect(registrySingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "InvalidInitialization",
       );
-      await expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWith(
-        "Initializable: contract is already initialized",
+      await expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "InvalidInitialization",
       );
     });
 
-    it("Should summon a PGNetworkRegistry", async () => {
+    it("Should not be able to summon a registry with incorrect encoded init params", async () => {
+      const details = "sample registry";
+      await expect(summoner.summonRegistry(registrySingleton.address, details, "0x")).to.be.revertedWithoutReason();
+    });
+
+    it("Should not be able to summon a registry when connext is zero", async () => {
+      const initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address"],
+        [
+          ethers.constants.AddressZero, // no connext
+          0, // no domain -> Main Registry
+          ethers.constants.AddressZero, // no updater -> Main Registry
+          l1SplitMain.address,
+          l1SplitAddress,
+          ethers.constants.AddressZero, // no owner
+        ],
+      );
+
+      const details = "sample registry";
+      await expect(
+        summoner.summonRegistry(registrySingleton.address, details, initializationParams),
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__InvalidConnextAddress");
+    });
+
+    it("Should not be able to summon a registry when owner and updater are zero", async () => {
       const initializationParams = ethers.utils.defaultAbiCoder.encode(
         ["address", "uint32", "address", "address", "address", "address"],
         [
           connext.address,
-          parentDomainId,
-          ethers.constants.AddressZero,
+          0, // no domain -> Main Registry
+          ethers.constants.AddressZero, // no updater -> Main Registry
+          l1SplitMain.address,
+          l1SplitAddress,
+          ethers.constants.AddressZero, // no owner
+        ],
+      );
+
+      const details = "sample registry";
+      await expect(
+        summoner.summonRegistry(registrySingleton.address, details, initializationParams),
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__NeitherOwnableNorReplicaUpdater");
+    });
+
+    it("Should summon a Main NetworkRegistry", async () => {
+      const initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address"],
+        [
+          connext.address,
+          0, // no domain -> Main Registry
+          ethers.constants.AddressZero, // no updater -> Main Registry
           l1SplitMain.address,
           l1SplitAddress,
           users.owner.address,
@@ -168,9 +224,46 @@ describe("NetworkRegistry", function () {
       const details = "sample registry";
       const tx = await summoner.summonRegistry(registrySingleton.address, details, initializationParams);
       const receipt = await tx.wait();
+
+      const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
       const registryAddress =
-        receipt.events?.[3].topics[1] &&
-        ethers.utils.getAddress(`0x${receipt.events?.[3].topics[1].substring(24 + 2)}`);
+        summonedEvent?.topics?.[1] && ethers.utils.getAddress(`0x${summonedEvent.topics[1].substring(24 + 2)}`);
+      await expect(tx)
+        .to.emit(summoner, "NetworkRegistrySummoned")
+        .withArgs(registryAddress, details, initializationParams);
+
+      const registry = (await ethers.getContractAt(
+        "NetworkRegistry",
+        registryAddress || ethers.constants.AddressZero,
+      )) as NetworkRegistry;
+      expect(await registry.connext()).to.be.equal(connext.address);
+      expect(await registry.updaterDomain()).to.be.equal(0);
+      expect(await registry.updater()).to.be.equal(ethers.constants.AddressZero);
+      expect(await registry.splitMain()).to.be.equal(l1SplitMain.address);
+      expect(await registry.split()).to.be.equal(l1SplitAddress);
+      expect(await registry.owner()).to.be.equal(users.owner.address);
+    });
+
+    it("Should summon a Replica NetworkRegistry w/no owner", async () => {
+      const initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address"],
+        [
+          connext.address,
+          parentDomainId,
+          l1NetworkRegistry.address, // updater
+          l1SplitMain.address,
+          l1SplitAddress,
+          ethers.constants.AddressZero, // renounce ownership
+        ],
+      );
+
+      const details = "sample registry";
+      const tx = await summoner.summonRegistry(registrySingleton.address, details, initializationParams);
+      const receipt = await tx.wait();
+
+      const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
+      const registryAddress =
+        summonedEvent?.topics?.[1] && ethers.utils.getAddress(`0x${summonedEvent.topics[1].substring(24 + 2)}`);
       await expect(tx)
         .to.emit(summoner, "NetworkRegistrySummoned")
         .withArgs(registryAddress, details, initializationParams);
@@ -181,13 +274,49 @@ describe("NetworkRegistry", function () {
       )) as NetworkRegistry;
       expect(await registry.connext()).to.be.equal(connext.address);
       expect(await registry.updaterDomain()).to.be.equal(parentDomainId);
-      expect(await registry.updater()).to.be.equal(ethers.constants.AddressZero);
+      expect(await registry.updater()).to.be.equal(l1NetworkRegistry.address);
+      expect(await registry.splitMain()).to.be.equal(l1SplitMain.address);
+      expect(await registry.split()).to.be.equal(l1SplitAddress);
+      expect(await registry.owner()).to.be.equal(ethers.constants.AddressZero);
+    });
+
+    it("Should summon a Replica NetworkRegistry w/fallback owner", async () => {
+      const initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address"],
+        [
+          connext.address,
+          parentDomainId,
+          l1NetworkRegistry.address, // updater
+          l1SplitMain.address,
+          l1SplitAddress,
+          users.owner.address, // fallback owner
+        ],
+      );
+
+      const details = "sample registry";
+      const tx = await summoner.summonRegistry(registrySingleton.address, details, initializationParams);
+      const receipt = await tx.wait();
+
+      const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
+      const registryAddress =
+        summonedEvent?.topics?.[1] && ethers.utils.getAddress(`0x${summonedEvent.topics[1].substring(24 + 2)}`);
+      await expect(tx)
+        .to.emit(summoner, "NetworkRegistrySummoned")
+        .withArgs(registryAddress, details, initializationParams);
+
+      const registry = (await ethers.getContractAt(
+        "NetworkRegistry",
+        registryAddress || ethers.constants.AddressZero,
+      )) as NetworkRegistry;
+      expect(await registry.connext()).to.be.equal(connext.address);
+      expect(await registry.updaterDomain()).to.be.equal(parentDomainId);
+      expect(await registry.updater()).to.be.equal(l1NetworkRegistry.address);
       expect(await registry.splitMain()).to.be.equal(l1SplitMain.address);
       expect(await registry.split()).to.be.equal(l1SplitAddress);
       expect(await registry.owner()).to.be.equal(users.owner.address);
     });
 
-    it("Should summon a PGNetworkRegistry with predetermined address", async () => {
+    it("Should summon a NetworkRegistry with predetermined address", async () => {
       const saltNonce = `0x${Buffer.from(ethers.utils.randomBytes(32)).toString("hex")}`;
       const creationCode = [
         "0x3d602d80600a3d3981f3363d3d373d3d3d363d73",
@@ -210,8 +339,8 @@ describe("NetworkRegistry", function () {
         ["address", "uint32", "address", "address", "address", "address"],
         [
           connext.address,
-          parentDomainId,
-          ethers.constants.AddressZero,
+          0, // no domain -> Main Registry
+          ethers.constants.AddressZero, // no updater -> Main Registry
           l1SplitMain.address,
           l1SplitAddress,
           users.owner.address,
@@ -230,13 +359,21 @@ describe("NetworkRegistry", function () {
         .withArgs(predictedAddress, details, initializationParams);
       const receipt = await tx.wait();
 
+      const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
       const registryAddress =
-        receipt.events?.[3].topics[1] &&
-        ethers.utils.getAddress(`0x${receipt.events?.[3].topics[1].substring(24 + 2)}`);
+        summonedEvent?.topics?.[1] && ethers.utils.getAddress(`0x${summonedEvent.topics[1].substring(24 + 2)}`);
 
       expect(predictedAddress).to.equal(registryAddress);
     });
   });
+
+  // ###############################################################################################################
+  // #################################                        ######################################################
+  // ################################# NetworkRegistry Config ######################################################
+  // #################################                        ######################################################
+  // ###############################################################################################################
+  // ###############################################################################################################
+  // ###############################################################################################################
 
   describe("NetworkRegistry Config", function () {
     it("Should have owner on L1", async () => {
@@ -276,15 +413,15 @@ describe("NetworkRegistry", function () {
       const applicantRegistry = l1NetworkRegistry.connect(signer);
 
       await expect(
-        applicantRegistry.setUpdaterConfig(connext.address, parentDomainId, connext.address),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(
         applicantRegistry.updateNetworkRegistry(replicaChainId, {
           domainId: replicaDomainId,
           registryAddress: l2NetworkRegistry.address,
           delegate: ethers.constants.AddressZero,
         }),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
+      await expect(
+        applicantRegistry.setUpdaterConfig(connext.address, parentDomainId, connext.address),
+      ).to.be.revertedWithCustomError(applicantRegistry, "NetworkRegistry__OnlyOwnerOrUpdater");
       await expect(applicantRegistry.setSplit(l1SplitMain.address, l1SplitAddress)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
         "NetworkRegistry__OnlyOwnerOrUpdater",
@@ -302,35 +439,83 @@ describe("NetworkRegistry", function () {
         "NetworkRegistry__OnlyOwnerOrUpdater",
       );
 
+      // Syncing methods
+      await expect(
+        applicantRegistry.setNetworkUpdaterConfig(
+          [replicaChainId],
+          [connext.address],
+          [parentDomainId],
+          [l1NetworkRegistry.address],
+          [0],
+        ),
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
       await expect(
         applicantRegistry.updateNetworkSplit([replicaChainId], [l2Registry.splitMain.address], [l2SplitAddress], [0]),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
       await expect(
         applicantRegistry.transferNetworkSplitControl([replicaChainId], [users.applicant.address], [0]),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(applicantRegistry.acceptNetworkSplitControl([replicaChainId], [0])).to.be.revertedWith(
-        "Ownable: caller is not the owner",
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
+      await expect(applicantRegistry.acceptNetworkSplitControl([replicaChainId], [0])).to.be.revertedWithCustomError(
+        applicantRegistry,
+        "OwnableUnauthorizedAccount",
       );
-      await expect(applicantRegistry.cancelNetworkSplitControlTransfer([replicaChainId], [0])).to.be.revertedWith(
-        "Ownable: caller is not the owner",
-      );
+      await expect(
+        applicantRegistry.cancelNetworkSplitControlTransfer([replicaChainId], [0]),
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
     });
 
-    it("Should be able to update connext updater and turn into a replica registry", async () => {
-      const prevUpdaterDomain = await l1NetworkRegistry.updaterDomain();
-      const prevUpdater = await l1NetworkRegistry.updater();
-      const tx = await l1NetworkRegistry.setUpdaterConfig(connext.address, parentDomainId, l1NetworkRegistry.address);
-      await tx.wait();
-      const currUpdaterDomain = await l1NetworkRegistry.updaterDomain();
-      const currUpdater = await l1NetworkRegistry.updater();
-      await expect(tx)
-        .to.emit(l1NetworkRegistry, "NewUpdaterConfig")
-        .withArgs(connext.address, parentDomainId, l1NetworkRegistry.address);
-      expect(currUpdaterDomain).to.not.equal(prevUpdaterDomain);
-      expect(currUpdater).to.not.equal(prevUpdater);
-      expect(currUpdaterDomain).to.equal(parentDomainId);
-      expect(currUpdater).to.equal(l1NetworkRegistry.address);
-      expect(await l1NetworkRegistry.isMainRegistry()).to.equal(false);
+    it("SHould not be able to set an invalid Connext address", async () => {
+      await expect(
+        l1NetworkRegistry.setUpdaterConfig(ethers.constants.AddressZero, 0, ethers.constants.AddressZero),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__InvalidConnextAddress");
+    });
+
+    it("Should be able to set new updater settings", async () => {
+      const signer = await ethers.getSigner(users.owner.address);
+      // Summon a Replica Registry
+      const l2RegistryAddress = await summonRegistry(
+        summoner,
+        registrySingleton.address,
+        {
+          connext: connext.address,
+          updaterDomainId: parentDomainId,
+          updaterAddress: l1NetworkRegistry.address,
+          splitMain: l2Registry.splitMain.address,
+          split: l2SplitAddress,
+          owner: signer.address,
+        },
+        "L2 Registry",
+      );
+      const l2NetworkRegistry = (await ethers.getContractAt(
+        "NetworkRegistry",
+        l2RegistryAddress,
+        signer,
+      )) as NetworkRegistry;
+
+      await expect(l2NetworkRegistry.setUpdaterConfig(connext.address, 0, ethers.constants.AddressZero))
+        .to.emit(l2NetworkRegistry, "NewUpdaterConfig")
+        .withArgs(connext.address, 0, ethers.constants.AddressZero);
+    });
+
+    it("Should not be able to add an empty replica registry", async () => {
+      const replicaChainId = 420420420;
+      let networkRegistry = {
+        domainId: 0,
+        registryAddress: ethers.constants.AddressZero,
+        delegate: ethers.constants.AddressZero,
+      };
+      await expect(
+        l1NetworkRegistry.updateNetworkRegistry(replicaChainId, networkRegistry),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__InvalidReplica");
+
+      networkRegistry = {
+        domainId: 420420420,
+        registryAddress: ethers.constants.AddressZero,
+        delegate: ethers.constants.AddressZero,
+      };
+      await expect(
+        l1NetworkRegistry.updateNetworkRegistry(replicaChainId, networkRegistry),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__InvalidReplica");
     });
 
     it("Should be able to add a replica network registry", async () => {
@@ -352,6 +537,21 @@ describe("NetworkRegistry", function () {
         );
 
       const netRegistry = await l1NetworkRegistry.replicaRegistry(newReplicaChainId);
+      expect(netRegistry).to.eql(Object.values(networkRegistry));
+    });
+
+    it("Should be able to remove a replica", async () => {
+      const networkRegistry = {
+        domainId: 0,
+        registryAddress: ethers.constants.AddressZero,
+        delegate: ethers.constants.AddressZero,
+      };
+
+      await expect(l1NetworkRegistry.updateNetworkRegistry(replicaChainId, networkRegistry))
+        .to.emit(l1NetworkRegistry, "NetworkRegistryUpdated")
+        .withArgs(replicaChainId, networkRegistry.registryAddress, networkRegistry.domainId, networkRegistry.delegate);
+
+      const netRegistry = await l1NetworkRegistry.replicaRegistry(replicaChainId);
       expect(netRegistry).to.eql(Object.values(networkRegistry));
     });
 
@@ -509,6 +709,14 @@ describe("NetworkRegistry", function () {
     });
   });
 
+  // ################################################################################################################
+  // ##################################                         #####################################################
+  // ################################## NetworkRegistry Actions #####################################################
+  // ##################################                         #####################################################
+  // ################################################################################################################
+  // ################################################################################################################
+  // ################################################################################################################
+
   describe("NetworkRegistry Actions", function () {
     it("Should not be able to update the registry if not an owner", async () => {
       const signer = await ethers.getSigner(users.applicant.address);
@@ -603,11 +811,16 @@ describe("NetworkRegistry", function () {
     });
 
     it("Should not be able to add new members in batch if param sizes mismatch", async () => {
+      const startDate = await time.latest();
       await expect(
         l1NetworkRegistry.batchNewMember([ethers.constants.AddressZero], [10], []),
         // ).to.revertedWithPanic(
         //   "0x32",
         // ); // Array accessed at an out-of-bounds or negative index
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
+
+      await expect(
+        l1NetworkRegistry.batchNewMember([ethers.constants.AddressZero], [], [Number(startDate)]),
       ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
     });
 
@@ -720,7 +933,7 @@ describe("NetworkRegistry", function () {
       );
     });
 
-    it("Should be able to calculate Split allocations pre/post commiting to the chain", async () => {
+    it("Should be able to calculate Split allocations pre/post committing to the chain", async () => {
       const batchSize = 10;
       const newMembers = await generateMemberBatch(batchSize);
       const members = newMembers.map((m: Member) => m.account);
@@ -836,6 +1049,84 @@ describe("NetworkRegistry", function () {
     });
   });
 
+  describe("NetworkRegistry xReceive", function () {
+    it("Should revert if origin <> updaterDomain", async () => {
+      await expect(
+        l2NetworkRegistry.xReceive(
+          ethers.utils.formatBytes32String("dummyId"),
+          0,
+          ethers.constants.AddressZero,
+          l1NetworkRegistry.address, // right updater
+          "0xdead", // wrong updaterDomain
+          "0x", // any calldata
+        ),
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__ConnextOnly");
+    });
+
+    it("Should revert if originSender <> updater", async () => {
+      await expect(
+        l2NetworkRegistry.xReceive(
+          ethers.utils.formatBytes32String("dummyId"),
+          0,
+          ethers.constants.AddressZero,
+          l2NetworkRegistry.address, // wrong updater
+          parentDomainId, // right updaterDomain
+          "0x", // any calldata
+        ),
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__ConnextOnly");
+    });
+
+    it("Should revert if msg.sender is not Connext", async () => {
+      await expect(
+        l2NetworkRegistry.xReceive(
+          ethers.utils.formatBytes32String("dummyId"),
+          0,
+          ethers.constants.AddressZero,
+          l1NetworkRegistry.address, // right updater
+          parentDomainId, // right updaterDomain
+          "0x", // any calldata
+        ),
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__ConnextOnly");
+    });
+
+    it("Should returned a failed sync action performed for unknown actions", async () => {
+      const transferId = ethers.utils.formatBytes32String("dummyId");
+      // dummy action
+      const action = l1SplitMain.interface.getSighash("transferControl(address,address)");
+      // encode unknown action calldata
+      const calldata = ethers.utils.defaultAbiCoder.encode(
+        ["bytes4", "address", "address"],
+        [action, l1SplitAddress, ethers.constants.AddressZero],
+      );
+      // TODO: impersonate connext
+      await impersonateAccount(connext.address);
+      const signer = await ethers.getSigner(connext.address);
+      await setBalance(connext.address, ethers.utils.parseEther("1"));
+      // check SyncActionPerformed return success -> false
+      const tx = await l2NetworkRegistry.connect(signer).xReceive(
+        transferId,
+        0,
+        ethers.constants.AddressZero,
+        l1NetworkRegistry.address, // right updater
+        parentDomainId, // right updaterDomain
+        calldata,
+      );
+      await expect(tx)
+        .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+        .withArgs(transferId, parentDomainId, action, false, l1NetworkRegistry.address);
+
+      await stopImpersonatingAccount(connext.address);
+    });
+  });
+
+  // ############################################################################################################
+  // #################################                      #####################################################
+  // ################################# NetworkRegistry Sync #####################################################
+  // #################################        Actions       #####################################################
+  // ############################################################################################################
+  // ############################################################################################################
+  // ############################################################################################################
+
   describe("NetworkRegistry Sync Actions", function () {
     it("Should have network registries properly setup", async () => {
       // Main registry
@@ -903,19 +1194,20 @@ describe("NetworkRegistry", function () {
 
       await expect(
         applicantRegistry.syncSetNewMember(users.applicant.address, 100, 0, [replicaChainId], [0]),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
       await expect(
         applicantRegistry.syncUpdateMember(users.applicant.address, 100, [replicaChainId], [0]),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
       await expect(
         applicantRegistry.syncBatchNewMember([users.applicant.address], [100], [0], [replicaChainId], [0]),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(applicantRegistry.syncNetworkMemberRegistry([replicaChainId], [0])).to.be.revertedWith(
-        "Ownable: caller is not the owner",
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
+      await expect(applicantRegistry.syncNetworkMemberRegistry([replicaChainId], [0])).to.be.revertedWithCustomError(
+        applicantRegistry,
+        "OwnableUnauthorizedAccount",
       );
       await expect(
         applicantRegistry.syncBatchUpdateMember([users.applicant.address], [100], [replicaChainId], [0]),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
     });
 
     it("Should not be able to call sync actions if param sizes mismatch", async () => {
@@ -1145,6 +1437,80 @@ describe("NetworkRegistry", function () {
         .withArgs(unregisteredReplicaChainId);
     });
 
+    it("Should be able to set new updater settings on a replica registry", async () => {
+      const chainIds = [replicaChainId];
+      const relayerFees = [defaultRelayerFee];
+      const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const action = l2NetworkRegistry.interface.getSighash("setUpdaterConfig(address,uint32,address)");
+
+      await expect(
+        l1NetworkRegistry.setNetworkUpdaterConfig(
+          chainIds,
+          [],
+          [parentDomainId],
+          [l1NetworkRegistry.address],
+          relayerFees,
+          { value: totalValue },
+        ),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
+      await expect(
+        l1NetworkRegistry.setNetworkUpdaterConfig(
+          chainIds,
+          [ethers.constants.AddressZero],
+          [],
+          [l1NetworkRegistry.address],
+          relayerFees,
+          { value: totalValue },
+        ),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
+      await expect(
+        l1NetworkRegistry.setNetworkUpdaterConfig(
+          chainIds,
+          [ethers.constants.AddressZero],
+          [parentDomainId],
+          [],
+          relayerFees,
+          { value: totalValue },
+        ),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
+
+      // Fails because NetworkRegistry__InvalidConnextAddress
+      await expect(
+        l1NetworkRegistry.setNetworkUpdaterConfig(
+          chainIds,
+          [ethers.constants.AddressZero], // invalid connext address
+          [parentDomainId],
+          [l1NetworkRegistry.address],
+          relayerFees,
+          { value: totalValue },
+        ),
+      )
+        .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+        .withArgs(anyValue, parentDomainId, action, false, l1NetworkRegistry.address);
+
+      const updaterDomainId = parentDomainId + 1; // dummy domain iD
+      const syncTx = await l1NetworkRegistry.setNetworkUpdaterConfig(
+        chainIds,
+        [connext.address],
+        [updaterDomainId],
+        [l1NetworkRegistry.address],
+        relayerFees,
+        { value: totalValue },
+      );
+
+      await expect(syncTx)
+        .to.emit(l1NetworkRegistry, "SyncMessageSubmitted")
+        .withArgs(anyValue, replicaChainId, action, l2NetworkRegistry.address);
+      await expect(syncTx)
+        .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+        .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+
+      await expect(syncTx)
+        .to.emit(l2NetworkRegistry, "NewUpdaterConfig")
+        .withArgs(connext.address, updaterDomainId, l1NetworkRegistry.address);
+    });
+
     it("Should be able to update 0xSplit contract on a replica registry and get control over it", async () => {
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];
@@ -1165,6 +1531,16 @@ describe("NetworkRegistry", function () {
       expect(newPotentialController).to.be.equal(l2NetworkRegistry.address);
 
       const action = l2NetworkRegistry.interface.getSighash("setSplit(address,address)");
+
+      await expect(
+        l1NetworkRegistry.updateNetworkSplit(chainIds, [], [newSplitAddress], relayerFees, { value: totalValue }),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
+      await expect(
+        l1NetworkRegistry.updateNetworkSplit(chainIds, [l2Registry.splitMain.address], [], relayerFees, {
+          value: totalValue,
+        }),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
+
       const syncTx = await l1NetworkRegistry.updateNetworkSplit(
         chainIds,
         [l2Registry.splitMain.address],
@@ -1224,6 +1600,11 @@ describe("NetworkRegistry", function () {
       });
 
       const action = l2NetworkRegistry.interface.getSighash("transferSplitControl(address)");
+
+      await expect(
+        l1NetworkRegistry.transferNetworkSplitControl(chainIds, [], relayerFees, { value: totalValue }),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetWorkRegistry__ParamsSizeMismatch");
+
       const syncTx = await l1NetworkRegistry.transferNetworkSplitControl(
         chainIds,
         [users.alice.address], // newControllers
@@ -1439,6 +1820,9 @@ describe("NetworkRegistry", function () {
     });
 
     it("Should be able to fully sync an already initialized replica registry from current state in main", async () => {
+      const replicaChainId = 100;
+      const replicaDomainId = 6778479;
+
       const totalMembers = 10;
       const newMembers = await generateMemberBatch(totalMembers);
       const members1 = newMembers.slice(0, totalMembers / 2);
@@ -1448,6 +1832,36 @@ describe("NetworkRegistry", function () {
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const signer = await ethers.getSigner(users.owner.address);
+      // Summon a Replica Registry
+      const l2RegistryAddress = await summonRegistry(
+        summoner,
+        registrySingleton.address,
+        {
+          connext: connext.address,
+          updaterDomainId: parentDomainId,
+          updaterAddress: l1NetworkRegistry.address,
+          splitMain: l2Registry.splitMain.address,
+          split: l2SplitAddress,
+          owner: signer.address,
+        },
+        "L2 Registry",
+      );
+      const l2NetworkRegistry = (await ethers.getContractAt(
+        "NetworkRegistry",
+        l2RegistryAddress,
+        signer,
+      )) as NetworkRegistry;
+
+      // Add replica registry to main
+      const networkRegistry = {
+        domainId: replicaDomainId,
+        registryAddress: l2NetworkRegistry.address,
+        delegate: ethers.constants.AddressZero,
+      };
+      const txAddReplica = await l1NetworkRegistry.updateNetworkRegistry(replicaChainId, networkRegistry);
+      await txAddReplica.wait();
 
       const batchTx = await l1NetworkRegistry.batchNewMember(members, activityMultipliers, startDates);
       await batchTx.wait();

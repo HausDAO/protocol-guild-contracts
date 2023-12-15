@@ -45,6 +45,11 @@ describe("NetworkRegistry E2E tests", function () {
 
   this.beforeAll(async function () {
     sampleSplit = await readSampleSplit("pgsplit.csv");
+    // force last user to be inactive -> at least one member has activityMultiplier = 0
+    const lastSample = sampleSplit[sampleSplit.length - 1];
+    lastSample.activityMultiplier = 0;
+    sampleSplit[sampleSplit.length - 1] = lastSample;
+
     // NOTICE: set the block timestamp to a month before cutoff date
     await time.setNextBlockTimestamp(Date.parse("2023-06-01T00:00:00.000-05:00") / 1000);
   });
@@ -301,12 +306,12 @@ describe("NetworkRegistry E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),
@@ -437,12 +442,12 @@ describe("NetworkRegistry E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),

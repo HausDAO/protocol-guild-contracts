@@ -15,15 +15,14 @@ export const summonRegistry = async (
     ["address", "uint32", "address", "address", "address", "address"],
     [connext, updaterDomainId, updaterAddress, splitMain, split, owner],
   );
-  // const eventIndex = 2 + Number(registryArgs.renounceOwnership);
-  const eventIndex = 3; // NetworkRegistrySummoned
 
   const tx = await summoner.summonRegistry(registrySingleton, registryName, initializationParams);
   const receipt = await tx.wait();
 
+  const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
+
   const registryAddress =
-    receipt.events?.[eventIndex].topics[1] &&
-    ethers.utils.defaultAbiCoder.decode(["address"], receipt.events?.[eventIndex].topics[1])[0];
+    summonedEvent?.topics?.[1] && ethers.utils.defaultAbiCoder.decode(["address"], summonedEvent.topics[1])[0];
   if (!registryAddress) throw new Error("Failed to summon a Network Registry");
   return registryAddress;
 };
@@ -39,15 +38,14 @@ export const summonRegistryShaman = async (
     ["address", "uint32", "address", "address", "address", "address", "uint256", "bool"],
     [connext, updaterDomainId, updaterAddress, splitMain, split, baal, sharesToMint, burnShares],
   );
-  // const eventIndex = 2 + Number(registryArgs.renounceOwnership);
-  const eventIndex = 3; // NetworkRegistrySummoned
 
   const tx = await summoner.summonRegistry(registrySingleton, registryName, initializationParams);
   const receipt = await tx.wait();
 
+  const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
+
   const registryAddress =
-    receipt.events?.[eventIndex].topics[1] &&
-    ethers.utils.defaultAbiCoder.decode(["address"], receipt.events?.[eventIndex].topics[1])[0];
+    summonedEvent?.topics?.[1] && ethers.utils.defaultAbiCoder.decode(["address"], summonedEvent.topics[1])[0];
   if (!registryAddress) throw new Error("Failed to summon a Network Registry");
   return registryAddress;
 };

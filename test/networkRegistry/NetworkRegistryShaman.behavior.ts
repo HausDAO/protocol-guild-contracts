@@ -1,7 +1,12 @@
 import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
 import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import {
+  impersonateAccount,
+  setBalance,
+  stopImpersonatingAccount,
+  time,
+} from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { parseEther } from "ethers/lib/utils";
@@ -265,8 +270,131 @@ describe("NetworkRegistryShaman E2E tests", function () {
       .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
   });
 
+  describe("NetworkRegistryShaman + Summoner", function () {
+    it("Should not be able to summon a registry shaman with invalid baal address", async () => {
+      const baal = ethers.constants.AddressZero;
+      const initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address", "uint256", "bool"],
+        [
+          connext.address,
+          0,
+          ethers.constants.AddressZero,
+          l1SplitMain.address,
+          l1SplitAddress,
+          baal,
+          parseEther("1"),
+          true,
+        ],
+      );
+
+      await expect(
+        summoner.summonRegistry(registryShamanSingleton.address, "MainRegistry", initializationParams),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistryShaman__InvalidBaalAddress");
+    });
+  });
+
+  describe("NetworkRegistryShaman + Not manager", function () {
+    it("Should not be able to operate if main registry is not set as a manager shaman", async () => {
+      const batchSize = 10;
+      // Syncing a batch of members
+      const newMembers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
+      const activityMultipliers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.activityMultiplier);
+      const startDates = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.startDateSeconds);
+      const chainIds = [replicaChainId];
+      const relayerFees = [defaultRelayerFee];
+      const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const l1RegistryAddress = await summonRegistryShaman(
+        summoner,
+        registryShamanSingleton.address,
+        {
+          connext: connext.address,
+          updaterDomainId: 0, // Main Registry -> no domainId
+          updaterAddress: ethers.constants.AddressZero, // Main Registry -> no updater
+          splitMain: l1SplitMain.address,
+          split: l1SplitAddress,
+          baal: baal.address, // NOTICE: DAO address sent so internally set the baal avatar as registry owner
+          sharesToMint: parseEther("1"), // NOTICE: DAO shares to mint to new registry members
+          burnShares: true, // NOTICE: burn shares if activity multiplier is set to zero
+        },
+        "Mainnet Registry",
+      );
+
+      const avatarAddress = await baal.avatar();
+
+      await impersonateAccount(avatarAddress);
+      await setBalance(avatarAddress, ethers.utils.parseEther("1"));
+      const signer = await ethers.getSigner(avatarAddress);
+      const l1Registry = (await ethers.getContractAt(
+        "NetworkRegistryShaman",
+        l1RegistryAddress,
+        signer,
+      )) as NetworkRegistryShaman;
+      await expect(
+        l1Registry.syncBatchNewMember(
+          newMembers.slice(0, batchSize),
+          activityMultipliers.slice(0, batchSize),
+          startDates.slice(0, batchSize),
+          chainIds,
+          relayerFees,
+          { value: totalValue },
+        ),
+      ).to.be.revertedWithCustomError(l1Registry, "NetworkRegistryShaman__NotManagerShaman");
+      await stopImpersonatingAccount(avatarAddress);
+    });
+
+    it("Should not be able to setup a replica registry as a manager shaman", async () => {
+      const batchSize = 10;
+      // Syncing a batch of members
+      const newMembers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
+      const activityMultipliers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.activityMultiplier);
+      const startDates = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.startDateSeconds);
+      const chainIds = [replicaChainId];
+      const relayerFees = [defaultRelayerFee];
+      const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const l2RegistryAddress = await summonRegistryShaman(
+        summoner,
+        registryShamanSingleton.address,
+        {
+          connext: connext.address,
+          updaterDomainId: parentDomainId,
+          updaterAddress: l1NetworkRegistry.address,
+          splitMain: l2Registry.splitMain.address,
+          split: l2SplitAddress,
+          baal: baal.address, // NOTICE: DAO address sent so internally set the baal avatar as registry owner
+          sharesToMint: parseEther("1"), // NOTICE: DAO shares to mint to new registry members
+          burnShares: true, // NOTICE: burn shares if activity multiplier is set to zero
+        },
+        "Replica Registry",
+      );
+
+      const avatarAddress = await baal.avatar();
+
+      await impersonateAccount(avatarAddress);
+      await setBalance(avatarAddress, ethers.utils.parseEther("1"));
+      const signer = await ethers.getSigner(avatarAddress);
+      const l2NetworkRegistry = (await ethers.getContractAt(
+        "NetworkRegistryShaman",
+        l2RegistryAddress,
+        signer,
+      )) as NetworkRegistryShaman;
+      await expect(
+        l2NetworkRegistry.syncBatchNewMember(
+          newMembers.slice(0, batchSize),
+          activityMultipliers.slice(0, batchSize),
+          startDates.slice(0, batchSize),
+          chainIds,
+          relayerFees,
+          { value: totalValue },
+        ),
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistryShaman__NotManagerShaman");
+      await stopImpersonatingAccount(avatarAddress);
+    });
+  });
+
   describe("0xSplit + NetworkRegistryShaman", function () {
-    const batchSize = 113; // NOTICE: max amount of members to be process befor hitting the max block gas limit
+    const batchSize = 113; // NOTICE: max amount of members to be process before hitting the max block gas limit
 
     beforeEach(async function () {
       // Syncing a batch of members
@@ -549,12 +677,12 @@ describe("NetworkRegistryShaman E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),
@@ -710,12 +838,12 @@ describe("NetworkRegistryShaman E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),
