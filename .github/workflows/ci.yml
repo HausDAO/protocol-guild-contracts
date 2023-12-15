@@ -30,12 +30,12 @@ jobs:
 
       - name: "Install the dependencies"
         run: "pnpm install"
-      
+
       - name: get test data file
         env:
-          TOKEN: ${{ secrets.PRIVATE_ACCESS_TOKEN }}
+          AUTH_TOKEN: ${{ secrets.PRIVATE_ACCESS_TOKEN }}
         run: |
-          curl -H "Authorization: token ${TOKEN}" https://raw.githubusercontent.com/santteegt/private-test-files/main/pgsplit.csv
+          curl -H "Authorization: Bearer $AUTH_TOKEN" --fail-with-body https://raw.githubusercontent.com/santteegt/private-test-files/main/pgsplit.csv > pgsplit.csv
 
       - name: "Lint the code"
         run: "pnpm lint"

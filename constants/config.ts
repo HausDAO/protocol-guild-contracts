@@ -4,6 +4,7 @@ export const defaultSplitsConfig = {
 };
 
 // NOTICE: DAO + Connext + 0xSplits config
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export const deploymentConfig: { [key: string]: any } = {
   "1": {
     // mainnet
