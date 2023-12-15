@@ -32,6 +32,9 @@ library PGContribCalculator {
         uint256 calcContribution;
     }
 
+    // @dev constant to scale UINT values into percentages (1e6 == 100%)
+    uint256 constant PERCENTAGE_SCALE = 1e6;
+
     /**
      * @notice Calculate split allocations
      * @dev Verifies if the address list is sorted, has no duplicates and is valid.
@@ -47,8 +50,6 @@ library PGContribCalculator {
         MemberRegistry.Members storage self,
         address[] memory _sortedList
     ) public view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
-        // solhint-disable-next-line var-name-mixedcase
-        uint256 PERCENTAGE_SCALE = 1e6;
         uint256 activeMembers;
         uint256 total;
         address previous;

@@ -79,9 +79,6 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /// @dev 0xSplitWallet contract
     address public split;
 
-    /// @dev constant to scale UINT values into percentages (1e6 == 100%)
-    uint256 internal constant PERCENTAGE_SCALE = 1e6;
-
     /**
      * @notice A modifier for authenticated calls coming from the Connext bridge.
      * @dev This is an important security consideration. If the target contract
