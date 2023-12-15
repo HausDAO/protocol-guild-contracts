@@ -115,7 +115,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * through the xReceive function
      */
     modifier onlyOwnerOrUpdater() {
-        if (_msgSender() != owner() && (updater == address(0) && _msgSender() != address(this)))
+        if (_msgSender() != owner() && (updater == address(0) || _msgSender() != address(this)))
             revert NetworkRegistry__OnlyOwnerOrUpdater();
         _;
     }
