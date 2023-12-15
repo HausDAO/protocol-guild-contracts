@@ -744,20 +744,6 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Set connext and updater config parameters to setup the contract as a replica registry
-     * @dev Must only be called by contract owner. Zero values will setup the contract as a main registry
-     * @param _connext Connext contract address
-     * @param _updaterDomain Connext domain ID where the updater contract is deployed
-     * @param _updater Main NetworkRegistry address that will update the registry through the Connext bridge
-     */
-    function setUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater) external onlyOwner {
-        connext = IConnext(_connext);
-        updaterDomain = _updaterDomain;
-        updater = _updater;
-        emit NewUpdaterConfig(_connext, _updaterDomain, _updater);
-    }
-
-    /**
      * @notice Adds a replica NetworkRegistry to get in sync with the main registry
      * @dev Must only be called by contract owner. Sending zero values on {_newRegistry} should disable
      * an existing replica
@@ -778,6 +764,52 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             _newRegistry.domainId,
             _newRegistry.delegate
         );
+    }
+
+    /**
+     * @notice Set connext and updater config parameters
+     * @dev Zero values in updater settings will setup the contract as a main registry
+     * @param _connext Connext contract address
+     * @param _updaterDomain Connext domain ID where the updater contract is deployed
+     * @param _updater Main NetworkRegistry address that will update the registry through the Connext bridge
+     */
+    function setUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater) external onlyOwnerOrUpdater {
+        if (_connext == address(0)) revert NetworkRegistry__InvalidConnextAddress();
+        connext = IConnext(_connext);
+        updaterDomain = _updaterDomain;
+        updater = _updater;
+        emit NewUpdaterConfig(_connext, _updaterDomain, _updater);
+    }
+
+    /**
+     * @notice Set connext & updater config settings for existing NetworkRegistry replicas via sync message
+     * @dev It should forward messages to sync specified replicas
+     * @param _chainIds a list of network chainIds where valid replicas live
+     * @param _connextAddrs a list Connext bridge addresses to be used on each replica
+     * @param _updaterDomains a list of Connext updater domain IDs to be used on each replica
+     * @param _updaterAddrs a list of updater role addresses to be used on each replica
+     * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
+     */
+    function setNetworkUpdaterConfig(
+        uint32[] memory _chainIds,
+        address[] memory _connextAddrs,
+        uint32[] memory _updaterDomains,
+        address[] memory _updaterAddrs,
+        uint256[] memory _relayerFees
+    ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
+        if (
+            _connextAddrs.length != _chainIds.length ||
+            _updaterDomains.length != _chainIds.length ||
+            _updaterAddrs.length != _chainIds.length
+        ) revert NetWorkRegistry__ParamsSizeMismatch();
+        bytes4 action = INetworkMemberRegistry.setUpdaterConfig.selector;
+        for (uint256 i = 0; i < _chainIds.length; ) {
+            bytes memory callData = abi.encode(action, _connextAddrs[i], _updaterDomains[i], _updaterAddrs[i]);
+            _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
+            unchecked {
+                ++i; // gas optimization: very unlikely to overflow
+            }
+        }
     }
 
     /**
@@ -971,6 +1003,12 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
                 (bytes4, address[], uint32)
             );
             callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
+        } else if (action == INetworkMemberRegistry.setUpdaterConfig.selector) {
+            (, address _connext, uint32 _updaterDomain, address _updater) = abi.decode(
+                _incomingCalldata,
+                (bytes4, address, uint32, address)
+            );
+            callData = abi.encodeWithSelector(action, _connext, _updaterDomain, _updater);
         } else if (action == ISplitManager.setSplit.selector) {
             (, address _splitMain, address _split) = abi.decode(_incomingCalldata, (bytes4, address, address));
             callData = abi.encodeWithSelector(action, _splitMain, _split);

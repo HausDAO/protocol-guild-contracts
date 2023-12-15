@@ -32,9 +32,8 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     function initialize(bytes memory _initializationParams) external;
 
     /**
-     * @notice Update connext and updater settings on a replica registry
-     * @dev Must only be called by a fallback contract owner.
-     * - A main registry cannot set itself as a replica.
+     * @notice Set connext and updater config parameters
+     * @dev Zero values in updater settings will setup the contract as a main registry
      * @param _connext Connext contract address
      * @param _updaterDomain Connext domain ID where the updater contract is deployed
      * @param _updater Main NetworkRegistry address that will update the registry through the Connext bridge
@@ -176,6 +175,23 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
         uint32 _splitDistributorFee,
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
+    ) external payable;
+
+    /**
+     * @notice Set connext & updater config settings for existing NetworkRegistry replicas via sync message
+     * @dev It should forward messages to sync specified replicas
+     * @param _chainIds a list of network chainIds where valid replicas live
+     * @param _connextAddrs a list Connext bridge addresses to be used on each replica
+     * @param _updaterDomains a list of Connext updater domain IDs to be used on each replica
+     * @param _updaterAddrs a list of updater role addresses to be used on each replica
+     * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
+     */
+    function setNetworkUpdaterConfig(
+        uint32[] memory _chainIds,
+        address[] memory _connextAddrs,
+        uint32[] memory _updaterDomains,
+        address[] memory _updaterAddrs,
+        uint256[] memory _relayerFees
     ) external payable;
 
     /**
