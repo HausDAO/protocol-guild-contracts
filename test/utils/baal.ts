@@ -3,15 +3,15 @@ import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
 
 export type DAOSettings = {
-  PROPOSAL_OFFERING: any;
-  GRACE_PERIOD_IN_SECONDS: any;
-  VOTING_PERIOD_IN_SECONDS: any;
-  QUORUM_PERCENT: any;
-  SPONSOR_THRESHOLD: any;
-  MIN_RETENTION_PERCENT: any;
-  MIN_STAKING_PERCENT: any;
-  TOKEN_NAME: any;
-  TOKEN_SYMBOL: any;
+  PROPOSAL_OFFERING: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  GRACE_PERIOD_IN_SECONDS: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  VOTING_PERIOD_IN_SECONDS: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  QUORUM_PERCENT: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  SPONSOR_THRESHOLD: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  MIN_RETENTION_PERCENT: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  MIN_STAKING_PERCENT: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  TOKEN_NAME: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  TOKEN_SYMBOL: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 
 export type ProposalType = {

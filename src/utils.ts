@@ -53,8 +53,10 @@ export const readSampleSplit = async (csvFilePath: string): Promise<Array<Sample
   });
 };
 
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export const arrayToFile = async (array: Array<any>) => {
   const stream = fs.createWriteStream("output.log");
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   array.forEach((val: any) => stream.write(`${val}\n`));
   stream.end();
 };
