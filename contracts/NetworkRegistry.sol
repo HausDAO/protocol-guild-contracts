@@ -966,12 +966,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
                 _incomingCalldata,
                 (bytes4, address, uint32, uint32)
             );
-            callData = abi.encodeWithSelector(
-                IMemberRegistry.setNewMember.selector,
-                _member,
-                _activityMultiplier,
-                _startDate
-            );
+            callData = abi.encodeWithSelector(action, _member, _activityMultiplier, _startDate);
         } else if (action == IMemberRegistry.updateMember.selector) {
             (, address _member, uint32 _activityMultiplier) = abi.decode(_incomingCalldata, (bytes4, address, uint32));
             callData = abi.encodeWithSelector(action, _member, _activityMultiplier);
