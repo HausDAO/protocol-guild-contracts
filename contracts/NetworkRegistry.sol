@@ -430,9 +430,10 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] memory _activityMultipliers,
         uint32[] memory _startDates
     ) internal {
-        if (_members.length != _activityMultipliers.length || _members.length != _startDates.length)
+        uint256 totalMembers = _members.length;
+        if (_activityMultipliers.length != totalMembers || _startDates.length != totalMembers)
             revert NetWorkRegistry__ParamsSizeMismatch();
-        for (uint256 i = 0; i < _members.length; ) {
+        for (uint256 i = 0; i < totalMembers; ) {
             _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
@@ -488,8 +489,9 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @param _activityMultipliers New activity multipliers for each member
      */
     function _batchUpdateMember(address[] memory _members, uint32[] memory _activityMultipliers) internal {
-        if (_members.length != _activityMultipliers.length) revert NetWorkRegistry__ParamsSizeMismatch();
-        for (uint256 i = 0; i < _members.length; ) {
+        uint256 totalMembers = _members.length;
+        if (_activityMultipliers.length != totalMembers) revert NetWorkRegistry__ParamsSizeMismatch();
+        for (uint256 i = 0; i < totalMembers; ) {
             _updateMember(_members[i], _activityMultipliers[i]);
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
@@ -794,13 +796,14 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] memory _updaterAddrs,
         uint256[] memory _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
+        uint256 totalParams = _chainIds.length;
         if (
-            _connextAddrs.length != _chainIds.length ||
-            _updaterDomains.length != _chainIds.length ||
-            _updaterAddrs.length != _chainIds.length
+            _connextAddrs.length != totalParams ||
+            _updaterDomains.length != totalParams ||
+            _updaterAddrs.length != totalParams
         ) revert NetWorkRegistry__ParamsSizeMismatch();
         bytes4 action = INetworkMemberRegistry.setUpdaterConfig.selector;
-        for (uint256 i = 0; i < _chainIds.length; ) {
+        for (uint256 i = 0; i < totalParams; ) {
             bytes memory callData = abi.encode(action, _connextAddrs[i], _updaterDomains[i], _updaterAddrs[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
             unchecked {
@@ -844,10 +847,11 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] memory _splits,
         uint256[] memory _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
-        if (_splitsMain.length != _chainIds.length || _splits.length != _chainIds.length)
+        uint256 totalParams = _chainIds.length;
+        if (_splitsMain.length != totalParams || _splits.length != totalParams)
             revert NetWorkRegistry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.setSplit.selector;
-        for (uint256 i = 0; i < _chainIds.length; ) {
+        for (uint256 i = 0; i < totalParams; ) {
             bytes memory callData = abi.encode(action, _splitsMain[i], _splits[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
             unchecked {
@@ -879,9 +883,10 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] memory _newControllers,
         uint256[] memory _relayerFees
     ) external payable onlyOwner validNetworkParams(_chainIds, _relayerFees) {
-        if (_newControllers.length != _chainIds.length) revert NetWorkRegistry__ParamsSizeMismatch();
+        uint256 totalParams = _chainIds.length;
+        if (_newControllers.length != totalParams) revert NetWorkRegistry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.transferSplitControl.selector;
-        for (uint256 i = 0; i < _chainIds.length; ) {
+        for (uint256 i = 0; i < totalParams; ) {
             bytes memory callData = abi.encode(action, _newControllers[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
             unchecked {
