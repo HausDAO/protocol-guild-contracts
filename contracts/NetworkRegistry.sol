@@ -126,7 +126,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      */
     modifier validNetworkParams(uint32[] memory _chainIds, uint256[] memory _relayerFees) {
         if (_chainIds.length != _relayerFees.length) revert NetWorkRegistry__ParamsSizeMismatch();
-        uint256 totalRelayerFees = 0;
+        uint256 totalRelayerFees;
         for (uint256 i = 0; i < _chainIds.length; ) {
             totalRelayerFees += _relayerFees[i];
             unchecked {

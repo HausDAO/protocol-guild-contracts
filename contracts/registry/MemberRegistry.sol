@@ -115,9 +115,8 @@ abstract contract MemberRegistry {
             revert InvalidMember__ActivityMultiplier(_memberAddress, _activityMultiplier);
         if (_startDate > block.timestamp) revert InvalidMember__StartDateInTheFuture(_memberAddress, _startDate);
 
-        // set to 0, will be updated in next update
-        uint32 secondsActive = 0;
-        members.db.push(Member(_memberAddress, secondsActive, _startDate, _activityMultiplier));
+        // secondsActive set to 0, will be updated in next update
+        members.db.push(Member(_memberAddress, 0, _startDate, _activityMultiplier));
         unchecked {
             members.index[_memberAddress] = ++members.count;
         }
@@ -153,7 +152,7 @@ abstract contract MemberRegistry {
         // update Member total seconds active
         for (uint256 i = 0; i < membersLength; ) {
             Member storage _member = _getMemberByIndex(i);
-            uint32 newSecondsActive = 0;
+            uint32 newSecondsActive;
             if (_member.activityMultiplier > 0) {
                 uint32 initDate = _member.secondsActive > 0 ? lastActivityUpdate : _member.startDate;
                 uint256 totalSeconds = currentDate - initDate;
