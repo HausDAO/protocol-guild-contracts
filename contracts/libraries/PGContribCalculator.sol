@@ -49,7 +49,7 @@ library PGContribCalculator {
     function calculate(
         MemberRegistry.Members storage self,
         address[] memory _sortedList
-    ) public view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
+    ) external view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
         uint256 activeMembers;
         uint256 total;
         address previous;
