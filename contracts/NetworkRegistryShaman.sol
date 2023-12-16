@@ -35,6 +35,11 @@ contract NetworkRegistryShaman is NetworkRegistry {
     /// @notice Wether or not to burn shares if a member activityMultiplier is set to zero
     bool public burnShares;
 
+    constructor() {
+        // disable initialization on singleton contract
+        _disableInitializers();
+    }
+
     /**
      * @notice A modifier to check if the registry has been setup as a manager shaman module
      */
