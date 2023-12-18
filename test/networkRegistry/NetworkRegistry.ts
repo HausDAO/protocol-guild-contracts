@@ -921,16 +921,16 @@ describe("NetworkRegistry", function () {
 
       const splitDistributorFee = splitConfig.distributorFee;
 
-      await expect(
-        l1NetworkRegistry.updateSplits(members.slice(0, 5), splitDistributorFee),
-      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "InvalidSplit__MemberListSizeMismatch");
-      await expect(l1NetworkRegistry.updateSplits([deployer, ...members.slice(1)], splitDistributorFee))
-        .to.be.revertedWithCustomError(l1CalculatorLibrary, "Member__NotRegistered")
-        .withArgs(deployer);
+      newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
+      const sortedMembers = newMembers.map((m: Member) => m.account);
+
       await expect(l1NetworkRegistry.updateSplits(members, splitDistributorFee)).to.be.revertedWithCustomError(
         l1CalculatorLibrary,
         "InvalidSplit__AccountsOutOfOrder",
       );
+      await expect(l1NetworkRegistry.updateSplits([...sortedMembers, deployer], splitDistributorFee))
+        .to.be.revertedWithCustomError(l1CalculatorLibrary, "InvalidSplit__MemberNotRegistered")
+        .withArgs(deployer);
     });
 
     it("Should be able to calculate Split allocations pre/post committing to the chain", async () => {

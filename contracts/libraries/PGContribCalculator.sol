@@ -5,14 +5,12 @@ import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
 import { MemberRegistry } from "../registry/MemberRegistry.sol";
 
-/// @notice Member list size doesn't match the current amount of members in the registry
-error InvalidSplit__MemberListSizeMismatch();
 /// @notice Member list must be sorted in ascending order
 /// @param _index index where a member address is not properly sorted
 error InvalidSplit__AccountsOutOfOrder(uint256 _index);
 /// @notice Member is not registered
 /// @param _member member address
-error Member__NotRegistered(address _member);
+error InvalidSplit__MemberNotRegistered(address _member);
 
 /**
  * @title A helper library to calculate member contributions and 0xSplit allocations using
@@ -54,8 +52,6 @@ library PGContribCalculator {
         uint256 total;
         address previous;
 
-        // verify list is current members and is sorted
-        if (_sortedList.length != self.db.length) revert InvalidSplit__MemberListSizeMismatch(); // TODO:
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
         for (uint256 i = 0; i < _sortedList.length; ) {
             address memberAddress = _sortedList[i];
@@ -124,7 +120,7 @@ library PGContribCalculator {
         MemberRegistry.Members storage self,
         address _memberAddress
     ) internal view returns (MemberRegistry.Member memory) {
-        if (self.index[_memberAddress] == 0) revert Member__NotRegistered(_memberAddress);
+        if (self.index[_memberAddress] == 0) revert InvalidSplit__MemberNotRegistered(_memberAddress);
         return self.db[self.index[_memberAddress] - 1];
     }
 
