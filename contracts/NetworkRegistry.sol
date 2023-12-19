@@ -155,11 +155,10 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      */
 
     /**
-     * @notice emitted after the connection to the main registry (updater) domain & address are updated
-     * @dev this should be emitted by replica registries only
+     * @notice emitted after the Connext and Updater role settings are updated
      * @param _connext Connext contract address
      * @param _updaterDomain new Updater domain ID
-     * @param _updater new updater contract address
+     * @param _updater new Updater address
      */
     event NewUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater);
     /**
