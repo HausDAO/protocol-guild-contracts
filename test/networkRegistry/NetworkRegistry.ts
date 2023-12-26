@@ -765,6 +765,18 @@ describe("NetworkRegistry", function () {
       await expect(
         applicantRegistry.addOrUpdateMembersBatch([users.applicant.address], [100], [await time.latest()], [0]),
       ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistry");
+      await expect(applicantRegistry.updateSecondsActive()).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyReplicaRegistry",
+      );
+      await expect(applicantRegistry.updateSplits([users.applicant.address], 100_000)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyReplicaRegistry",
+      );
+      await expect(applicantRegistry.updateAll([users.applicant.address], 100_000)).to.be.revertedWithCustomError(
+        l1NetworkRegistry,
+        "NetworkRegistry__OnlyReplicaRegistry",
+      );
     });
 
     it("Should not be able to update a replica registry without an active updater going through Connext", async () => {
@@ -927,7 +939,7 @@ describe("NetworkRegistry", function () {
       const batch2Tx = await l1NetworkRegistry.syncBatchNewMembers(members, activityMultipliers, startDates, [], []);
       await batch2Tx.wait();
 
-      const tx = await l1NetworkRegistry.updateSecondsActive();
+      const tx = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
 
       const lastBlockTimestamp = await time.latest();
 
@@ -961,7 +973,7 @@ describe("NetworkRegistry", function () {
 
       await time.increase(3600 * 24 * 30); // next block in 30 days
 
-      const txUpdate = await l1NetworkRegistry.updateSecondsActive();
+      const txUpdate = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
       await txUpdate.wait();
 
       const splitDistributorFee = splitConfig.distributorFee;
@@ -969,11 +981,10 @@ describe("NetworkRegistry", function () {
       newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
       const sortedMembers = newMembers.map((m: Member) => m.account);
 
-      await expect(l1NetworkRegistry.updateSplits(members, splitDistributorFee)).to.be.revertedWithCustomError(
-        l1CalculatorLibrary,
-        "InvalidSplit__AccountsOutOfOrder",
-      );
-      await expect(l1NetworkRegistry.updateSplits([...sortedMembers, deployer], splitDistributorFee))
+      await expect(
+        l1NetworkRegistry.syncUpdateSplits(members, splitDistributorFee, [], []),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "InvalidSplit__AccountsOutOfOrder");
+      await expect(l1NetworkRegistry.syncUpdateSplits([...sortedMembers, deployer], splitDistributorFee, [], []))
         .to.be.revertedWithCustomError(l1CalculatorLibrary, "InvalidSplit__MemberNotRegistered")
         .withArgs(deployer);
     });
@@ -990,7 +1001,7 @@ describe("NetworkRegistry", function () {
 
       await time.increase(3600 * 24 * 30); // next block in 30 days
 
-      const txUpdate = await l1NetworkRegistry.updateSecondsActive();
+      const txUpdate = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
       await txUpdate.wait();
 
       newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
@@ -1033,7 +1044,7 @@ describe("NetworkRegistry", function () {
 
       await time.increase(3600 * 24 * 30); // next block in 30 days
 
-      const txUpdate = await l1NetworkRegistry.updateSecondsActive();
+      const txUpdate = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
       await txUpdate.wait();
 
       members.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
@@ -1044,7 +1055,7 @@ describe("NetworkRegistry", function () {
 
       const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
 
-      const tx = await l1NetworkRegistry.updateSplits(members, splitDistributorFee);
+      const tx = await l1NetworkRegistry.syncUpdateSplits(members, splitDistributorFee, [], []);
 
       await expect(tx).to.emit(l1SplitMain, "UpdateSplit").withArgs(l1SplitAddress);
       await expect(tx)
@@ -1067,7 +1078,7 @@ describe("NetworkRegistry", function () {
       members.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
       const splitDistributorFee = splitConfig.distributorFee;
 
-      const tx = await l1NetworkRegistry.updateAll(members, splitDistributorFee);
+      const tx = await l1NetworkRegistry.syncUpdateAll(members, splitDistributorFee, [], []);
       await tx.wait();
 
       const lastBlockTimestamp = await time.latest();

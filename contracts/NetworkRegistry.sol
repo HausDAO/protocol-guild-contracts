@@ -476,7 +476,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * @notice Updates seconds active since the last update epoch for every member in the registry
      * @inheritdoc IMemberRegistry
      */
-    function updateSecondsActive() public {
+    function updateSecondsActive() external onlyReplica {
         _updateSecondsActive();
     }
 
@@ -489,7 +489,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        updateSecondsActive();
+        _updateSecondsActive();
         bytes4 action = IMemberRegistry.updateSecondsActive.selector;
         bytes memory callData = abi.encode(action);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -497,16 +497,24 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
 
     /**
      * @notice Updates the 0xSplit distribution based on member activity during the last epoch
-     * Consider calling {updateSecondsActive} prior triggering a 0xSplit distribution update
-     * @inheritdoc ISplitManager
+     * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
+     * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
      */
-    function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) public {
+    function _updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) internal {
         (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
-
         // run splits update
         splitMain.updateSplit(split, _receivers, _percentAllocations, _splitDistributorFee);
         bytes32 splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, _splitDistributorFee));
         emit SplitsDistributionUpdated(split, splitHash, _splitDistributorFee);
+    }
+
+    /**
+     * @notice Updates the 0xSplit distribution based on member activity during the last epoch
+     * Consider calling {updateSecondsActive} prior triggering a 0xSplit distribution update
+     * @inheritdoc ISplitManager
+     */
+    function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) external onlyReplica {
+        _updateSplits(_sortedList, _splitDistributorFee);
     }
 
     /**
@@ -522,7 +530,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        updateSplits(_sortedList, _splitDistributorFee);
+        _updateSplits(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateSplits.selector;
         bytes memory callData = abi.encode(action, _sortedList, _splitDistributorFee);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -533,9 +541,9 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * for split distribution
      * @inheritdoc ISplitManager
      */
-    function updateAll(address[] memory _sortedList, uint32 _splitDistributorFee) public {
-        updateSecondsActive();
-        updateSplits(_sortedList, _splitDistributorFee);
+    function updateAll(address[] memory _sortedList, uint32 _splitDistributorFee) external onlyReplica {
+        _updateSecondsActive();
+        _updateSplits(_sortedList, _splitDistributorFee);
     }
 
     /**
@@ -551,7 +559,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        updateAll(_sortedList, _splitDistributorFee);
+        _updateSecondsActive();
+        _updateSplits(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateAll.selector;
         bytes memory callData = abi.encode(action, _sortedList, _splitDistributorFee);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
