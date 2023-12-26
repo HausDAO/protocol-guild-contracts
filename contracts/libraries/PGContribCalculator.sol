@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
+import { DataTypes } from "../libraries/DataTypes.sol";
 import { MemberRegistry } from "../registry/MemberRegistry.sol";
 
 /// @notice Member list must be sorted in ascending order
@@ -13,12 +14,11 @@ error InvalidSplit__AccountsOutOfOrder(uint256 _index);
 error InvalidSplit__MemberNotRegistered(address _member);
 
 /**
- * @title A helper library to calculate member contributions and 0xSplit allocations using
- * the Protocol Guild MemberRegistry
+ * @title A 0xSplit allocations calculator library
  * @author DAOHaus
- * @notice A Library that calculates 0xSplit allocations based on time-based member contributions
- * @dev It uses the MemberRegistry.Members data model to feed the calculate function with
- * member's metadata
+ * @notice A Library that calculates 0xSplit allocations using ProtocolGuild MemberRegistry
+ * time-based member contributions
+ * @dev The DataTypes.Members data model is used to feed member's metadata to the calculate function
  */
 library PGContribCalculator {
     /// @dev used to store individual members contributions prior getting overall split percentages
@@ -31,10 +31,10 @@ library PGContribCalculator {
     }
 
     // @dev constant to scale UINT values into percentages (1e6 == 100%)
-    uint256 constant PERCENTAGE_SCALE = 1e6;
+    uint256 private constant PERCENTAGE_SCALE = 1e6;
 
     /**
-     * @notice Calculate split allocations
+     * @notice Calculate 0xSplit allocations
      * @dev Verifies if the address list is sorted, has no duplicates and is valid.
      * Formula to calculate individual allocations:
      *  - (SQRT(secondsActive * activityMultiplier) * PERCENTAGE_SCALE) / totalContributions
@@ -45,7 +45,7 @@ library PGContribCalculator {
      * @return _percentAllocations list of split allocations for each eligible recipient
      */
     function calculate(
-        MemberRegistry.Members storage self,
+        DataTypes.Members storage self,
         address[] memory _sortedList
     ) external view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
         uint256 activeMembers;
@@ -55,7 +55,7 @@ library PGContribCalculator {
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
         for (uint256 i = 0; i < _sortedList.length; ) {
             address memberAddress = _sortedList[i];
-            MemberRegistry.Member memory member = getMember(self, memberAddress); // TODO:
+            DataTypes.Member memory member = getMember(self, memberAddress);
             if (previous >= memberAddress) revert InvalidSplit__AccountsOutOfOrder(i);
 
             // ignore inactive members
@@ -63,7 +63,7 @@ library PGContribCalculator {
                 memberDistribution[i] = MemberContribution({
                     // TODO: how to allow recipient to assign different addresses per network?
                     receiverAddress: memberAddress,
-                    calcContribution: calculateContributionOf(self, member) // TODO:
+                    calcContribution: calculateContributionOf(self, member)
                 });
                 // get the total seconds in the last period
                 // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
@@ -111,15 +111,15 @@ library PGContribCalculator {
     }
 
     /**
-     * @notice gets a member metadata if registered
+     * @notice Fetch a member metadata from the registry
      * @dev throw an exception if member is not in the registry
      * @param _memberAddress member address
-     * @return a Member metadata
+     * @return a Member's metadata
      */
     function getMember(
-        MemberRegistry.Members storage self,
+        DataTypes.Members storage self,
         address _memberAddress
-    ) internal view returns (MemberRegistry.Member memory) {
+    ) internal view returns (DataTypes.Member memory) {
         if (self.index[_memberAddress] == 0) revert InvalidSplit__MemberNotRegistered(_memberAddress);
         return self.db[self.index[_memberAddress] - 1];
     }
@@ -131,8 +131,8 @@ library PGContribCalculator {
      * @return calculated contribution as uint256 value
      */
     function calculateContributionOf(
-        MemberRegistry.Members storage /*self*/,
-        MemberRegistry.Member memory _member
+        DataTypes.Members storage /*self*/,
+        DataTypes.Member memory _member
     ) public pure returns (uint256) {
         return UD60x18.unwrap(UD60x18.wrap(_member.secondsActive).sqrt());
     }

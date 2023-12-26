@@ -6,10 +6,10 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { NetworkRegistry } from "./NetworkRegistry.sol";
 
 /**
- * @title A NetworkRegistry minimal proxy factory using the EIP 1167 standard
+ * @title A NetworkRegistry minimal proxy factory
  * @author DAOHaus
  * @notice Summons a new NetworkRegistry using a specified registry singleton
- * @dev Singleton contract must inherit NetworkRegistry
+ * @dev Proxy factory using EIP 1167 standard. Singleton contract must inherit NetworkRegistry
  */
 contract NetworkRegistrySummoner {
     /**

@@ -164,7 +164,7 @@ describe("NetworkRegistry E2E tests", function () {
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
-      const batchTx = await l1NetworkRegistry.syncBatchNewMember(
+      const batchTx = await l1NetworkRegistry.syncBatchNewMembers(
         newMmembers,
         activityMultipliers,
         startDates,

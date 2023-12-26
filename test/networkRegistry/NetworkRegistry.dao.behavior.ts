@@ -255,7 +255,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
       );
 
       // NOTICE: Register a new batch of members via the DAO
-      const newBatchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchNewMember", [
+      const newBatchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchNewMembers", [
         newMembers,
         activityMultipliers,
         startDates,
@@ -280,7 +280,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         proposal,
         daoSettings: defaultDAOSettings,
       });
-      const action = l2NetworkRegistry.interface.getSighash("batchNewMember(address[],uint32[],uint32[])");
+      const action = l2NetworkRegistry.interface.getSighash("batchNewMembers(address[],uint32[],uint32[])");
       await expect(tx_batch)
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
         .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
