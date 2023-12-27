@@ -12,6 +12,8 @@ error InvalidSplit__AccountsOutOfOrder(uint256 _index);
 /// @notice Member is not registered
 /// @param _member member address
 error InvalidSplit__MemberNotRegistered(address _member);
+/// @notice Member list does not have any active member
+error InvalidSplit__NoActiveMembers();
 
 /**
  * @title A 0xSplit allocations calculator library
@@ -69,15 +71,16 @@ library PGContribCalculator {
                 // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
                 total += memberDistribution[i].calcContribution;
                 unchecked {
-                    // gas optimization: very unlikely to overflow
-                    ++activeMembers;
+                    ++activeMembers; // gas optimization: very unlikely to overflow
                 }
                 previous = memberAddress;
             }
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
+
+        if (activeMembers == 0) revert InvalidSplit__NoActiveMembers();
 
         // define variables for split params
         _receivers = new address[](activeMembers);
@@ -86,6 +89,8 @@ library PGContribCalculator {
         // define variables for second loop
         uint32 runningTotal;
         uint256 nonZeroIndex; // index counter for non zero allocations
+        uint256 minAllocation = type(uint256).max;
+        uint256 minAllocationIndex;
         // fill 0xSplits arrays with sorted list
         for (uint256 i = 0; i < _sortedList.length; ) {
             if (memberDistribution[i].calcContribution > 0) {
@@ -95,18 +100,26 @@ library PGContribCalculator {
                 );
 
                 runningTotal += _percentAllocations[nonZeroIndex];
+
+                // find the recipient with lowest allocation
+                if (_percentAllocations[nonZeroIndex] < minAllocation) {
+                    minAllocation = _percentAllocations[nonZeroIndex];
+                    minAllocationIndex = nonZeroIndex;
+                }
+
                 unchecked {
-                    ++nonZeroIndex;
+                    ++nonZeroIndex; // gas optimization: very unlikely to overflow
                 }
             }
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
 
-        // if there was any loss add it to the first account.
-        if (activeMembers > 0 && runningTotal != PERCENTAGE_SCALE) {
-            _percentAllocations[0] += uint32(PERCENTAGE_SCALE - runningTotal);
+        // NOTICE: In case sum(percentAllocations) < PERCENTAGE_SCALE
+        // the remainder will be added to the recipient with lowest allocation
+        if (runningTotal != PERCENTAGE_SCALE) {
+            _percentAllocations[minAllocationIndex] += uint32(PERCENTAGE_SCALE - runningTotal);
         }
     }
 

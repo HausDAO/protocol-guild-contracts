@@ -989,7 +989,67 @@ describe("NetworkRegistry", function () {
         .withArgs(deployer);
     });
 
-    it("Should be able to calculate Split allocations pre/post committing to the chain", async () => {
+    it("Should not be able to update a Split distribution if there is no active members", async () => {
+      const batchSize = 10;
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      const activityMultipliers = newMembers.map(() => 0); // all members inactive
+      const startDates = newMembers.map((m: Member) => m.startDate);
+      const batch1Tx = await l1NetworkRegistry.syncBatchNewMembers(members, activityMultipliers, startDates, [], []);
+      await batch1Tx.wait();
+
+      await time.increase(3600 * 24 * 30); // next block in 30 days
+
+      const txUpdate = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
+      await txUpdate.wait();
+
+      const splitDistributorFee = splitConfig.distributorFee;
+
+      newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
+      const sortedMembers = newMembers.map((m: Member) => m.account);
+
+      await expect(
+        l1NetworkRegistry.syncUpdateSplits(sortedMembers, splitDistributorFee, [], []),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "InvalidSplit__NoActiveMembers");
+    });
+
+    it("Should be able to calculate Split allocations that sum up to PERCENTAGE_SCALE", async () => {
+      const batchSize = 10;
+      const newMembers = await generateMemberBatch(batchSize);
+      const members = newMembers.map((m: Member) => m.account);
+      // same activityMultipliers and startDates to enforce allocations to sum up to PERCENTAGE_SCALE
+      const activityMultipliers = newMembers.map(() => 100);
+      const startDates = newMembers.map(() => newMembers[0].startDate);
+
+      const batch1Tx = await l1NetworkRegistry.syncBatchNewMembers(members, activityMultipliers, startDates, [], []);
+      await batch1Tx.wait();
+
+      await time.increase(3600 * 24 * 30); // next block in 30 days
+
+      const txUpdate = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
+      await txUpdate.wait();
+
+      newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
+      const sortedMembers = newMembers.map((m: Member) => m.account);
+
+      const { _receivers, _percentAllocations } = await l1NetworkRegistry.calculate(sortedMembers);
+
+      // fetch last calculated contributions on registry
+      const contributions = await Promise.all(
+        newMembers.map(async (member: Member) => await l1NetworkRegistry["calculateContributionOf"](member.account)),
+      );
+      const totalContributions = contributions.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      // calculate allocations on active members
+      const calculatedAllocations = contributions.map((contr: BigNumber) =>
+        contr.mul(PERCENTAGE_SCALE).div(totalContributions),
+      );
+
+      expect(_receivers).to.be.eql(newMembers.map((m: Member) => m.account));
+      expect(_percentAllocations).to.be.eql(calculatedAllocations.map((v: BigNumber) => v.toNumber()));
+    });
+
+    it("Should be able to calculate Split allocations", async () => {
       const batchSize = 10;
       const newMembers = await generateMemberBatch(batchSize);
       const members = newMembers.map((m: Member) => m.account);
@@ -1025,8 +1085,12 @@ describe("NetworkRegistry", function () {
         (a: BigNumber, b: BigNumber) => a.add(b),
         BigNumber.from(0),
       );
+      // NOTICE: dust (remainder) should be added to the member with the lowest allocation
       if (totalAllocations.lt(PERCENTAGE_SCALE)) {
-        calculatedAllocations[0] = calculatedAllocations[0].add(PERCENTAGE_SCALE.sub(totalAllocations));
+        const contribAsNumber: number[] = contributions.map((c) => c.toNumber());
+        const minValue = Math.min(...contribAsNumber);
+        const minIndex = contribAsNumber.indexOf(minValue);
+        calculatedAllocations[minIndex] = calculatedAllocations[minIndex].add(PERCENTAGE_SCALE.sub(totalAllocations));
       }
 
       expect(_receivers).to.be.eql(activeMembers.map((m: Member) => m.account));

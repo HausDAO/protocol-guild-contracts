@@ -429,8 +429,13 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
       );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
-      // NOTICE: dust (remainder) should be added to the first member en the ordered list
-      expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      // NOTICE: dust (remainder) should be added to the member with the lowest allocation
+      if (BigNumber.from(runningTotal).lt(PERCENTAGE_SCALE)) {
+        const contribAsNumber: number[] = calcContributions.map((c) => c.toNumber());
+        const minValue = Math.min(...contribAsNumber);
+        const minIndex = contribAsNumber.indexOf(minValue);
+        expectedAllocations[minIndex] = expectedAllocations[minIndex] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      }
 
       expect(expectedAllocations).to.eql(l1Splits._percentAllocations);
       expect(expectedAllocations).to.eql(l2Splits._percentAllocations);
@@ -590,8 +595,13 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
       );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
-      // NOTICE: dust (remainder) should be added to the first member en the ordered list
-      expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      // NOTICE: dust (remainder) should be added to the member with the lowest allocation
+      if (BigNumber.from(runningTotal).lt(PERCENTAGE_SCALE)) {
+        const contribAsNumber: number[] = calcContributions.map((c) => c.toNumber());
+        const minValue = Math.min(...contribAsNumber);
+        const minIndex = contribAsNumber.indexOf(minValue);
+        expectedAllocations[minIndex] = expectedAllocations[minIndex] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      }
 
       expect(expectedAllocations).to.eql(l1Splits._percentAllocations);
       expect(expectedAllocations).to.eql(l2Splits._percentAllocations);
