@@ -23,7 +23,7 @@ error NetworkRegistryShaman__InvalidBaalAddress();
  * - You can setup the amount of {sharesToMint} to new members being added to the registry.
  * - You can enable/disable burning shares to inactive members (activityMultiplier == 0).
  * - As the DAO usually lives only on the main network, it is recommended to deploy a NetworkRegistryShaman
- *   as the main registry while replicas being NetworkRegistry type.
+ *   as the main registry while replicas being of type NetworkRegistry.
  */
 contract NetworkRegistryShaman is NetworkRegistry {
     /// @notice MolochV3 DAO address
@@ -43,7 +43,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
      * @notice A modifier to check if the registry has been setup as a manager shaman module
      */
     modifier isManagerShaman() {
-        if (!isMainRegistry() || !baal.isManager(address(this))) revert NetworkRegistryShaman__NotManagerShaman();
+        if (!baal.isManager(address(this))) revert NetworkRegistryShaman__NotManagerShaman();
         _;
     }
 
