@@ -128,10 +128,11 @@ abstract contract MemberRegistry is IMemberRegistry {
     }
 
     /**
-     * @notice Updates the activity multiplier for an existing member
+     * @notice Updates the activity multiplier for an existing member.
+     * Consider updating a member activity multiplier for the next activity update epoch.
      * @dev {_getMember} function makes sure member is in the registry.
-     * Activity multiplier could be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time).
-     * Notice function is set as virtual so base functionality can be overridden by the implementer
+     * Activity multiplier can be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time).
+     * Notice function is set as virtual so base functionality can be overridden by the implementer.
      * @param _memberAddress member address
      * @param _activityMultiplier member new activity multiplier
      */
@@ -162,10 +163,17 @@ abstract contract MemberRegistry is IMemberRegistry {
     }
 
     /**
-     * @notice Updates seconds active for each member in the registry since the last update
-     * @dev Manages a {lastActivityUpdate} state variable to update activity based on last update epoch.
-     * However for new members it should update seconds based each member startDate.
-     * Notice function is set as virtual so base functionality can be overridden by the implementer
+     * @notice Updates seconds active for each member in the registry since the last update (epoch).
+     * This function is called periodically (i.e. each quarter) so member's activity should be properly
+     * updated before calling this function.
+     * @dev Manages a {lastActivityUpdate} state variable to update member's activity time since the
+     * last registry update. Member's seconds active are calculated as follows:
+     * - For new members (secondsActive == 0) it will consider the period {block.timestamp - member.startDate}
+     * - Else for existing members it will consider the period {block.timestamp - lastActivityUpdate}
+     * If there are registered members previously marked as inactive (activityMultiplier == 0) that should be
+     * considered in the current epoch, you should make the proper updates to their state prior executing the
+     * function.
+     * Notice function is set as virtual so base functionality can be overridden by the implementer.
      */
     function _updateSecondsActive() internal virtual {
         uint32 currentDate = uint32(block.timestamp);

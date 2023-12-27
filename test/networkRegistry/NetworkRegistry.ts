@@ -920,7 +920,7 @@ describe("NetworkRegistry", function () {
 
     it("Should be able to update members activity", async () => {
       const batchSize = 5;
-      const newMembers = await generateMemberBatch(batchSize * 2);
+      const newMembers: Member[] = await generateMemberBatch(batchSize * 3);
       const batch1 = newMembers.slice(0, batchSize);
       let members = batch1.map((m: Member) => m.account);
       let activityMultipliers = batch1.map((m: Member) => m.activityMultiplier);
@@ -931,7 +931,9 @@ describe("NetworkRegistry", function () {
 
       await time.increase(3600 * 24 * 30); // next block in 30 days
 
-      const batch2 = newMembers.slice(batchSize);
+      ///////// BATCH 2
+
+      const batch2 = newMembers.slice(batchSize, batchSize * 2);
       members = batch2.map((m: Member) => m.account);
       activityMultipliers = batch2.map((m: Member) => m.activityMultiplier);
       startDates = batch1.map((m: Member) => Number(m.startDate) + 3600 * 24 * 15); // 15 days later
@@ -939,9 +941,9 @@ describe("NetworkRegistry", function () {
       const batch2Tx = await l1NetworkRegistry.syncBatchNewMembers(members, activityMultipliers, startDates, [], []);
       await batch2Tx.wait();
 
-      const tx = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
+      let tx = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
 
-      const lastBlockTimestamp = await time.latest();
+      let lastBlockTimestamp = await time.latest();
 
       for (let i = 0; i < batchSize; i++) {
         await expect(tx)
@@ -957,7 +959,48 @@ describe("NetworkRegistry", function () {
             Math.floor(((lastBlockTimestamp - batch2Date) * Number(batch2[i].activityMultiplier)) / 100),
           );
       }
-      const totalMembers = await l1NetworkRegistry.totalMembers();
+      let totalMembers = await l1NetworkRegistry.totalMembers();
+      await expect(tx).to.emit(l1NetworkRegistry, "RegistryActivityUpdate").withArgs(lastBlockTimestamp, totalMembers);
+
+      await time.increase(3600 * 24 * 30); // next block in 30 days
+
+      ///////// BATCH 3
+
+      const batch3 = newMembers.slice(batchSize * 2, batchSize * 3);
+      members = batch3.map((m: Member) => m.account);
+      activityMultipliers = batch3.map(() => 100); // make sure all new members are active
+      startDates = batch3.map((m: Member) => Number(m.startDate) + 3600 * 24 * 45); // 45 days later
+      const batch3Date = Number(startDates[0]);
+      const batch3Tx = await l1NetworkRegistry.syncBatchNewMembers(members, activityMultipliers, startDates, [], []);
+      await batch3Tx.wait();
+
+      const lastActivityUpdate = await l1NetworkRegistry.lastActivityUpdate();
+
+      tx = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
+
+      lastBlockTimestamp = await time.latest();
+
+      for (let i = 0; i < batchSize; i++) {
+        await expect(tx)
+          .to.emit(l1NetworkRegistry, "UpdateMemberSeconds")
+          .withArgs(
+            batch1[i].account,
+            Math.floor(((lastBlockTimestamp - lastActivityUpdate) * Number(batch1[i].activityMultiplier)) / 100),
+          );
+        await expect(tx)
+          .to.emit(l1NetworkRegistry, "UpdateMemberSeconds")
+          .withArgs(
+            batch2[i].account,
+            Math.floor(((lastBlockTimestamp - lastActivityUpdate) * Number(batch2[i].activityMultiplier)) / 100),
+          );
+        await expect(tx)
+          .to.emit(l1NetworkRegistry, "UpdateMemberSeconds")
+          .withArgs(
+            batch3[i].account,
+            Math.floor(((lastBlockTimestamp - batch3Date) * Number(activityMultipliers[i])) / 100),
+          );
+      }
+      totalMembers = await l1NetworkRegistry.totalMembers();
       await expect(tx).to.emit(l1NetworkRegistry, "RegistryActivityUpdate").withArgs(lastBlockTimestamp, totalMembers);
     });
 
