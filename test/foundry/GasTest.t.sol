@@ -11,15 +11,15 @@ import { NetworkRegistryShaman } from "contracts/NetworkRegistryShaman.sol";
 import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
 
 contract GasTest is Test {
-    SplitMain splitMain;
-    NetworkRegistry registry;
-    NetworkRegistry replica;
-    NetworkRegistryShaman registryShaman;
-    NetworkRegistry singleton;
-    NetworkRegistryShaman singletonShaman;
-    NetworkRegistrySummoner summoner;
-    address registryOwner;
-    address[] sortedAddresses;
+    SplitMain private splitMain;
+    NetworkRegistry private registry;
+    // NetworkRegistry private replica;
+    // NetworkRegistryShaman private registryShaman;
+    NetworkRegistry private singleton;
+    NetworkRegistryShaman private singletonShaman;
+    NetworkRegistrySummoner private summoner;
+    address private registryOwner;
+    address[] private sortedAddresses;
 
     uint32[] private chainIds;
     uint256[] private relayerFees;
@@ -79,11 +79,14 @@ contract GasTest is Test {
         uint32[] memory _activityMultipliers = new uint32[](TOTAL_USERS);
         uint32[] memory _startDates = new uint32[](TOTAL_USERS);
 
-        for (uint256 i = 0; i < TOTAL_USERS; i++) {
+        for (uint256 i = 0; i < TOTAL_USERS; ) {
             _members[i] = address(uint160(0x1000 + i));
             _activityMultipliers[i] = 100;
             // force latest member to have the lowest allocation
-            _startDates[i] = 1672531200 + uint32(5000 * i);
+            _startDates[i] = 1_672_531_200 + uint32(5000 * i);
+            unchecked {
+                ++i;
+            }
         }
 
         registry.syncBatchNewMembers(_members, _activityMultipliers, _startDates, chainIds, relayerFees);
@@ -99,18 +102,24 @@ contract GasTest is Test {
         // do {
         //     swapped = false;
 
-        //     for (uint i = 1; i < _members.length; i++) {
+        //     for (uint256 i = 1; i < _members.length; ) {
         //         if (_members[i - 1] > _members[i]) {
         //             swapped = true;
         //             address temp = _members[i - 1];
         //             _members[i - 1] = _members[i];
         //             _members[i] = temp;
         //         }
+        //         unchecked {
+        //             ++i;
+        //         }
         //     }
         // } while (swapped);
 
-        for (uint i = 0; i < _members.length; i++) {
+        for (uint256 i = 0; i < _members.length; ) {
             sortedAddresses.push(_members[i]);
+            unchecked {
+                ++i;
+            }
         }
 
         vm.stopPrank();
