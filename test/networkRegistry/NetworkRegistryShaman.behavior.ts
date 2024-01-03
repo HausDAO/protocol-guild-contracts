@@ -1,5 +1,5 @@
 import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
-import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts";
+import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts/hardhat";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import {
   impersonateAccount,

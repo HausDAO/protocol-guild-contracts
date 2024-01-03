@@ -1,5 +1,5 @@
 import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
-import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts";
+import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts/hardhat";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
@@ -82,7 +82,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     l2Registry = setup.l2;
     users = setup.users;
 
-    // MUST run after registryFixture due to how chain snaphost works on hardhat
+    // MUST run after registryFixture due to how chain snapshot works on hardhat
     const setupBaal = await baalSetup({
       daoSettings: defaultDAOSettings,
     });

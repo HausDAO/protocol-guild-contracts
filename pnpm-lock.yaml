@@ -5,8 +5,8 @@ dependencies:
     specifier: ^2.0.5
     version: 2.0.5
   '@daohaus/baal-contracts':
-    specifier: ^1.2.12
-    version: 1.2.12
+    specifier: ^1.2.17
+    version: 1.2.17
   '@gnosis.pm/safe-contracts':
     specifier: ^1.3.0
     version: 1.3.0(ethers@5.7.2)
@@ -558,13 +558,14 @@ packages:
       '@jridgewell/trace-mapping': 0.3.9
     dev: true
 
-  /@daohaus/baal-contracts@1.2.12:
-    resolution: {integrity: sha512-RtYHlTbcF7ruGuyMaTYvwRVIsMmCx5/Kvik28+zPnGImVPpkPrhr4KwPLOkwIO+nVDs7nRdgHAV461Pb1Z2GCw==}
+  /@daohaus/baal-contracts@1.2.17:
+    resolution: {integrity: sha512-6DR0YNK62Gh+W+eGm8XA1OZiBhnUD870/bfmem/0KUR10NExqTEVTwm6BYSIPtkFBQKlD//w/ZiAWb3lUX1NQw==}
     dependencies:
       '@gnosis.pm/zodiac': 3.3.7
       '@opengsn/contracts': 2.2.5
       '@openzeppelin/contracts': 4.9.3
       '@openzeppelin/contracts-upgradeable': 4.9.3
+      safe-deployments: 1.26.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -5563,7 +5564,6 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       yallist: 4.0.0
-    dev: true
 
   /lru-queue@0.1.0:
     resolution: {integrity: sha512-BpdYkt9EvGl8OfWHDQPISVpcl5xZthb+XPsbELj5AQXxIC8IriDZIQYjBJPEm5rS420sjZ0TLEzRcq5KdBhYrQ==}
@@ -6911,6 +6911,12 @@ packages:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
     dev: true
 
+  /safe-deployments@1.26.0:
+    resolution: {integrity: sha512-JuUfoN86/JPmmGAxxVj73Q0G7Pkon3tZMu7IgWWd4SSPk4bvoSJCaQBOHFKRu10x2+KQUtK+xz0JIua6QB6niA==}
+    dependencies:
+      semver: 7.5.1
+    dev: false
+
   /safe-regex-test@1.0.0:
     resolution: {integrity: sha512-JBUUzyOgEwXQY1NuPtvcj/qcBDbDmEvWufhlnXZIm75DEHp+afM1r1ujJpJsV/gSM4t59tpDyPi1sd6ZaPFfsA==}
     dependencies:
@@ -6986,7 +6992,6 @@ packages:
     hasBin: true
     dependencies:
       lru-cache: 6.0.0
-    dev: true
 
   /send@0.18.0:
     resolution: {integrity: sha512-qqWzuOjSFOuqPjFe4NOsMLafToQQwBSOEpS+FwEt3A2V3vKubTquT3vmLTQpFgMXp8AlFWFuP1qKaJZOtPpVXg==}
@@ -8508,7 +8513,6 @@ packages:
 
   /yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
-    dev: true
 
   /yargs-parser@13.1.2:
     resolution: {integrity: sha512-3lbsNRf/j+A4QuSZfDRA7HRSfWrzO0YjqTJd5kjAq37Zep1CEgaYmrH9Q3GwPiB9cHyd1Y1UwggGhJGoxipbzg==}

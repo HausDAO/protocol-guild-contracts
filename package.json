@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@connext/interfaces": "^2.0.5",
-    "@daohaus/baal-contracts": "^1.2.12",
+    "@daohaus/baal-contracts": "^1.2.17",
     "@gnosis.pm/safe-contracts": "^1.3.0",
     "@openzeppelin/contracts": "^5.0.1",
     "@openzeppelin/contracts-upgradeable": "^5.0.1",

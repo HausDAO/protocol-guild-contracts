@@ -1,4 +1,5 @@
-import { Baal, moveForwardPeriods } from "@daohaus/baal-contracts";
+import { Baal } from "@daohaus/baal-contracts";
+import { moveForwardPeriods } from "@daohaus/baal-contracts/hardhat";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
 
