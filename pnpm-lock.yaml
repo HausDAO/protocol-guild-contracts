@@ -42,6 +42,9 @@ devDependencies:
   '@nomicfoundation/hardhat-chai-matchers':
     specifier: ^1.0.4
     version: 1.0.4(chai@4.3.7)(ethers@5.7.2)(hardhat-deploy-ethers@0.3.0-beta.13)(hardhat@2.18.0)
+  '@nomicfoundation/hardhat-foundry':
+    specifier: ^1.1.1
+    version: 1.1.1(hardhat@2.18.0)
   '@nomicfoundation/hardhat-network-helpers':
     specifier: ^1.0.6
     version: 1.0.6(hardhat@2.18.0)
@@ -1330,6 +1333,15 @@ packages:
       ethers: 5.7.2
       hardhat: 2.18.0(ts-node@10.9.1)(typescript@4.9.3)
       ordinal: 1.0.3
+    dev: true
+
+  /@nomicfoundation/hardhat-foundry@1.1.1(hardhat@2.18.0):
+    resolution: {integrity: sha512-cXGCBHAiXas9Pg9MhMOpBVQCkWRYoRFG7GJJAph+sdQsfd22iRs5U5Vs9XmpGEQd1yEvYISQZMeE68Nxj65iUQ==}
+    peerDependencies:
+      hardhat: ^2.17.2
+    dependencies:
+      chalk: 2.4.2
+      hardhat: 2.18.0(ts-node@10.9.1)(typescript@4.9.3)
     dev: true
 
   /@nomicfoundation/hardhat-network-helpers@1.0.6(hardhat@2.18.0):

@@ -5,10 +5,12 @@
 artifacts
 build
 cache
+cache_forge
 coverage
 dist
 node_modules
 types
+out
 
 # files
 *.env

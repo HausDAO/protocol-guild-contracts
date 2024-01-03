@@ -345,6 +345,19 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 | NetworkRegistry         | 0x813F246856A79898a2b49Eef7ff3feb740Fe4226 |
 | NetworkRegistryShaman   | 0xC2c90e8328877737B9ac495833eE701f98F90Db1 |
 
+## Gas Analysis
+
+| Active Members |                    Method                  |
+| -------------- | ------------------------------------------ |
+| 162            | testUpdateAll() (gas: 2.969.917)           |
+|                | testUpdateSecondsActive() (gas: 1.338.267) |
+| 500            | testUpdateAll() (gas: 9,162.973)           |
+|                | testUpdateSecondsActive() (gas: 4.059.505) |
+| 800            | testUpdateAll() (gas: 14.818.965)          |
+|                | testUpdateSecondsActive() (gas: 6.474.805) |
+| 1000           | testUpdateAll() (gas: 18.672.806)          |
+|                | testUpdateSecondsActive() (gas: 8.085.005) |
+
 ## License
 
 This project is licensed under [MIT](LICENSE.md).
