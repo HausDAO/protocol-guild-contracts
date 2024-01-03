@@ -1,17 +1,19 @@
 import { Baal } from "@daohaus/baal-contracts";
+// import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { deploymentConfig } from "../constants";
 import { NetworkRegistrySummoner } from "../types";
 
-// import { PGRegistry } from '../src/types';
-
 const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { companionNetworks, deployments, ethers, getChainId, getNamedAccounts, network } = hre;
   const { deployer } = await getNamedAccounts();
   const signer = await ethers.getSigner(deployer);
   const chainId = await getChainId();
+
+  // uncomment if you get gas-related errors and need current network fee data to update params
+  // console.log("Feedata", await ethers.provider.getFeeData());
 
   if (Object.keys(deploymentConfig).includes(chainId)) {
     const networkConfig = deploymentConfig[chainId];
@@ -60,9 +62,10 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     );
     const receipt = await tx.wait();
 
+    const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
+
     const registryAddress =
-      receipt.events?.[3].topics[1] &&
-      ethers.utils.defaultAbiCoder.decode(["address"], receipt.events?.[3].topics[1])[0];
+      summonedEvent?.topics?.[1] && ethers.utils.defaultAbiCoder.decode(["address"], summonedEvent.topics[1])[0];
     if (!registryAddress) throw new Error("Failed to summon a Network Registry");
 
     console.log(`PG NetworkRegistry deployed on ${network.name} chain at ${registryAddress}`);

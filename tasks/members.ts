@@ -7,7 +7,7 @@ import { Member, getRandomAllocations } from "../src/utils";
 const rgaddrsUnsorted = [
   "0xced608aa29bb92185d9b6340adcbfa263dae075b",
   "0xd26a3f686d43f2a62ba9eae2ff77e9f516d945b9",
-  "0x83ab8e31df35aa3281d630529c6f4bf5ac7f7abf",
+  // "0x83ab8e31df35aa3281d630529c6f4bf5ac7f7abf",
   // "0x146cfed833cc926b16b0da9257e8a281c2add9f3",
   // "0x131fde92e4e88fa0746d9aba3dd4ec8aac1786a6",
   // "0x0f10f27fbe3622e7d4bdf1f141c6e50ed8845af6",

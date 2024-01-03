@@ -42,11 +42,14 @@ task("registry:ownSplit", "Transfer Split ownerhip to registry contract").setAct
     const acceptTx = await registry.acceptSplitControl();
     await acceptTx.wait();
 
-    console.log(`Split Trasfer control accepted at TxHash (${acceptTx.hash})`);
+    console.log(`Split Transfer control accepted at TxHash (${acceptTx.hash})`);
   }
+  console.log(
+    "NetworkRegistry is on an L2. Accepting Split control should be done through the Main registry via a cross-chain call",
+  );
 });
 
-task("registry:addNetwork", "Add a network registry to be synced through Connext cross-chain communication")
+task("registry:addNetwork", "Add a replica registry to be synced through Connext cross-chain communication")
   // .addParam("registryAddress", "NetworkRegistry address")
   .addParam("foreignChainId", "Foreign network chain Id")
   .addParam("foreignDomainId", "Connext Network domain Id")
@@ -154,10 +157,10 @@ task("registry:newMember", "Add a new member & sync with other networks")
 
     const registry = (await ethers.getContractAt("NetworkRegistry", registryAddress, signer)) as NetworkRegistry;
 
-    const tx = await registry.syncSetNewMember(
-      member,
-      multiplier,
-      (new Date().getTime() / 1000).toFixed(),
+    const tx = await registry.syncBatchNewMembers(
+      [member],
+      [multiplier],
+      [(new Date().getTime() / 1000).toFixed()],
       [420, 421613],
       relayerFees,
       { value: totalFees },
@@ -167,7 +170,7 @@ task("registry:newMember", "Add a new member & sync with other networks")
     console.log(`Done. (txhash: ${tx.hash})`);
   });
 
-task("registry:transferOwnership", "transfer ownership of registry (to DAO Safe")
+task("registry:transferOwnership", "transfer NetworkRegistry ownership")
   // .addParam("registryAddress", "NetworkRegistry address")
   .addParam("ownerAddress", "New Owner Address")
   .setAction(async function (taskArguments: TaskArguments, { ethers, getChainId, getNamedAccounts, network }) {

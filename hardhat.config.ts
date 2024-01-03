@@ -77,7 +77,7 @@ const getNodeURI = (networkName: keyof typeof chainIds) => {
     case "polygon-mainnet":
       return "https://rpc.ankr.com/polygon";
     case "polygon-mumbai":
-      return "https://rpc.ankr.com/polygon_mumbai";
+      return "https://rpc-mumbai.maticvigil.com";
     case "gnosis":
       return "https://rpc.gnosischain.com";
     default:
@@ -253,6 +253,18 @@ const config: HardhatUserConfig = {
   typechain: {
     outDir: "types",
     target: "ethers-v5",
+  },
+  etherscan: {
+    apiKey: {
+      mainnet: explorerApiKey("mainnet"),
+      goerli: explorerApiKey("goerli"),
+      optimisticEthereum: explorerApiKey("optimism-mainnet"),
+      optimisticGoerli: explorerApiKey("optimism-goerli"),
+      arbitrumOne: explorerApiKey("arbitrum-mainnet"),
+      arbitrumGoerli: explorerApiKey("arbitrum-goerli"),
+      polygon: explorerApiKey("polygon-mainnet"),
+      polygonMumbai: explorerApiKey("polygon-mumbai"),
+    },
   },
   external: {
     contracts: [
