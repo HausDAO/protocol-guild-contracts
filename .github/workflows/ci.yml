@@ -17,6 +17,9 @@ jobs:
       - name: "Check out the repo"
         uses: "actions/checkout@v3"
 
+      - name: "Install Foundry"
+        uses: "foundry-rs/foundry-toolchain@v1"
+
       - name: "Install Pnpm"
         uses: "pnpm/action-setup@v2"
         with:
@@ -30,6 +33,12 @@ jobs:
 
       - name: "Install the dependencies"
         run: "pnpm install"
+
+      - name: get test data file
+        env:
+          AUTH_TOKEN: ${{ secrets.PRIVATE_ACCESS_TOKEN }}
+        run: |
+          curl -H "Authorization: Bearer $AUTH_TOKEN" --fail-with-body https://raw.githubusercontent.com/santteegt/private-test-files/main/pgsplit.csv > pgsplit.csv
 
       - name: "Lint the code"
         run: "pnpm lint"

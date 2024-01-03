@@ -217,6 +217,13 @@ See the gas usage per unit test and average gas per method call:
 $ REPORT_GAS=true pnpm test
 ```
 
+If you want to analyze the gas consumption when calling the registry update functions check the
+[GasTest.t.sol](test/foundry/GasTest.t.sol) for settings and execute the following:
+
+```sh
+$ forge test -vvv
+```
+
 ### Clean
 
 Delete the smart contract artifacts, the coverage reports and the Hardhat cache:
@@ -233,30 +240,59 @@ Deploy Summoner contract + singletons
 $ pnpm hardhat --network <network_name> deploy --tags Summoner
 ```
 
+### Verify contracts
+
+Verify smart contracts code on official block explorers
+
+```sh
+$ pnpm hadhat --network <network_name> etherscan-verify
+```
+
+In case of getting the gollowing error
+`Unable to verify. Please check for missing Library or invalid name (i.e names are case senstive). Library was required but suitable match not found`
+on any contract you should verify the source "manually" using this other command:
+
+```sh
+$ pnpm hardhat --network <network_name> verify --contract contracts/<Contract_Source_File.sol>:<ContractName> --libraries libraries.js <contract_address>
+```
+
+Notice you'll need to create a `libraries.js` file with the list of libraries that need to be attached to the contract,
+like the following:
+
+```js
+module.exports = {
+  PGContribCalculator: "0x...",
+};
+```
+
 ### Tasks
 
 TBD
 
 ## Testing Workflow
 
-- Generate Initial memeber list (at least 3 members)
+- Generate Initial member list (at least 2 members)
 
 ```
 # Member files will be stored by default in ./memberlist.json
 pnpm hardhat memberlist:generate
 ```
 
-- Deploy Split contracts on relevant test networks. Then, update Split contract addresses on `./constants/config.ts`
+- **Deploy Split contracts** on relevant test networks. Then, update the `split` contract addresses on
+  `./constants/config.ts`
 
-```
+```sh
 pnpm hardhat --network goerli deploy:split --controller
 pnpm hardhat --network optimismGoerli deploy:split --controller
 pnpm hardhat --network arbitrumGoerli deploy:split --controller
 ```
 
-- Optional: Deploy & Verify Summoner + Singletons on relevant test networks (these should be already deployed)
+The `--controller` flag will set the deployer address as the 0xSplit controller..
 
-```
+- **Deploy & Verify Registry Summoner + Singleton contracts** on relevant test networks (OPTIONAL as these should be
+  already deployed)
+
+```sh
 pnpm hardhat --network goerli deploy --tags Summoner
 pnpm hardhat --network goerli etherscan-verify
 
@@ -267,45 +303,45 @@ pnpm hardhat --network arbitrumGoerli deploy --tags Summoner
 pnpm hardhat --network arbitrumGoerli etherscan-verify
 ```
 
-- Deploy Main Registry. Then update the resulting contract address on `./constants/config.ts`. The registry will be
-  owned either `safe` address, or `moloch`.avatar() address, otherwise the `deployer` is set as owner by default.
+- **Deploy a Main NetworkRegistry** using the deploy script. The registry will be owned either by `safe` address, or
+  `moloch`.avatar() address you define in `./constants/config.ts`, otherwise the `deployer` will be set as owner by
+  default. Finally don't forget to set the `pgRegistry` to the deployed contract address in `./constants/config.ts`.
 
-```
+```sh
 pnpm hardhat --network goerli deploy --tags PGNetworkRegistry
 ```
 
-- Deploy Replica registries on relevant L2's. Then update the resulting contract address on `./constants/config.ts`. The
-  registry would be owned by a temporary `registryOwner` address if set, otherwise deployer will renounce ownership
-  (AddressZero) by default.
+- **Transfer 0xSplit control to NetworkRegistry contracts**. In case of Replica registries that have
+  `registryOwner != deployer`, these need to accept Split control through the Main registry via a cross-chain call (see
+  below).
 
+```sh
+pnpm hardhat --network goerli registry:ownSplit
 ```
+
+- **Deploy a Replica NetworkRegistry on relevant L2's**. The registry will be owned by a temporary `registryOwner`
+  address if set in `./constants/config.ts`, otherwise the `deployer` will renounce ownership (Zero address) by default.
+  Finally don't forget to set the `pgRegistry` to the deployed contract address in `./constants/config.ts`.
+
+```sh
 pnpm hardhat --network optimismGoerli deploy --tags PGNetworkRegistry
 pnpm hardhat --network arbitrumGoerli deploy --tags PGNetworkRegistry
 ```
 
-- Set registries as Split controller
-
-```
-pnpm hardhat --network goerli registry:ownSplit
-# Replica chains need to accept control via cross-chain call
-pnpm hardhat --network optimismGoerli registry:ownSplit
-pnpm hardhat --network arbitrumGoerli registry:ownSplit
-```
-
-- Accept control on replica registries
-
-```
-# TODO: hardhat task
-```
-
-- Register replicas on main NetworkRegistry
+- **Register a new Replicas on the Main NetworkRegistry**
 
 ```
 pnpm hardhat --network goerli registry:addNetwork --foreign-chain-id 420 --foreign-domain-id 1735356532 --foreign-registry-address <registry_address>
 pnpm hardhat --network goerli registry:addNetwork --foreign-chain-id 421613 --foreign-domain-id 1734439522 --foreign-registry-address <registry_address>
 ```
 
-- Test New Member Sync Action
+- **Accept 0xSplit control on Replica registries**
+
+```sh
+# TODO: hardhat task
+```
+
+- **Test New Member Sync Action**
 
 ```
 pnpm hardhat --network goerli registry:newMember --member <member_address> --multiplier 100
@@ -323,27 +359,48 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 ### Goerli
 
-| Contract                | Address                                    |
-| ----------------------- | ------------------------------------------ |
-| NetworkRegistrySummoner | 0xd8453cEE3b86887829cd7622FDD39187DE8e8261 |
-| NetworkRegistry         | 0xa5D9469f11C277A91d718D338eece150d93996b3 |
-| NetworkRegistryShaman   | 0xe03F296b89c99a223E41c42E5d56acd51DB329A8 |
+| Contract                        | Address                                    |
+| ------------------------------- | ------------------------------------------ |
+| NetworkRegistrySummoner         | 0x23c86601aF8ecb4BEAc7209dEd87Ef058d341FD2 |
+| NetworkRegistry Singleton       | 0xC893c6255C993Ce5AcA5BD80A816638A9B661F1b |
+| NetworkRegistryShaman Singleton | 0x329a79C1967565a89cD54fCC40614b3C7dfBD9d4 |
 
-### OptimismGoerli
+### Optimism Goerli
 
-| Contract                | Address                                    |
-| ----------------------- | ------------------------------------------ |
-| NetworkRegistrySummoner | 0xE8c26332C8Ecbc05a29e62E9c6bc3578EC82090f |
-| NetworkRegistry         | 0x813F246856A79898a2b49Eef7ff3feb740Fe4226 |
-| NetworkRegistryShaman   | 0xC2c90e8328877737B9ac495833eE701f98F90Db1 |
+| Contract                        | Address                                    |
+| ------------------------------- | ------------------------------------------ |
+| NetworkRegistrySummoner         | 0x3CB7951c50E3412c3005DCB1E7c74c96B8BD9D77 |
+| NetworkRegistry Singleton       | 0x943Db8CBf2f68890a09F6A390089E71EA3D374ba |
+| NetworkRegistryShaman Singleton | 0x911689D5ec3787cD65e74758846aD8dbeEF5BbA7 |
 
-### ArbitrumGoerli
+### Arbitrum Goerli
 
-| Contract                | Address                                    |
-| ----------------------- | ------------------------------------------ |
-| NetworkRegistrySummoner | 0xE8c26332C8Ecbc05a29e62E9c6bc3578EC82090f |
-| NetworkRegistry         | 0x813F246856A79898a2b49Eef7ff3feb740Fe4226 |
-| NetworkRegistryShaman   | 0xC2c90e8328877737B9ac495833eE701f98F90Db1 |
+| Contract                        | Address                                    |
+| ------------------------------- | ------------------------------------------ |
+| NetworkRegistrySummoner         | 0x3CB7951c50E3412c3005DCB1E7c74c96B8BD9D77 |
+| NetworkRegistry Singleton       | 0x943Db8CBf2f68890a09F6A390089E71EA3D374ba |
+| NetworkRegistryShaman Singleton | 0x911689D5ec3787cD65e74758846aD8dbeEF5BbA7 |
+
+### Polygon Mumbai
+
+| Contract                        | Address                                    |
+| ------------------------------- | ------------------------------------------ |
+| NetworkRegistrySummoner         | 0xd90Bc22cE45155ADb1c076bb484352Fe3965d90B |
+| NetworkRegistry Singleton       | 0xb0066cEF8Ec29B7ba3DB4c2e9161349C9d3D2a82 |
+| NetworkRegistryShaman Singleton | 0xab52eBAA3A5Bd8F7B9c13D49f70BE93018191F0A |
+
+## Gas Analysis
+
+| Active Members | Method                                     |
+| -------------- | ------------------------------------------ |
+| 162            | testUpdateAll() (gas: 2.969.917)           |
+|                | testUpdateSecondsActive() (gas: 1.338.267) |
+| 500            | testUpdateAll() (gas: 9,162.973)           |
+|                | testUpdateSecondsActive() (gas: 4.059.505) |
+| 800            | testUpdateAll() (gas: 14.818.965)          |
+|                | testUpdateSecondsActive() (gas: 6.474.805) |
+| 1000           | testUpdateAll() (gas: 18.672.806)          |
+|                | testUpdateSecondsActive() (gas: 8.085.005) |
 
 ## License
 

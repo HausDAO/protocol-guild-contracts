@@ -1,7 +1,12 @@
 import { Baal, MultiSend, Shares } from "@daohaus/baal-contracts";
 import { ProposalType, baalSetup, encodeMultiAction } from "@daohaus/baal-contracts";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import {
+  impersonateAccount,
+  setBalance,
+  stopImpersonatingAccount,
+  time,
+} from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { parseEther } from "ethers/lib/utils";
@@ -265,8 +270,82 @@ describe("NetworkRegistryShaman E2E tests", function () {
       .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
   });
 
+  describe("NetworkRegistryShaman + Summoner", function () {
+    it("Should not be able to summon a registry shaman with invalid baal address", async () => {
+      const baal = ethers.constants.AddressZero;
+      const initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address", "uint256", "bool"],
+        [
+          connext.address,
+          0,
+          ethers.constants.AddressZero,
+          l1SplitMain.address,
+          l1SplitAddress,
+          baal,
+          parseEther("1"),
+          true,
+        ],
+      );
+
+      await expect(
+        summoner.summonRegistry(registryShamanSingleton.address, "MainRegistry", initializationParams),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistryShaman__InvalidBaalAddress");
+    });
+  });
+
+  describe("NetworkRegistryShaman + Not manager", function () {
+    it("Should not be able to operate if main registry is not set as a manager shaman", async () => {
+      const batchSize = 10;
+      // Syncing a batch of members
+      const newMembers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
+      const activityMultipliers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.activityMultiplier);
+      const startDates = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.startDateSeconds);
+      const chainIds = [replicaChainId];
+      const relayerFees = [defaultRelayerFee];
+      const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const l1RegistryAddress = await summonRegistryShaman(
+        summoner,
+        registryShamanSingleton.address,
+        {
+          connext: connext.address,
+          updaterDomainId: 0, // Main Registry -> no domainId
+          updaterAddress: ethers.constants.AddressZero, // Main Registry -> no updater
+          splitMain: l1SplitMain.address,
+          split: l1SplitAddress,
+          baal: baal.address, // NOTICE: DAO address sent so internally set the baal avatar as registry owner
+          sharesToMint: parseEther("1"), // NOTICE: DAO shares to mint to new registry members
+          burnShares: true, // NOTICE: burn shares if activity multiplier is set to zero
+        },
+        "Mainnet Registry",
+      );
+
+      const avatarAddress = await baal.avatar();
+
+      await impersonateAccount(avatarAddress);
+      await setBalance(avatarAddress, ethers.utils.parseEther("1"));
+      const signer = await ethers.getSigner(avatarAddress);
+      const l1Registry = (await ethers.getContractAt(
+        "NetworkRegistryShaman",
+        l1RegistryAddress,
+        signer,
+      )) as NetworkRegistryShaman;
+      await expect(
+        l1Registry.syncBatchNewMembers(
+          newMembers.slice(0, batchSize),
+          activityMultipliers.slice(0, batchSize),
+          startDates.slice(0, batchSize),
+          chainIds,
+          relayerFees,
+          { value: totalValue },
+        ),
+      ).to.be.revertedWithCustomError(l1Registry, "NetworkRegistryShaman__NotManagerShaman");
+      await stopImpersonatingAccount(avatarAddress);
+    });
+  });
+
   describe("0xSplit + NetworkRegistryShaman", function () {
-    const batchSize = 113; // NOTICE: max amount of members to be process befor hitting the max block gas limit
+    const batchSize = 113; // NOTICE: max amount of members to be process before hitting the max block gas limit
 
     beforeEach(async function () {
       // Syncing a batch of members
@@ -285,7 +364,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       );
 
       // NOTICE: Register a new batch of members via the DAO. Just a subset at it will hit the block gas limit
-      let newBatchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchNewMember", [
+      let newBatchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchNewMembers", [
         newMembers.slice(0, batchSize),
         activityMultipliers.slice(0, batchSize),
         startDates.slice(0, batchSize),
@@ -310,13 +389,13 @@ describe("NetworkRegistryShaman E2E tests", function () {
       // for (let i = 0; i < batchSize; i++) {
       //   await expect(tx_batch1).to.emit(sharesToken, 'Transfer').withArgs(ethers.constants.AddressZero, newMembers[i], parseEther("1"));
       // }
-      const action = l2NetworkRegistry.interface.getSighash("batchNewMember(address[],uint32[],uint32[])");
+      const action = l2NetworkRegistry.interface.getSighash("batchNewMembers(address[],uint32[],uint32[])");
       await expect(tx_batch1)
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
         .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
 
       // NOTICE: Register a 2nd batch of members via the DAO.
-      newBatchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchNewMember", [
+      newBatchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchNewMembers", [
         newMembers.slice(batchSize),
         activityMultipliers.slice(batchSize),
         startDates.slice(batchSize),
@@ -496,8 +575,13 @@ describe("NetworkRegistryShaman E2E tests", function () {
         c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
       );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
-      // NOTICE: dust (remainder) should be added to the first member en the ordered list
-      expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      // NOTICE: dust (remainder) should be added to the member with the lowest allocation
+      if (BigNumber.from(runningTotal).lt(PERCENTAGE_SCALE)) {
+        const contribAsNumber: number[] = calcContributions.map((c) => c.toNumber());
+        const minValue = Math.min(...contribAsNumber);
+        const minIndex = contribAsNumber.indexOf(minValue);
+        expectedAllocations[minIndex] = expectedAllocations[minIndex] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      }
 
       expect(expectedAllocations).to.eql(l1Splits._percentAllocations);
       expect(expectedAllocations).to.eql(l2Splits._percentAllocations);
@@ -549,12 +633,12 @@ describe("NetworkRegistryShaman E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),
@@ -657,8 +741,13 @@ describe("NetworkRegistryShaman E2E tests", function () {
         c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
       );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
-      // NOTICE: dust (remainder) should be added to the first member en the ordered list
-      expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      // NOTICE: dust (remainder) should be added to the member with the lowest allocation
+      if (BigNumber.from(runningTotal).lt(PERCENTAGE_SCALE)) {
+        const contribAsNumber: number[] = calcContributions.map((c) => c.toNumber());
+        const minValue = Math.min(...contribAsNumber);
+        const minIndex = contribAsNumber.indexOf(minValue);
+        expectedAllocations[minIndex] = expectedAllocations[minIndex] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      }
 
       expect(expectedAllocations).to.eql(l1Splits._percentAllocations);
       expect(expectedAllocations).to.eql(l2Splits._percentAllocations);
@@ -710,12 +799,12 @@ describe("NetworkRegistryShaman E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),
@@ -733,7 +822,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
-      const batchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchUpdateMember", [
+      const batchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchUpdateMembersActivity", [
         members,
         activityMultipliers,
         chainIds,
@@ -754,7 +843,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
         daoSettings: defaultDAOSettings,
       });
       await tx_batch.wait();
-      const action = l2NetworkRegistry.interface.getSighash("batchUpdateMember(address[],uint32[])");
+      const action = l2NetworkRegistry.interface.getSighash("batchUpdateMembersActivity(address[],uint32[])");
       await expect(tx_batch)
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
         .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
@@ -778,7 +867,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
-      const batchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchUpdateMember", [
+      const batchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchUpdateMembersActivity", [
         members,
         activityMultipliers,
         chainIds,
@@ -800,7 +889,7 @@ describe("NetworkRegistryShaman E2E tests", function () {
       });
       await tx_batch.wait();
 
-      const batch2Encoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchUpdateMember", [
+      const batch2Encoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchUpdateMembersActivity", [
         members,
         activityMultipliersUpdated,
         chainIds,
@@ -822,12 +911,75 @@ describe("NetworkRegistryShaman E2E tests", function () {
       });
       await tx_batch2.wait();
 
-      const action = l2NetworkRegistry.interface.getSighash("batchUpdateMember(address[],uint32[])");
+      const action = l2NetworkRegistry.interface.getSighash("batchUpdateMembersActivity(address[],uint32[])");
       await expect(tx_batch2)
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
         .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
 
       for (let i = 0; i < members.length; i++) {
+        expect(await sharesToken.balanceOf(members[i])).to.be.equal(parseEther("1"));
+      }
+    });
+
+    it("Should not burn shares if shaman config disables the burning feature", async () => {
+      // Disable burning shares
+      const sharesToMint = await l1NetworkRegistry.sharesToMint();
+      const burnShares = false;
+      const configEncoded = l1NetworkRegistry.interface.encodeFunctionData("setShamanConfig", [
+        sharesToMint,
+        burnShares,
+      ]);
+
+      const encodedConfigAction = encodeMultiAction(
+        multisend,
+        [configEncoded],
+        [l1NetworkRegistry.address],
+        [BigNumber.from(0)],
+        [0],
+      );
+      const configTx = await submitAndProcessProposal({
+        baal,
+        encodedAction: encodedConfigAction,
+        proposal,
+        daoSettings: defaultDAOSettings,
+      });
+      await expect(configTx).to.emit(l1NetworkRegistry, "ShamanConfigUpdated").withArgs(sharesToMint, burnShares);
+
+      // Syncing a batch of members
+      const members = sampleSplit.slice(0, 2).map((memberSplit: SampleSplit) => memberSplit.address);
+      const activityMultipliers = members.map((_, idx: number) => (idx % 2) * 50);
+      const chainIds = [replicaChainId];
+      const relayerFees = [defaultRelayerFee];
+      const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
+
+      const batchEncoded = l1NetworkRegistry.interface.encodeFunctionData("syncBatchUpdateMembersActivity", [
+        members,
+        activityMultipliers,
+        chainIds,
+        relayerFees,
+      ]);
+
+      const encodedAction = encodeMultiAction(
+        multisend,
+        [batchEncoded],
+        [l1NetworkRegistry.address],
+        [totalValue],
+        [0],
+      );
+      const tx_batch = await submitAndProcessProposal({
+        baal,
+        encodedAction,
+        proposal,
+        daoSettings: defaultDAOSettings,
+      });
+      await tx_batch.wait();
+      const action = l2NetworkRegistry.interface.getSighash("batchUpdateMembersActivity(address[],uint32[])");
+      await expect(tx_batch)
+        .to.emit(l2NetworkRegistry, "SyncActionPerformed")
+        .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);
+
+      for (let i = 0; i < members.length; i++) {
+        // all members retain their shares
         expect(await sharesToken.balanceOf(members[i])).to.be.equal(parseEther("1"));
       }
     });

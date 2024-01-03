@@ -1,3 +1,4 @@
+import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-toolbox";
 import { config as dotenvConfig } from "dotenv";
 import "hardhat-deploy";
@@ -76,7 +77,7 @@ const getNodeURI = (networkName: keyof typeof chainIds) => {
     case "polygon-mainnet":
       return "https://rpc.ankr.com/polygon";
     case "polygon-mumbai":
-      return "https://rpc.ankr.com/polygon_mumbai";
+      return "https://rpc-mumbai.maticvigil.com";
     case "gnosis":
       return "https://rpc.gnosischain.com";
     default:
@@ -229,7 +230,7 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: "0.8.19",
+        version: "0.8.21",
         settings: {
           metadata: {
             // Not including the metadata hash
@@ -252,6 +253,18 @@ const config: HardhatUserConfig = {
   typechain: {
     outDir: "types",
     target: "ethers-v5",
+  },
+  etherscan: {
+    apiKey: {
+      mainnet: explorerApiKey("mainnet"),
+      goerli: explorerApiKey("goerli"),
+      optimisticEthereum: explorerApiKey("optimism-mainnet"),
+      optimisticGoerli: explorerApiKey("optimism-goerli"),
+      arbitrumOne: explorerApiKey("arbitrum-mainnet"),
+      arbitrumGoerli: explorerApiKey("arbitrum-goerli"),
+      polygon: explorerApiKey("polygon-mainnet"),
+      polygonMumbai: explorerApiKey("polygon-mumbai"),
+    },
   },
   external: {
     contracts: [

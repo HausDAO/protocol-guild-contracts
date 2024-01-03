@@ -23,7 +23,7 @@ export type SampleSplit = {
 
 // Takes a count and returns an array of evenly distributed random BigNumbers that sum to ALLOCATION_TOTAL
 export const getRandomAllocations = (count: number): number[] => {
-  const allocations = Array.from({ length: count }, () => Math.random());
+  const allocations: Array<number> = Array.from({ length: count }, () => Math.random());
   const totalAllocation = sum(allocations);
   const scaledAllocations = allocations.map((alloc) => round((PERCENTAGE_SCALE.toNumber() * alloc) / totalAllocation));
   // fix precision / rounding errors before converting to BN
@@ -53,8 +53,10 @@ export const readSampleSplit = async (csvFilePath: string): Promise<Array<Sample
   });
 };
 
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export const arrayToFile = async (array: Array<any>) => {
   const stream = fs.createWriteStream("output.log");
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   array.forEach((val: any) => stream.write(`${val}\n`));
   stream.end();
 };

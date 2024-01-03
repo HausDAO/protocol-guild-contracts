@@ -1,31 +1,29 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.21;
 
 import { IBaal } from "@daohaus/baal-contracts/contracts/interfaces/IBaal.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { NetworkRegistry } from "./NetworkRegistry.sol";
 
-// import "hardhat/console.sol";
-
-error NetworkRegistryShaman_NotManagerShaman();
+error NetworkRegistryShaman__NotManagerShaman();
+error NetworkRegistryShaman__InvalidBaalAddress();
 
 /**
  * @title A cross-chain network registry and Baal shaman module to distribute funds escrowed in 0xSplit based
  * on member activity.
  * @author DAOHaus
- * @notice Manage a cross-chain member registry that mints Baal DAO shares and distribute funds hold in 0xSplit based
- * on member activity.
- * @dev Setup as a MolochV3 manager shaman module to mint/burn shares based on member activity.
+ * @notice Manage a cross-chain member registry that mints/burn Baal DAO shares and distribute funds
+ * hold in 0xSplit based on member activity.
+ * @dev Setup contract as a MolochV3 manager shaman module to mint/burn shares based on member activity.
  * Features and important things to consider:
- * - Inherits all the features of NetworkRegistry contract
+ * - Inherits all the features of NetworkRegistry contract.
  * - It can be setup as a manager Shaman module on a MolochV3 DAO (codename Baal) to mint/burn shares when
- *   adding/updating members without the need of sending a separate proposal or additional proposal actions within a
- *   multicall proposal.
- * - You can setup the amount of {sharesToMint} to new members being added to the registry
- * - You can enable/disable burning shares to inactive members (activityMultiplier == 0)
- * - As the DAO lives only on the main network, you just need to deploy one NetworkRegistryShaman as the main registry
- *   while replicas can be NetworkRegistry flavour
+ *   adding/updating members without the need of sending a separate/additional actions within a multicall proposal.
+ * - You can setup the amount of {sharesToMint} to new members being added to the registry.
+ * - You can enable/disable burning shares to inactive members (activityMultiplier == 0).
+ * - As the DAO usually lives only on the main network, it is recommended to deploy a NetworkRegistryShaman
+ *   as the main registry while replicas being of type NetworkRegistry.
  */
 contract NetworkRegistryShaman is NetworkRegistry {
     /// @notice MolochV3 DAO address
@@ -36,12 +34,16 @@ contract NetworkRegistryShaman is NetworkRegistry {
     /// @notice Wether or not to burn shares if a member activityMultiplier is set to zero
     bool public burnShares;
 
+    constructor() {
+        // disable initialization on singleton contract
+        _disableInitializers();
+    }
+
     /**
      * @notice A modifier to check if the registry has been setup as a manager shaman module
      */
     modifier isManagerShaman() {
-        if (!isMainRegistry() || address(baal) == address(0) || !baal.isManager(address(this)))
-            revert NetworkRegistryShaman_NotManagerShaman();
+        if (!baal.isManager(address(this))) revert NetworkRegistryShaman__NotManagerShaman();
         _;
     }
 
@@ -54,7 +56,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
 
     /**
      * @notice Initializes the registry shaman contract
-     * @dev Initialization parameters are abi-encoded through the NetworkRegistrySummoner contract
+     * @dev Initialization parameters are abi-encoded (i.e. through the NetworkRegistrySummoner contract)
      * @param _initializationParams abi-encoded parameters
      */
     function initialize(bytes memory _initializationParams) external override initializer {
@@ -68,6 +70,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
             uint256 _sharesToMint,
             bool _burnShares
         ) = abi.decode(_initializationParams, (address, uint32, address, address, address, address, uint256, bool));
+        if (_baal == address(0)) revert NetworkRegistryShaman__InvalidBaalAddress();
         baal = IBaal(_baal);
         __NetworkRegistry_init(
             _connext,
@@ -75,17 +78,17 @@ contract NetworkRegistryShaman is NetworkRegistry {
             _updater,
             _splitMain,
             _split,
-            baal.avatar() // NOTICE: Baal avatar as registry Owner
+            baal.avatar() // NOTICE: Baal avatar is set as the registry owner
         );
         sharesToMint = _sharesToMint;
         burnShares = _burnShares;
     }
 
     /**
-     * @notice Updates shaman config parameters
-     * @dev Must only be called by owner or updater (latter should never apply)
-     * @param _sharesToMint The amount of shares to mint to new members
-     * @param _burnShares Wether or not to burn shares if a member activityMultiplier is set to zero
+     * @notice Updates the shaman config parameters
+     * @dev Callable by the registry owner
+     * @param _sharesToMint Amount of shares to mint to new members
+     * @param _burnShares Whether or not to burn shares if a member activityMultiplier is set to zero
      */
     function setShamanConfig(uint256 _sharesToMint, bool _burnShares) external onlyOwner {
         burnShares = _burnShares;
@@ -94,7 +97,7 @@ contract NetworkRegistryShaman is NetworkRegistry {
     }
 
     /**
-     * @notice Adds a new member to the registry and mints some shares in the DAO
+     * @notice Adds a new member to the registry and mints shares in the DAO
      * @dev {isManagerShaman} verifies the registry has a manager role in the DAO
      * @param _member new member address
      * @param _activityMultiplier member activity multiplier
@@ -114,13 +117,13 @@ contract NetworkRegistryShaman is NetworkRegistry {
     }
 
     /**
-     * @notice Updates the activity multiplier of an existing member and burns DAO member shares if applicable
+     * @notice Updates the activity multiplier for an existing member and mint/burn DAO shares if applicable
      * @dev {isManagerShaman} verifies the registry has a manager role in the DAO
      * @param _member member address
      * @param _activityMultiplier member new activity multiplier
      */
-    function _updateMember(address _member, uint32 _activityMultiplier) internal override isManagerShaman {
-        super._updateMember(_member, _activityMultiplier);
+    function _updateMemberActivity(address _member, uint32 _activityMultiplier) internal override isManagerShaman {
+        super._updateMemberActivity(_member, _activityMultiplier);
         address[] memory _to = new address[](1);
         _to[0] = _member;
         uint256[] memory _amounts = new uint256[](1);

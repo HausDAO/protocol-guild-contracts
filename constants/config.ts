@@ -4,15 +4,16 @@ export const defaultSplitsConfig = {
 };
 
 // NOTICE: DAO + Connext + 0xSplits config
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export const deploymentConfig: { [key: string]: any } = {
   "1": {
     // mainnet
     domainId: 6648936,
     connext: "0x8898B472C54c31894e3B9bb83cEA802a5d0e63C6",
-    moloch: "0x7839755b77aadcd6a8cdb76248b3dddfa9b7f5f1",
-    safe: "0xaccd85e73639b5213a001630eb2512dbd6292e32",
+    moloch: "0x7839755b77aadcd6a8cdb76248b3dddfa9b7f5f1", // TODO:
+    safe: "0xaccd85e73639b5213a001630eb2512dbd6292e32", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0x50730dF422AF6c5465C6EfdE58dEC6443908a059",
+    split: "0x50730dF422AF6c5465C6EfdE58dEC6443908a059", // TODO:
     pgRegistry: "", // TODO:
   },
   "100": {
@@ -67,47 +68,47 @@ export const deploymentConfig: { [key: string]: any } = {
     // goerli
     domainId: 1735353714,
     connext: "0xFCa08024A6D4bCc87275b1E4A1E22B71fAD7f649",
-    moloch: "0x719dfde5f1be59318cadb2ad60e1fd56ba7eaffa", // TODO:
-    safe: "0xe79e5b67adc45460fa4b63f430a461ab82e5c8be", // TODO:
+    moloch: "0x1e4265037fbefb711c144cb0724d722ee3187e16", // TODO:
+    safe: "0x42f822d337c19fdd63752b165df49d27ffcbc60c", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0x1a3dFF18C2E36234Ae0b9799a752Fa4DFc0995C5",
-    pgRegistry: "0xE7062AB7A00902f18fc1784C135639d24A979547",
+    split: "0xda419a6b304a8394d76c483cac0aced93c165d44",
+    pgRegistry: "0xeAC4e0196c6152Bd3307035dBB9A2E58f0e791eE",
   },
   "80001": {
     // mumbai
     l2: true,
     domainId: 9991,
     connext: "0x2334937846Ab2A3FCE747b32587e1A1A2f6EEC5a",
-    registryOwner: "", // TODO:
+    registryOwner: "0x10136Fa41B6522E4DBd068C6F7D80373aBbCFBe6", // TODO:
     moloch: "", // TODO:
     safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
-    split: "", // TODO:
-    pgRegistry: "", // TODO:
+    split: "0x7182c7d52f6c5d38327c19fe4fdbe53f4a5f6e82", // TODO:
+    pgRegistry: "0xDb1058A3303AD2D83055613A47711458184E1845", // TODO:
   },
   "420": {
     // optimismGoerli
     l2: true,
     domainId: 1735356532,
     connext: "0x5Ea1bb242326044699C3d81341c5f535d5Af1504",
-    registryOwner: "", // TODO:
-    moloch: "", // TODO:
-    safe: "", // TODO:
+    registryOwner: "0x10136Fa41B6522E4DBd068C6F7D80373aBbCFBe6", // TODO:
+    moloch: "",
+    safe: "",
     splitsMain: "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE",
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0xfc9d3e4f1a01589f29bfe6e047c3b62fb3de7095",
-    pgRegistry: "0x58d31B7668b13cb2995FF754dA2a658041B6cEEf",
+    split: "0x4b7ef91969355e78de2ff6825ad266b3f231b88e", // TODO:
+    pgRegistry: "0xa304c1053d187497ae1f27B6Ac825f09A3c99C40", // TODO:
   },
   "421613": {
     // arbitrumGoerli
     l2: true,
     domainId: 1734439522,
     connext: "0x2075c9E31f973bb53CAE5BAC36a8eeB4B082ADC2",
-    registryOwner: "", // TODO:
-    moloch: "", // TODO:
-    safe: "", // TODO:
+    registryOwner: "0x10136Fa41B6522E4DBd068C6F7D80373aBbCFBe6", // TODO:
+    moloch: "",
+    safe: "",
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0xab7a08be21dfecd4c9902995f3e30a2659b564e1",
-    pgRegistry: "0x58d31B7668b13cb2995FF754dA2a658041B6cEEf",
+    split: "0xf79ee05e577b9ad7d3e786945b8405be92515bc8", // TODO:
+    pgRegistry: "0xa304c1053d187497ae1f27B6Ac825f09A3c99C40", // TODO:
   },
 };

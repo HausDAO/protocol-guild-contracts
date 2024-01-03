@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.21;
 
-import { IBaal } from "@daohaus/baal-contracts/contracts/interfaces/IBaal.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import { NetworkRegistry } from "./NetworkRegistry.sol";
 
 /**
- * @title A NetworkRegistry minimal proxy factory using the EIP 1167 standard
+ * @title A NetworkRegistry minimal proxy factory
  * @author DAOHaus
  * @notice Summons a new NetworkRegistry using a specified registry singleton
- * @dev Singleton contract must inherit NetworkRegistry
+ * @dev Proxy factory using EIP 1167 standard. Singleton contract must inherit NetworkRegistry
  */
 contract NetworkRegistrySummoner {
     /**

@@ -4,3 +4,4 @@
 contracts/fixtures
 contracts/mocks
 contracts/interfaces/ISplitMain.sol
+out

@@ -45,6 +45,11 @@ describe("NetworkRegistry E2E tests", function () {
 
   this.beforeAll(async function () {
     sampleSplit = await readSampleSplit("pgsplit.csv");
+    // force last user to be inactive -> at least one member has activityMultiplier = 0
+    const lastSample = sampleSplit[sampleSplit.length - 1];
+    lastSample.activityMultiplier = 0;
+    sampleSplit[sampleSplit.length - 1] = lastSample;
+
     // NOTICE: set the block timestamp to a month before cutoff date
     await time.setNextBlockTimestamp(Date.parse("2023-06-01T00:00:00.000-05:00") / 1000);
   });
@@ -159,7 +164,7 @@ describe("NetworkRegistry E2E tests", function () {
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
-      const batchTx = await l1NetworkRegistry.syncBatchNewMember(
+      const batchTx = await l1NetworkRegistry.syncBatchNewMembers(
         newMmembers,
         activityMultipliers,
         startDates,
@@ -248,8 +253,13 @@ describe("NetworkRegistry E2E tests", function () {
         c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
       );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
-      // NOTICE: dust (remainder) should be added to the first member en the ordered list
-      expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      // NOTICE: dust (remainder) should be added to the member with the lowest allocation
+      if (BigNumber.from(runningTotal).lt(PERCENTAGE_SCALE)) {
+        const contribAsNumber: number[] = calcContributions.map((c) => c.toNumber());
+        const minValue = Math.min(...contribAsNumber);
+        const minIndex = contribAsNumber.indexOf(minValue);
+        expectedAllocations[minIndex] = expectedAllocations[minIndex] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      }
 
       expect(expectedAllocations).to.eql(l1Splits._percentAllocations);
       expect(expectedAllocations).to.eql(l2Splits._percentAllocations);
@@ -301,12 +311,12 @@ describe("NetworkRegistry E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),
@@ -384,8 +394,13 @@ describe("NetworkRegistry E2E tests", function () {
         c.mul(PERCENTAGE_SCALE).div(totalContributions).toNumber(),
       );
       const runningTotal = expectedAllocations.reduce((a: number, b: number) => a + b, 0);
-      // NOTICE: dust (remainder) should be added to the first member en the ordered list
-      expectedAllocations[0] = expectedAllocations[0] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      // NOTICE: dust (remainder) should be added to the member with the lower allocation
+      if (BigNumber.from(runningTotal).lt(PERCENTAGE_SCALE)) {
+        const contribAsNumber: number[] = calcContributions.map((c) => c.toNumber());
+        const minValue = Math.min(...contribAsNumber);
+        const minIndex = contribAsNumber.indexOf(minValue);
+        expectedAllocations[minIndex] = expectedAllocations[minIndex] + PERCENTAGE_SCALE.sub(runningTotal).toNumber();
+      }
 
       expect(expectedAllocations).to.eql(l1Splits._percentAllocations);
       expect(expectedAllocations).to.eql(l2Splits._percentAllocations);
@@ -437,12 +452,12 @@ describe("NetworkRegistry E2E tests", function () {
         ),
       );
       const l1Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) => await l1SplitMain.getERC20Balance(memberAddress, l1Token.address),
         ),
       );
       const l2Balances = await Promise.all(
-        memberList.map(
+        l1Splits._receivers.map(
           async (memberAddress: string) =>
             await l2Registry.splitMain.getERC20Balance(memberAddress, l2Registry.token.address),
         ),

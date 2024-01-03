@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.21;
 
+import { IMemberRegistry } from "../interfaces/IMemberRegistry.sol";
+import { DataTypes } from "../libraries/DataTypes.sol";
 /**
  * CUSTOM ERRORS
  */
 
+/// @notice Function array parameter size mismatch
+error MemberRegistry__ParamsSizeMismatch();
 /// @notice Member index out of bounds
 error Member__IndexOutOfBounds();
 /// @notice Member is already registered
@@ -26,44 +30,15 @@ error InvalidMember__StartDateInTheFuture(address _memberAddress, uint32 _startD
 error InvalidMember__ActivityMultiplier(address _memberAddress, uint32 _activityMultiplier);
 
 /**
- * @title An on-chain member activity registry
+ * @title An On-chain member registry
  * @author DAOHaus
  * @notice Manage an on-chain member activity registry
- * @dev Includes minimal functions to implement an on-chain registry to track members & time active
+ * @dev Includes minimal functions to implement an on-chain registry that tracks members & activity time
  */
-abstract contract MemberRegistry {
-    /// @dev Member data model to track minimal information about member activity in the registry
-    struct Member {
-        /// @notice member address
-        address account;
-        /// @notice total active time in seconds
-        uint32 secondsActive;
-        /// @notice timestamp where member started activities
-        /// @dev timestamp format in seconds
-        uint32 startDate;
-        /**
-         * @notice member activity multiplier (i.e. 50 -> part-time 100 -> full-time)
-         * @dev activity multiplier should be set as a 0-100 (%)
-         * but it's up to the implementer to establish the multiplier boundaries
-         */
-        uint32 activityMultiplier;
-    }
-
-    /// @dev Data model to store a registry of Members
-    struct Members {
-        /// @notice list of members in the registry
-        Member[] db;
-        /// @dev internal counter to set a record ID for new members
-        uint256 count;
-        /// @notice index of member record IDs in the registry
-        /// @dev mapping between member address and record ID assigned during registration
-        // solhint-disable-next-line named-parameters-mapping
-        mapping(address => uint256) index;
-    }
-
+abstract contract MemberRegistry is IMemberRegistry {
     /// @notice Member registry
     /// @dev members should be fetched with proper getters that interact with Members db and index
-    Members internal members;
+    DataTypes.Members internal members;
     /// @notice last timestamp where the registry got updated
     /// @dev should be assigned to uint32(block.timestamp)
     uint32 public lastActivityUpdate;
@@ -86,12 +61,18 @@ abstract contract MemberRegistry {
      * @param _memberAddress member address
      * @param _activityMultiplier new member activity multiplier
      * @param _startDate timestamp the member started activities in seconds
+     * @param _secondsActive member seconds active since last update
      */
-    event UpdateMember(address indexed _memberAddress, uint32 _activityMultiplier, uint32 _startDate);
+    event UpdateMember(
+        address indexed _memberAddress,
+        uint32 _activityMultiplier,
+        uint32 _startDate,
+        uint32 _secondsActive
+    );
     /**
      * @notice emitted after each time a member registry activity is updated
      * @param _memberAddress member address
-     * @param _secondsActive updated activity in seconds since last registry update
+     * @param _secondsActive member activity in seconds since last registry update
      */
     event UpdateMemberSeconds(address indexed _memberAddress, uint32 _secondsActive);
     /**
@@ -103,7 +84,8 @@ abstract contract MemberRegistry {
 
     /**
      * @notice Adds a new member to the registry
-     * @dev Activity multiplier could be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time)
+     * @dev Activity multiplier could be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time).
+     * Notice function is set as virtual so base functionality can be overridden by the implementer.
      * @param _memberAddress new member address
      * @param _activityMultiplier member activity multiplier
      * @param _startDate timestamp (in seconds) when the member got active
@@ -115,9 +97,8 @@ abstract contract MemberRegistry {
             revert InvalidMember__ActivityMultiplier(_memberAddress, _activityMultiplier);
         if (_startDate > block.timestamp) revert InvalidMember__StartDateInTheFuture(_memberAddress, _startDate);
 
-        // set to 0, will be updated in next update
-        uint32 secondsActive = 0;
-        members.db.push(Member(_memberAddress, secondsActive, _startDate, _activityMultiplier));
+        // secondsActive set to 0, will be updated in next update
+        members.db.push(DataTypes.Member(_memberAddress, 0, _startDate, _activityMultiplier));
         unchecked {
             members.index[_memberAddress] = ++members.count;
         }
@@ -125,42 +106,89 @@ abstract contract MemberRegistry {
     }
 
     /**
-     * @notice Updates the activity multiplier of an existing member
-     * @dev _getMember function makes sure member is in the registry
-     * Activity multiplier could be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time)
-     * @param _memberAddress member address
-     * @param _activityMultiplier member new activity multiplier
+     * @notice Adds a new set of members to the registry
+     * @param _members A list of member addresses to be added to the registry
+     * @param _activityMultipliers Activity multipliers for each new member
+     * @param _startDates A list of dates when each member got active
      */
-    function _updateMember(address _memberAddress, uint32 _activityMultiplier) internal virtual {
-        if (_activityMultiplier > MULTIPLIER_UPPER_BOUND)
-            revert InvalidMember__ActivityMultiplier(_memberAddress, _activityMultiplier);
-
-        Member storage member = _getMember(_memberAddress);
-        member.activityMultiplier = _activityMultiplier;
-
-        emit UpdateMember(_memberAddress, _activityMultiplier, member.startDate);
+    function _batchNewMembers(
+        address[] memory _members,
+        uint32[] memory _activityMultipliers,
+        uint32[] memory _startDates
+    ) internal {
+        uint256 batchSize = _members.length;
+        if (_activityMultipliers.length != batchSize || _startDates.length != batchSize)
+            revert MemberRegistry__ParamsSizeMismatch();
+        for (uint256 i = 0; i < batchSize; ) {
+            _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
+            unchecked {
+                ++i; // gas optimization: very unlikely to overflow
+            }
+        }
     }
 
     /**
-     * @notice Updates seconds active for each member in the registry since the last update epoch
-     * @dev manages a lastActivityUpdate state variable to update activity based on last update epoch.
-     * However for new members it should update seconds based each member startDate.
-     * Notice function is set as virtual so base functionality can be overridden by the implementer
+     * @notice Updates the activity multiplier for an existing member.
+     * Consider updating a member activity multiplier for the next activity update epoch.
+     * @dev {_getMember} function makes sure member is in the registry.
+     * Activity multiplier can be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time).
+     * Notice function is set as virtual so base functionality can be overridden by the implementer.
+     * @param _memberAddress member address
+     * @param _activityMultiplier member new activity multiplier
+     */
+    function _updateMemberActivity(address _memberAddress, uint32 _activityMultiplier) internal virtual {
+        if (_activityMultiplier > MULTIPLIER_UPPER_BOUND)
+            revert InvalidMember__ActivityMultiplier(_memberAddress, _activityMultiplier);
+
+        DataTypes.Member storage member = _getMember(_memberAddress);
+        member.activityMultiplier = _activityMultiplier;
+
+        emit UpdateMember(_memberAddress, _activityMultiplier, member.startDate, member.secondsActive);
+    }
+
+    /**
+     * @notice Updates the activity multiplier for a set of existing members
+     * @param _members A list of existing members
+     * @param _activityMultipliers New activity multipliers for each member
+     */
+    function _batchUpdateMembersActivity(address[] memory _members, uint32[] memory _activityMultipliers) internal {
+        uint256 batchSize = _members.length;
+        if (_activityMultipliers.length != batchSize) revert MemberRegistry__ParamsSizeMismatch();
+        for (uint256 i = 0; i < batchSize; ) {
+            _updateMemberActivity(_members[i], _activityMultipliers[i]);
+            unchecked {
+                ++i; // gas optimization: very unlikely to overflow
+            }
+        }
+    }
+
+    /**
+     * @notice Updates seconds active for each member in the registry since the last update (epoch).
+     * This function is called periodically (i.e. each quarter) so member's activity should be properly
+     * updated before calling this function.
+     * @dev Manages a {lastActivityUpdate} state variable to update member's activity time since the
+     * last registry update. Member's seconds active are calculated as follows:
+     * - For new members (secondsActive == 0) it will consider the period {block.timestamp - member.startDate}
+     * - Else for existing members it will consider the period {block.timestamp - lastActivityUpdate}
+     * If there are registered members previously marked as inactive (activityMultiplier == 0) that should be
+     * considered in the current epoch, you should make the proper updates to their state prior executing the
+     * function.
+     * Notice function is set as virtual so base functionality can be overridden by the implementer.
      */
     function _updateSecondsActive() internal virtual {
         uint32 currentDate = uint32(block.timestamp);
         uint256 membersLength = totalMembers();
-        // update struct with total seconds active and seconds in last claim
+        // update Member total seconds active
         for (uint256 i = 0; i < membersLength; ) {
-            Member storage _member = _getMemberByIndex(i);
-            uint32 newSecondsActive = 0;
+            DataTypes.Member storage _member = _getMemberByIndex(i);
+            uint32 newSecondsActive;
             if (_member.activityMultiplier > 0) {
                 uint32 initDate = _member.secondsActive > 0 ? lastActivityUpdate : _member.startDate;
                 uint256 totalSeconds = currentDate - initDate;
-                // multiply by modifier and divide by 100 to get modifier % of seconds
+                // divide activityMultiplier by 100 -> then multiply seconds active by "modifier %"
                 newSecondsActive = uint32((totalSeconds * _member.activityMultiplier) / MULTIPLIER_UPPER_BOUND);
+                _member.secondsActive += newSecondsActive;
             }
-            _member.secondsActive += newSecondsActive;
             emit UpdateMemberSeconds(_member.account, newSecondsActive);
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
@@ -171,21 +199,12 @@ abstract contract MemberRegistry {
     }
 
     /**
-     * @notice gets a list of current members in the registry including all metadata
-     * @return an array of Members in the registry
-     */
-    function getMembers() public view returns (Member[] memory) {
-        return members.db;
-    }
-
-    /**
-     * @dev Fetch a member by Members.db index position
-     * It should revert if _memberIdx is greater than db size.
+     * @dev Fetch a member by Members.db index position.
+     * Methods calling this function must ensure that index is within the boundaries.
      * @param _memberIdx member index position in Members.db
      * @return Member metadata
      */
-    function _getMemberByIndex(uint256 _memberIdx) internal view returns (Member storage) {
-        if (_memberIdx >= members.db.length) revert Member__IndexOutOfBounds();
+    function _getMemberByIndex(uint256 _memberIdx) internal view returns (DataTypes.Member storage) {
         return members.db[_memberIdx];
     }
 
@@ -195,12 +214,12 @@ abstract contract MemberRegistry {
      * @param _memberId member record ID
      * @return Member metadata
      */
-    function _getMemberById(uint256 _memberId) internal view returns (Member storage) {
+    function _getMemberById(uint256 _memberId) internal view returns (DataTypes.Member storage) {
         return _getMemberByIndex(_memberId - 1);
     }
 
     /**
-     * @dev Query the Members.index by address to get a member record ID
+     * @dev Query the Members.index by address to obtain a member's record ID.
      * Returns 0 if member is not registered.
      * @param _memberAddress member address
      * @return member record ID
@@ -210,56 +229,82 @@ abstract contract MemberRegistry {
     }
 
     /**
-     * @dev Fetch a member metadata from storage
-     * It should throw an exception if member is not in the registry
+     * @dev Fetch a member's metadata from the registry.
+     * It should throw an exception if member is not in the db
      * @param _memberAddress member address
      * @return member metadata
      */
-    function _getMember(address _memberAddress) internal view returns (Member storage) {
+    function _getMember(address _memberAddress) internal view returns (DataTypes.Member storage) {
         uint256 memberId = _getMemberId(_memberAddress);
         if (memberId == 0) revert Member__NotRegistered(_memberAddress);
         return _getMemberById(memberId);
     }
 
     /**
-     * @notice Fetch a member metadata if registered
-     * @dev It throws an exception if member is not in the registry
-     * @param _memberAddress member address
-     * @return member metadata
+     * @notice Fetch a member's metadata from the registry.
+     * @dev It throws an exception if member is not in the db
+     * @inheritdoc IMemberRegistry
      */
-    function getMember(address _memberAddress) public view returns (Member memory) {
-        uint256 memberId = _getMemberId(_memberAddress);
-        if (memberId == 0) revert Member__NotRegistered(_memberAddress);
-        return _getMemberById(memberId);
+    function getMember(address _memberAddress) public view returns (DataTypes.Member memory member) {
+        member = _getMember(_memberAddress);
     }
 
     /**
-     * @notice gets the current no. of members in the registry
-     * @return total members in the registry
+     * @notice Returns the total No of members in the registry
+     * @inheritdoc IMemberRegistry
      */
     function totalMembers() public view returns (uint256) {
         return members.db.length;
     }
 
     /**
-     * @notice gets all member's properties in the registry as separate property arrays
-     * @return list of member addresses
-     * @return list of member activity multipliers
-     * @return list of member start dates
+     * @notice Fetch members metadata as separate property arrays
+     * @inheritdoc IMemberRegistry
      */
-    function getMembersProperties() public view returns (address[] memory, uint32[] memory, uint32[] memory) {
-        uint256 membersLength = totalMembers();
-        address[] memory _memberAddresses = new address[](membersLength);
-        uint32[] memory _activityMultipliers = new uint32[](membersLength);
-        uint32[] memory _startDates = new uint32[](membersLength);
+    function getMembersProperties(
+        address[] memory _members
+    ) public view returns (uint32[] memory, uint32[] memory, uint32[] memory) {
+        uint256 membersLength = _members.length;
+        uint32[] memory activityMultipliers = new uint32[](membersLength);
+        uint32[] memory startDates = new uint32[](membersLength);
+        uint32[] memory secondsActive = new uint32[](membersLength);
         for (uint256 i = 0; i < membersLength; ) {
-            _memberAddresses[i] = members.db[i].account;
-            _activityMultipliers[i] = members.db[i].activityMultiplier;
-            _startDates[i] = members.db[i].startDate;
+            DataTypes.Member memory member = _getMember(_members[i]);
+            activityMultipliers[i] = member.activityMultiplier;
+            startDates[i] = member.startDate;
+            secondsActive[i] = member.secondsActive;
             unchecked {
-                ++i;
+                ++i; // gas optimization: very unlikely to overflow
             }
         }
-        return (_memberAddresses, _activityMultipliers, _startDates);
+        return (activityMultipliers, startDates, secondsActive);
+    }
+
+    /**
+     * @notice Fetch all members from the registry
+     * @inheritdoc IMemberRegistry
+     */
+    function getMembers() external view returns (DataTypes.Member[] memory) {
+        return members.db;
+    }
+
+    /**
+     * @notice Fetch a subset of members from the registry
+     * @inheritdoc IMemberRegistry
+     */
+    function getMembersPaginated(
+        uint256 _fromIndex,
+        uint256 _toIndex
+    ) external view returns (DataTypes.Member[] memory memberList) {
+        uint256 maxIndex = totalMembers();
+        if (_fromIndex >= maxIndex || _toIndex >= maxIndex) revert Member__IndexOutOfBounds();
+        memberList = new DataTypes.Member[](_toIndex - _fromIndex + 1);
+        for (uint256 i = _fromIndex; i <= _toIndex; ) {
+            DataTypes.Member memory member = _getMemberByIndex(i);
+            memberList[i] = member;
+            unchecked {
+                ++i; // gas optimization: very unlikely to overflow
+            }
+        }
     }
 }
