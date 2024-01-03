@@ -4,7 +4,6 @@ pragma solidity ^0.8.21;
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
 import { DataTypes } from "../libraries/DataTypes.sol";
-import { MemberRegistry } from "../registry/MemberRegistry.sol";
 
 /// @notice Member list must be sorted in ascending order
 /// @param _index index where a member address is not properly sorted
