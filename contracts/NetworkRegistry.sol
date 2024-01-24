@@ -24,10 +24,12 @@ error NetworkRegistry__NeitherOwnableNorReplicaUpdater();
 error NetworkRegistry__ConnextOnly();
 /// @notice The function is callable only by the owner or by the updater through Connext.
 error NetworkRegistry__OnlyOwnerOrUpdater();
-/// @notice The function is callable only on a main registry by the owner.
+/// @notice The function is callable only on a main registry setup.
 error NetworkRegistry__OnlyMainRegistry();
-/// @notice The function is callable only on a replica by the owner or through a sync event.
+/// @notice The function is callable only on a replica registry setup.
 error NetworkRegistry__OnlyReplicaRegistry();
+/// @notice The function is callable only on a replica by the owner or through a sync event.
+error NetworkRegistry__OnlyReplicaRegistrySync();
 /// @notice msg value sent does not cover relayer fees
 error NetworkRegistry__ValueSentLessThanRelayerFees();
 /// @notice No replica registered on network with ID `_chainId`
@@ -121,13 +123,21 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice A modifier for methods that can be only called on replica registries
+     * @notice A modifier for methods that can be only called on a replica registry
+     */
+    modifier onlyReplica() {
+        if (isMainRegistry()) revert NetworkRegistry__OnlyReplicaRegistry();
+        _;
+    }
+
+    /**
+     * @notice A modifier for methods that can be only called on a replica registry
      * through a cross-chain sync call
      * @dev (updater != address(0) && _msgSender() == address(this)) means method is called
      * through the xReceive function
      */
-    modifier onlyReplica() {
-        if (updater == address(0) || _msgSender() != address(this)) revert NetworkRegistry__OnlyReplicaRegistry();
+    modifier onlyReplicaSync() {
+        if (updater == address(0) || _msgSender() != address(this)) revert NetworkRegistry__OnlyReplicaRegistrySync();
         _;
     }
 
@@ -366,7 +376,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         address[] memory _members,
         uint32[] memory _activityMultipliers,
         uint32[] memory _startDates
-    ) external onlyReplica {
+    ) external onlyReplicaSync {
         _batchNewMembers(_members, _activityMultipliers, _startDates);
     }
 
@@ -396,7 +406,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     function batchUpdateMembersActivity(
         address[] memory _members,
         uint32[] memory _activityMultipliers
-    ) external onlyReplica {
+    ) external onlyReplicaSync {
         _batchUpdateMembersActivity(_members, _activityMultipliers);
     }
 
@@ -429,7 +439,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] memory _activityMultipliers,
         uint32[] memory _startDates,
         uint32[] memory _secondsActive
-    ) external onlyReplica {
+    ) external onlyReplicaSync {
         uint256 totalMembers = _members.length;
         for (uint256 i = 0; i < totalMembers; ) {
             uint256 memberId = _getMemberId(_members[i]);
@@ -482,13 +492,12 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
 
     /**
      * @notice Updates activity for each member in the registry since the last update epoch and sync with replicas
-     * @dev Callable by the main registry owner
      * @inheritdoc INetworkMemberRegistry
      */
     function syncUpdateSecondsActive(
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
-    ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
+    ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _updateSecondsActive();
         bytes4 action = IMemberRegistry.updateSecondsActive.selector;
         bytes memory callData = abi.encode(action);
@@ -520,8 +529,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /**
      * @notice Updates the 0xSplit distribution on all networks based on reported member activity during the last epoch.
      * Consider calling {syncUpdateSecondsActive} prior or after applying a 0xSplit distribution update
-     * @dev Callable by the main registry owner.
-     * - Addresses in _sortedList must be in the member registry
+     * @dev Addresses in _sortedList must be in the member registry
      * @inheritdoc INetworkMemberRegistry
      */
     function syncUpdateSplits(
@@ -529,7 +537,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32 _splitDistributorFee,
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
-    ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
+    ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _updateSplits(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateSplits.selector;
         bytes memory callData = abi.encode(action, _sortedList, _splitDistributorFee);
@@ -549,8 +557,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     /**
      * @notice Executes both {updateSecondsActive} to update member's activity and {updateSplits}
      * for split distribution across all networks
-     * @dev Callable by the main registry owner
-     * - Addresses in _sortedList must be in the member registry
+     * @dev Addresses in _sortedList must be in the member registry
      * @inheritdoc INetworkMemberRegistry
      */
     function syncUpdateAll(
@@ -558,7 +565,7 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32 _splitDistributorFee,
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
-    ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
+    ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _updateSecondsActive();
         _updateSplits(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateAll.selector;

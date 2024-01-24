@@ -760,14 +760,14 @@ describe("NetworkRegistry", function () {
       const applicantRegistry = l1NetworkRegistry.connect(signer);
       await expect(
         applicantRegistry.batchNewMembers([users.applicant.address], [100], [0]),
-      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistry");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistrySync");
       await expect(
         applicantRegistry.batchUpdateMembersActivity([users.applicant.address], [100]),
-      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistry");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistrySync");
       await expect(
         applicantRegistry.addOrUpdateMembersBatch([users.applicant.address], [100], [await time.latest()], [0]),
-      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistry");
-      await expect(applicantRegistry.updateSecondsActive()).to.be.revertedWithCustomError(
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistrySync");
+      await expect(applicantRegistry.updateSecondsActive(0)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
         "NetworkRegistry__OnlyReplicaRegistry",
       );
@@ -784,13 +784,13 @@ describe("NetworkRegistry", function () {
     it("Should not be able to update a replica registry without an active updater going through Connext", async () => {
       await expect(
         l2NetworkRegistry.batchNewMembers([users.applicant.address], [100], [0]),
-      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistry");
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistrySync");
       await expect(
         l2NetworkRegistry.batchUpdateMembersActivity([users.applicant.address], [100]),
-      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistry");
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistrySync");
       await expect(
         l2NetworkRegistry.addOrUpdateMembersBatch([users.applicant.address], [100], [await time.latest()], [0]),
-      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistry");
+      ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__OnlyReplicaRegistrySync");
     });
 
     it("Should be able to add a new member with correct parameters", async () => {
