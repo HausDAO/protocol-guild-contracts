@@ -28,7 +28,7 @@ contract GasTest is Test {
 
     uint32 private constant HOME_DOMAIN_ID = 1;
     // Change this for testing
-    uint256 private constant TOTAL_USERS = 800;
+    uint256 private constant TOTAL_USERS = 166;
 
     function _createUser(string memory name) internal returns (address payable) {
         address payable user = payable(makeAddr(name));

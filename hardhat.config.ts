@@ -184,6 +184,13 @@ const config: HardhatUserConfig = {
       companionNetworks: {
         l1: "goerli",
       },
+      gasPrice: 2000000000,
+      verify: {
+        etherscan: {
+          apiKey: explorerApiKey("optimism-goerli"),
+          apiUrl: "https://api-goerli-optimistic.etherscan.io",
+        },
+      },
     },
     polygon: getChainConfig("polygon-mainnet"),
     mumbai: {

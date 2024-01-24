@@ -68,11 +68,11 @@ export const deploymentConfig: { [key: string]: any } = {
     // goerli
     domainId: 1735353714,
     connext: "0xFCa08024A6D4bCc87275b1E4A1E22B71fAD7f649",
-    moloch: "0x1e4265037fbefb711c144cb0724d722ee3187e16", // TODO:
-    safe: "0x42f822d337c19fdd63752b165df49d27ffcbc60c", // TODO:
+    moloch: "0xbfb34e1e13d68922cb86769f4abcdab9bd68e5ff", // TODO:
+    safe: "0x7201030e136734e92560427b1346af2219d12074", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0xda419a6b304a8394d76c483cac0aced93c165d44",
-    pgRegistry: "0xeAC4e0196c6152Bd3307035dBB9A2E58f0e791eE",
+    split: "0xe650e123237920d5f620579fb42670145361a0a9", // TODO:
+    pgRegistry: "0x9eF64c547477b2263ed56821ce6Be79564824F44", // TODO:
   },
   "80001": {
     // mumbai
@@ -80,11 +80,11 @@ export const deploymentConfig: { [key: string]: any } = {
     domainId: 9991,
     connext: "0x2334937846Ab2A3FCE747b32587e1A1A2f6EEC5a",
     registryOwner: "0x10136Fa41B6522E4DBd068C6F7D80373aBbCFBe6", // TODO:
-    moloch: "", // TODO:
-    safe: "", // TODO:
+    moloch: "",
+    safe: "",
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0x7182c7d52f6c5d38327c19fe4fdbe53f4a5f6e82", // TODO:
-    pgRegistry: "0xDb1058A3303AD2D83055613A47711458184E1845", // TODO:
+    split: "0x6f9a5dc2903a2bcb51caf05978e4f260a531c578", // TODO:
+    pgRegistry: "0x07E1eF1E6Eff099c082232a9AcA0Fa5551602d62", // TODO:
   },
   "420": {
     // optimismGoerli
@@ -96,8 +96,8 @@ export const deploymentConfig: { [key: string]: any } = {
     safe: "",
     splitsMain: "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE",
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0x4b7ef91969355e78de2ff6825ad266b3f231b88e", // TODO:
-    pgRegistry: "0xa304c1053d187497ae1f27B6Ac825f09A3c99C40", // TODO:
+    split: "0xb12a8499c8aca88fe2270ba5552d0a2a1fd8b7fe", // TODO:
+    pgRegistry: "0x8054874b08783070a189218a22e7ffb4600430c0", // TODO:
   },
   "421613": {
     // arbitrumGoerli
@@ -108,7 +108,7 @@ export const deploymentConfig: { [key: string]: any } = {
     moloch: "",
     safe: "",
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0xf79ee05e577b9ad7d3e786945b8405be92515bc8", // TODO:
-    pgRegistry: "0xa304c1053d187497ae1f27B6Ac825f09A3c99C40", // TODO:
+    split: "0x14ff51c8806f1730d64137fcf79ba38c67d593c8", // TODO:
+    pgRegistry: "0x8054874b08783070a189218a22e7ffb4600430c0", // TODO:
   },
 };
