@@ -4,6 +4,7 @@ pragma solidity ^0.8.21;
 import { IConnext } from "@connext/interfaces/core/IConnext.sol";
 import { IXReceiver } from "@connext/interfaces/core/IXReceiver.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
 import { IMemberRegistry, INetworkMemberRegistry, ISplitManager } from "./interfaces/INetworkMemberRegistry.sol";
@@ -42,6 +43,8 @@ error NetWorkRegistry__ParamsSizeMismatch();
 error NetworkRegistry__InvalidReplica();
 /// @notice 0xSplit doesn't exists or is immutable
 error NetworkRegistry__InvalidOrImmutableSplit();
+/// @notice Unauthorized to execute contract upgradeability
+error NetworkRegistry__UnauthorizedToUpgrade();
 
 /**
  * @title A cross-chain network registry to distribute funds escrowed in 0xSplit based on member activity
@@ -61,7 +64,7 @@ error NetworkRegistry__InvalidOrImmutableSplit();
  *   bridge which could potentially froze the 0xSplit funds as the replica NetworkRegistry and thus its controller will
  *   become inaccessible.
  */
-contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegistry, MemberRegistry {
+contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INetworkMemberRegistry, MemberRegistry {
     using PGContribCalculator for DataTypes.Members;
 
     /// @notice Connext contract in the current domain
@@ -653,6 +656,22 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
+     * @notice Upgrade replica NetworkRegistry implementation
+     * @inheritdoc INetworkMemberRegistry
+     */
+    function upgradeNetworkRegistryImplementation(
+        uint32 _chainId,
+        address _newImplementation,
+        bytes memory _data,
+        uint256 _relayerFee
+    ) external payable onlyOwner onlyMain validNetworkRegistry(_chainId) {
+        if (msg.value < _relayerFee) revert NetworkRegistry__ValueSentLessThanRelayerFees();
+        bytes4 action = UUPSUpgradeable.upgradeToAndCall.selector;
+        bytes memory callData = abi.encode(action, _newImplementation, _data);
+        _execSyncAction(action, callData, _chainId, _relayerFee);
+    }
+
+    /**
      * @notice Set Connext and Updater config parameters
      * @dev Callable on both main and replica registries
      * @inheritdoc INetworkMemberRegistry
@@ -881,11 +900,29 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             callData = abi.encodeWithSelector(action);
         } else if (action == ISplitManager.cancelSplitControlTransfer.selector) {
             callData = abi.encodeWithSelector(action);
+        } else if (action == UUPSUpgradeable.upgradeToAndCall.selector) {
+            (, address _newImplementation, bytes memory _data) = abi.decode(
+                _incomingCalldata,
+                (bytes4, address, bytes)
+            );
+            callData = abi.encodeWithSelector(action, _newImplementation, _data);
         }
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory data) = address(this).call(callData);
         emit SyncActionPerformed(_transferId, _origin, action, success, _originSender);
         return data;
+    }
+
+    /**
+     * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract.
+     */
+    function _authorizeUpgrade(address /*newImplementation*/) internal view override {
+        if (isMainRegistry()) {
+            if (_msgSender() != owner()) revert NetworkRegistry__UnauthorizedToUpgrade();
+        } else {
+            if (_msgSender() != owner() || (updater == address(0) || _msgSender() != address(this)))
+                revert NetworkRegistry__UnauthorizedToUpgrade();
+        }
     }
 }

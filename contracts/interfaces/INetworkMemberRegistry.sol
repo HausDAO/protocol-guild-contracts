@@ -40,6 +40,21 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     function updateNetworkRegistry(uint32 _chainId, DataTypes.Registry memory _newRegistry) external;
 
     /**
+     * @notice Upgrade replica NetworkRegistry implementation
+     * @dev Implements a UUPS proxy pattern
+     * @param _chainId Network chainId where the replica registry lives
+     * @param _newImplementation address
+     * @param _data calldata to be called after the implementation is upgraded
+     * @param _relayerFee fee to be paid to the Connext relayer for forwarding the sync message
+     */
+    function upgradeNetworkRegistryImplementation(
+        uint32 _chainId,
+        address _newImplementation,
+        bytes memory _data,
+        uint256 _relayerFee
+    ) external payable;
+
+    /**
      * @notice Returns whether or not a registry has been setup as a main registry
      * @dev Verifies if updater params are set to zero
      */
