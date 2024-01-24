@@ -37,16 +37,16 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     log: true,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const registryShamanSingletonDeployed = await deploy("NetworkRegistryShaman", {
-    contract: "NetworkRegistryShaman",
-    from: deployer,
-    args: [],
-    libraries: {
-      PGContribCalculator: calculatorLibraryDeployed.address,
-    },
-    log: true,
-  });
+  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // const registryShamanSingletonDeployed = await deploy("NetworkRegistryShaman", {
+  //   contract: "NetworkRegistryShaman",
+  //   from: deployer,
+  //   args: [],
+  //   libraries: {
+  //     PGContribCalculator: calculatorLibraryDeployed.address,
+  //   },
+  //   log: true,
+  // });
 
   // console.log('NetworkRegistrySummoner deployed at', summonerDeployed.address);
   // console.log('PGNetworkRegistry singleton deployed at', registrySingletonDeployed.address);

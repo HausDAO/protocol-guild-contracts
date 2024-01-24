@@ -12,8 +12,7 @@ import { ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 import { PERCENTAGE_SCALE } from "../../constants";
 import {
   ConnextMock,
-  NetworkRegistry,
-  NetworkRegistryShaman,
+  NetworkRegistry, // NetworkRegistryShaman, // TODO: shaman disabled
   NetworkRegistrySummoner,
   PGContribCalculator,
   SplitMain,
@@ -25,7 +24,8 @@ import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture 
 describe("NetworkRegistry", function () {
   let summoner: NetworkRegistrySummoner;
   let registrySingleton: NetworkRegistry;
-  let registryShamanSingleton: NetworkRegistryShaman;
+  // TODO: shaman disabled
+  // let registryShamanSingleton: NetworkRegistryShaman;
   let connext: ConnextMock;
   let l1CalculatorLibrary: PGContribCalculator;
   let l1SplitMain: SplitMain;
@@ -52,7 +52,8 @@ describe("NetworkRegistry", function () {
     const setup = await registryFixture({});
     summoner = setup.summoner;
     registrySingleton = setup.pgRegistrySingleton;
-    registryShamanSingleton = setup.pgRegistryShamanSingleton;
+    // TODO: shaman disabled
+    // registryShamanSingleton = setup.pgRegistryShamanSingleton;
     l1CalculatorLibrary = setup.calculatorLibrary;
     connext = setup.connext;
     l1SplitMain = setup.splitMain;
@@ -159,10 +160,11 @@ describe("NetworkRegistry", function () {
         l1NetworkRegistry,
         "InvalidInitialization",
       );
-      await expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
-        l1NetworkRegistry,
-        "InvalidInitialization",
-      );
+      // TODO: shaman disabled
+      // await expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
+      //   l1NetworkRegistry,
+      //   "InvalidInitialization",
+      // );
     });
 
     it("Should not be able to summon a registry with incorrect encoded init params", async () => {
