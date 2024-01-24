@@ -775,7 +775,7 @@ describe("NetworkRegistry", function () {
         l1NetworkRegistry,
         "NetworkRegistry__OnlyReplicaRegistry",
       );
-      await expect(applicantRegistry.updateAll([users.applicant.address], 100_000)).to.be.revertedWithCustomError(
+      await expect(applicantRegistry.updateAll(0, [users.applicant.address], 100_000)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
         "NetworkRegistry__OnlyReplicaRegistry",
       );
@@ -2460,7 +2460,7 @@ describe("NetworkRegistry", function () {
       members.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
       const splitDistributorFee = splitConfig.distributorFee;
 
-      const action = l2NetworkRegistry.interface.getSighash("updateAll(address[],uint32)");
+      const action = l2NetworkRegistry.interface.getSighash("updateAll(uint32,address[],uint32)");
       const tx = await l1NetworkRegistry.syncUpdateAll(members, splitDistributorFee, chainIds, relayerFees, {
         value: totalValue,
       });

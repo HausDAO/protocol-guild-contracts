@@ -9,6 +9,8 @@ import { DataTypes } from "../libraries/DataTypes.sol";
 
 /// @notice Function array parameter size mismatch
 error MemberRegistry__ParamsSizeMismatch();
+///@notice cutoff date must not be greater than block timestamp
+error MemberRegistry_InvalidCutoffDate();
 /// @notice Member index out of bounds
 error Member__IndexOutOfBounds();
 /// @notice Member is already registered
@@ -168,15 +170,17 @@ abstract contract MemberRegistry is IMemberRegistry {
      * updated before calling this function.
      * @dev Manages a {lastActivityUpdate} state variable to update member's activity time since the
      * last registry update. Member's seconds active are calculated as follows:
-     * - For new members (secondsActive == 0) it will consider the period {block.timestamp - member.startDate}
-     * - Else for existing members it will consider the period {block.timestamp - lastActivityUpdate}
+     * - For new members (secondsActive == 0) it will consider the period {_cutoffDate - member.startDate}
+     * - Else for existing members it will consider the period {_cutoffDate - lastActivityUpdate}
      * If there are registered members previously marked as inactive (activityMultiplier == 0) that should be
      * considered in the current epoch, you should make the proper updates to their state prior executing the
      * function.
      * Notice function is set as virtual so base functionality can be overridden by the implementer.
+     * @param _cutoffDate in seconds to calculate registry member's activity
      */
-    function _updateSecondsActive() internal virtual {
-        uint32 currentDate = uint32(block.timestamp);
+    function _updateSecondsActive(uint32 _cutoffDate) internal virtual {
+        if (_cutoffDate <= lastActivityUpdate || _cutoffDate > block.timestamp)
+            revert MemberRegistry_InvalidCutoffDate();
         uint256 membersLength = totalMembers();
         // update Member total seconds active
         for (uint256 i = 0; i < membersLength; ) {
@@ -184,7 +188,7 @@ abstract contract MemberRegistry is IMemberRegistry {
             uint32 newSecondsActive;
             if (_member.activityMultiplier > 0) {
                 uint32 initDate = _member.secondsActive > 0 ? lastActivityUpdate : _member.startDate;
-                uint256 totalSeconds = currentDate - initDate;
+                uint256 totalSeconds = _cutoffDate - initDate;
                 // divide activityMultiplier by 100 -> then multiply seconds active by "modifier %"
                 newSecondsActive = uint32((totalSeconds * _member.activityMultiplier) / MULTIPLIER_UPPER_BOUND);
                 _member.secondsActive += newSecondsActive;
@@ -194,8 +198,8 @@ abstract contract MemberRegistry is IMemberRegistry {
                 ++i; // gas optimization: very unlikely to overflow
             }
         }
-        emit RegistryActivityUpdate(currentDate, membersLength);
-        lastActivityUpdate = currentDate;
+        emit RegistryActivityUpdate(_cutoffDate, membersLength);
+        lastActivityUpdate = _cutoffDate;
     }
 
     /**

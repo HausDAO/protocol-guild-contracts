@@ -47,10 +47,11 @@ interface ISplitManager {
      * @notice Executes both {updateSecondsActive} to update registry member's activity and {updateSplits}
      * for split distribution
      * @dev Verify if the address list is sorted, has no duplicates and is valid
+     * @param _cutoffDate in seconds to calculate registry member's activity
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
      */
-    function updateAll(address[] memory _sortedList, uint32 _splitDistributorFee) external;
+    function updateAll(uint32 _cutoffDate, address[] memory _sortedList, uint32 _splitDistributorFee) external;
 
     /**
      * @notice Updates the the 0xSplitMain proxy and 0xSplit contract addresses

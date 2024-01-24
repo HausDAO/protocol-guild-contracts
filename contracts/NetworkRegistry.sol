@@ -483,11 +483,13 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
     }
 
     /**
-     * @notice Updates seconds active since the last update epoch for every member in the registry
+     * @notice Updates seconds active since the last update epoch for every member in the registry.
+     * If _cutoffDate is zero its will be override with block.timestamp
      * @inheritdoc IMemberRegistry
      */
-    function updateSecondsActive() external onlyReplica {
-        _updateSecondsActive();
+    function updateSecondsActive(uint32 _cutoffDate) external onlyReplica {
+        if (_cutoffDate == 0) _cutoffDate = uint32(block.timestamp);
+        _updateSecondsActive(_cutoffDate);
     }
 
     /**
@@ -498,9 +500,10 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        _updateSecondsActive();
+        uint32 cutoffDate = uint32(block.timestamp);
+        _updateSecondsActive(cutoffDate);
         bytes4 action = IMemberRegistry.updateSecondsActive.selector;
-        bytes memory callData = abi.encode(action);
+        bytes memory callData = abi.encode(action, cutoffDate);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -549,8 +552,12 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
      * for split distribution
      * @inheritdoc ISplitManager
      */
-    function updateAll(address[] memory _sortedList, uint32 _splitDistributorFee) external onlyReplica {
-        _updateSecondsActive();
+    function updateAll(
+        uint32 _cutoffDate,
+        address[] memory _sortedList,
+        uint32 _splitDistributorFee
+    ) external onlyReplica {
+        _updateSecondsActive(_cutoffDate);
         _updateSplits(_sortedList, _splitDistributorFee);
     }
 
@@ -566,10 +573,11 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        _updateSecondsActive();
+        uint32 cutoffDate = uint32(block.timestamp);
+        _updateSecondsActive(cutoffDate);
         _updateSplits(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateAll.selector;
-        bytes memory callData = abi.encode(action, _sortedList, _splitDistributorFee);
+        bytes memory callData = abi.encode(action, cutoffDate, _sortedList, _splitDistributorFee);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -843,7 +851,8 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             ) = abi.decode(_incomingCalldata, (bytes4, address[], uint32[], uint32[], uint32[]));
             callData = abi.encodeWithSelector(action, _members, _activityMultipliers, _startDates, _secondsActive);
         } else if (action == IMemberRegistry.updateSecondsActive.selector) {
-            callData = abi.encodeWithSelector(action);
+            (, uint32 cutoffDate) = abi.decode(_incomingCalldata, (bytes4, uint32));
+            callData = abi.encodeWithSelector(action, cutoffDate);
         } else if (action == ISplitManager.updateSplits.selector) {
             (, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(
                 _incomingCalldata,
@@ -851,11 +860,11 @@ contract NetworkRegistry is OwnableUpgradeable, IXReceiver, INetworkMemberRegist
             );
             callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
         } else if (action == ISplitManager.updateAll.selector) {
-            (, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(
+            (, uint32 cutoffDate, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(
                 _incomingCalldata,
-                (bytes4, address[], uint32)
+                (bytes4, uint32, address[], uint32)
             );
-            callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
+            callData = abi.encodeWithSelector(action, cutoffDate, _sortedList, _splitDistributorFee);
         } else if (action == INetworkMemberRegistry.setUpdaterConfig.selector) {
             (, address _connext, uint32 _updaterDomain, address _updater) = abi.decode(
                 _incomingCalldata,
