@@ -10,10 +10,10 @@ export const deploymentConfig: { [key: string]: any } = {
     // mainnet
     domainId: 6648936,
     connext: "0x8898B472C54c31894e3B9bb83cEA802a5d0e63C6",
-    moloch: "0x7839755b77aadcd6a8cdb76248b3dddfa9b7f5f1", // TODO:
-    safe: "0xaccd85e73639b5213a001630eb2512dbd6292e32", // TODO:
+    moloch: "", // TODO:
+    safe: "", // TODO:
     splitMain: defaultSplitsConfig.splitMain,
-    split: "0x50730dF422AF6c5465C6EfdE58dEC6443908a059", // TODO:
+    split: "", // TODO:
     pgRegistry: "", // TODO:
   },
   "100": {
@@ -110,5 +110,39 @@ export const deploymentConfig: { [key: string]: any } = {
     splitMain: defaultSplitsConfig.splitMain,
     split: "0x14ff51c8806f1730d64137fcf79ba38c67d593c8", // TODO:
     pgRegistry: "0x8054874b08783070a189218a22e7ffb4600430c0", // TODO:
+  },
+  "11155111": {
+    // sepolia
+    domainId: 0, // TODO:
+    connext: "0xFCa08024A6D4bCc87275b1E4A1E22B71fAD7f649", // TODO:
+    moloch: "0x832ec97051ed6a1abdbafa74dace307af59b1ef3", // TODO:
+    safe: "0x79c740401f76b8a7b26baf3e522571add38362d0", // TODO:
+    splitMain: "0x5924cD81dC672151527B1E4b5Ef57B69cBD07Eda",
+    split: "0xccc8922d223f5bb2e623bf100970913ac85fd17d", // TODO:
+    pgRegistry: "0x7A69DbBFF504FAB98ADe857992BC6d1Ae94Ba0d0", // TODO:
+  },
+  "11155420": {
+    // optimismSepolia
+    l2: true,
+    domainId: 0, // TODO:
+    connext: "", // TODO:
+    registryOwner: "0x10136Fa41B6522E4DBd068C6F7D80373aBbCFBe6", // TODO:
+    moloch: "",
+    safe: "",
+    splitMain: defaultSplitsConfig.splitMain,
+    split: "", // TODO:
+    pgRegistry: "", // TODO:
+  },
+  "421614": {
+    // arbitrumSepolia
+    l2: true,
+    domainId: 0, // TODO:
+    connext: "", // TODO:
+    registryOwner: "0x10136Fa41B6522E4DBd068C6F7D80373aBbCFBe6", // TODO:
+    moloch: "",
+    safe: "",
+    splitMain: "", // TODO:
+    split: "", // TODO:
+    pgRegistry: "", // TODO:
   },
 };
