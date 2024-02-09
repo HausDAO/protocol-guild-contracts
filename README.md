@@ -203,6 +203,9 @@ $ pnpm prettier:write
 
 ### Coverage
 
+**IMPORTANT** In order for `solidity-coverage` to work, you must disable the `@nomicfoundation/hardhat-foundry` plugin
+in `hardhat.config.ts`.
+
 Generate the code coverage report:
 
 ```sh
@@ -238,6 +241,12 @@ Deploy Summoner contract + singletons
 
 ```sh
 $ pnpm hardhat --network <network_name> deploy --tags Summoner
+```
+
+Deploy NetworkRegistry using a UUPS Upgradeable Proxy
+
+```sh
+$ pnpm hardhat --network <network_name> deploy --tags UpgradeablePGNetworkRegistry
 ```
 
 ### Verify contracts
@@ -307,8 +316,16 @@ pnpm hardhat --network arbitrumGoerli etherscan-verify
   `moloch`.avatar() address you define in `./constants/config.ts`, otherwise the `deployer` will be set as owner by
   default. Finally don't forget to set the `pgRegistry` to the deployed contract address in `./constants/config.ts`.
 
+Using Summoner:
+
 ```sh
 pnpm hardhat --network goerli deploy --tags PGNetworkRegistry
+```
+
+Using UUPS Proxy:
+
+```sh
+pnpm hardhat --network sepolia deploy --tags UpgradeablePGNetworkRegistry
 ```
 
 - **Transfer 0xSplit control to NetworkRegistry contract**: if NetworkRegistry is owner by the DAO safe, remember to
@@ -322,9 +339,18 @@ pnpm hardhat --network goerli registry:ownSplit
   address if set in `./constants/config.ts`, otherwise the `deployer` will renounce ownership (Zero address) by default.
   Finally don't forget to set the `pgRegistry` to the deployed contract address in `./constants/config.ts`.
 
+Using Summoner:
+
 ```sh
 pnpm hardhat --network optimismGoerli deploy --tags PGNetworkRegistry
 pnpm hardhat --network arbitrumGoerli deploy --tags PGNetworkRegistry
+```
+
+Using UUPS Proxy:
+
+```sh
+pnpm hardhat --network optimismSepolia deploy --tags UpgradeablePGNetworkRegistry
+pnpm hardhat --network arbitrumSepolia deploy --tags UpgradeablePGNetworkRegistry
 ```
 
 - **Register a new Replicas on the Main NetworkRegistry**
