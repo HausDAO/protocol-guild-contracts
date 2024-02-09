@@ -266,6 +266,7 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         updater = _updater;
         splitMain = ISplitMain(_splitMain);
         split = _split;
+        lastActivityUpdate = uint32(block.timestamp);
     }
 
     /**
@@ -660,15 +661,22 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @inheritdoc INetworkMemberRegistry
      */
     function upgradeNetworkRegistryImplementation(
-        uint32 _chainId,
-        address _newImplementation,
-        bytes memory _data,
-        uint256 _relayerFee
-    ) external payable onlyOwner onlyMain validNetworkRegistry(_chainId) {
-        if (msg.value < _relayerFee) revert NetworkRegistry__ValueSentLessThanRelayerFees();
+        uint32[] memory _chainIds,
+        address[] memory _newImplementations,
+        bytes[] memory _data,
+        uint256[] memory _relayerFees
+    ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
+        uint256 totalParams = _chainIds.length;
+        if (_newImplementations.length != totalParams || _data.length != totalParams)
+            revert NetWorkRegistry__ParamsSizeMismatch();
         bytes4 action = UUPSUpgradeable.upgradeToAndCall.selector;
-        bytes memory callData = abi.encode(action, _newImplementation, _data);
-        _execSyncAction(action, callData, _chainId, _relayerFee);
+        for (uint256 i = 0; i < totalParams; ) {
+            bytes memory callData = abi.encode(action, _newImplementations[i], _data[i]);
+            _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
+            unchecked {
+                ++i; // gas optimization: very unlikely to overflow
+            }
+        }
     }
 
     /**
@@ -918,11 +926,10 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract.
      */
     function _authorizeUpgrade(address /*newImplementation*/) internal view override {
-        if (isMainRegistry()) {
-            if (_msgSender() != owner()) revert NetworkRegistry__UnauthorizedToUpgrade();
-        } else {
-            if (_msgSender() != owner() || (updater == address(0) || _msgSender() != address(this)))
-                revert NetworkRegistry__UnauthorizedToUpgrade();
-        }
+        if (_msgSender() != owner() && (updater == address(0) || _msgSender() != address(this)))
+            revert NetworkRegistry__UnauthorizedToUpgrade();
     }
+
+    // solhint-disable-next-line state-visibility
+    uint256[49] __gap;
 }

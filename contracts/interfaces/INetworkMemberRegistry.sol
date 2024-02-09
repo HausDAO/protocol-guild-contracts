@@ -42,16 +42,16 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     /**
      * @notice Upgrade replica NetworkRegistry implementation
      * @dev Implements a UUPS proxy pattern
-     * @param _chainId Network chainId where the replica registry lives
-     * @param _newImplementation address
-     * @param _data calldata to be called after the implementation is upgraded
-     * @param _relayerFee fee to be paid to the Connext relayer for forwarding the sync message
+     * @param _chainIds a list of network chainIds where valid replicas live
+     * @param _newImplementations list of new implementation addresses
+     * @param _data list of calldata to be called after the each implementation is upgraded
+     * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
      */
     function upgradeNetworkRegistryImplementation(
-        uint32 _chainId,
-        address _newImplementation,
-        bytes memory _data,
-        uint256 _relayerFee
+        uint32[] memory _chainIds,
+        address[] memory _newImplementations,
+        bytes[] memory _data,
+        uint256[] memory _relayerFees
     ) external payable;
 
     /**
