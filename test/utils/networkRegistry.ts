@@ -1,5 +1,5 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers, getUnnamedAccounts } from "hardhat";
+import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
 import { NetworkRegistrySummoner } from "../../types";
 import { Member, NetworkRegistryArgs, NetworkRegistryShamanArgs } from "../types";
@@ -25,6 +25,39 @@ export const summonRegistry = async (
     summonedEvent?.topics?.[1] && ethers.utils.defaultAbiCoder.decode(["address"], summonedEvent.topics[1])[0];
   if (!registryAddress) throw new Error("Failed to summon a Network Registry");
   return registryAddress;
+};
+
+export const summonRegistryProxy = async (
+  calculatorLibraryAddress: string,
+  registryArgs: NetworkRegistryArgs,
+  registryName: string = "NetworkRegistry",
+) => {
+  const { connext, updaterDomainId, updaterAddress, splitMain, split, owner } = registryArgs;
+  const initializationParams = ethers.utils.defaultAbiCoder.encode(
+    ["address", "uint32", "address", "address", "address", "address"],
+    [connext, updaterDomainId, updaterAddress, splitMain, split, owner],
+  );
+
+  const { deployer } = await getNamedAccounts();
+
+  const registryDeployed = await deployments.deploy(registryName, {
+    contract: "NetworkRegistry",
+    from: deployer,
+    args: [],
+    libraries: {
+      PGContribCalculator: calculatorLibraryAddress,
+    },
+    proxy: {
+      execute: {
+        methodName: "initialize",
+        args: [initializationParams],
+      },
+      proxyContract: "ERC1967Proxy",
+      proxyArgs: ["{implementation}", "{data}"],
+    },
+    log: true,
+  });
+  return registryDeployed.address;
 };
 
 export const summonRegistryShaman = async (

@@ -5,15 +5,16 @@ import { ethers, getUnnamedAccounts } from "hardhat";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
-import { ConnextMock, NetworkRegistry, NetworkRegistrySummoner, SplitMain, TestERC20 } from "../../types";
-import { deploySplit, hashSplit, summonRegistry } from "../utils";
+import { ConnextMock, NetworkRegistry, PGContribCalculator, SplitMain, TestERC20 } from "../../types";
+import { deploySplit, hashSplit, summonRegistryProxy } from "../utils";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistry E2E tests", function () {
-  let summoner: NetworkRegistrySummoner;
-  let registrySingleton: NetworkRegistry;
+  // let summoner: NetworkRegistrySummoner;
+  // let registrySingleton: NetworkRegistry;
   // let registryShamanSingleton: NetworkRegistryShaman;
   let connext: ConnextMock;
+  let l1CalculatorLibrary: PGContribCalculator;
   let l1SplitMain: SplitMain;
   let l1SplitAddress: string;
   let l2Registry: NetworkRegistryProps;
@@ -56,9 +57,10 @@ describe("NetworkRegistry E2E tests", function () {
 
   beforeEach(async function () {
     const setup = await registryFixture({});
-    summoner = setup.summoner;
-    registrySingleton = setup.pgRegistrySingleton;
+    // summoner = setup.summoner;
+    // registrySingleton = setup.pgRegistrySingleton;
     // registryShamanSingleton = setup.pgRegistryShamanSingleton;
+    l1CalculatorLibrary = setup.calculatorLibrary;
     l1Token = setup.token;
     connext = setup.connext;
     l1SplitMain = setup.splitMain;
@@ -85,9 +87,8 @@ describe("NetworkRegistry E2E tests", function () {
     await l1DepositTx.wait();
 
     // Summon Main Registry
-    const l1RegistryAddress = await summonRegistry(
-      summoner,
-      registrySingleton.address,
+    const l1RegistryAddress = await summonRegistryProxy(
+      l1CalculatorLibrary.address,
       {
         connext: connext.address,
         updaterDomainId: 0, // Main Registry -> no domainId
@@ -96,7 +97,7 @@ describe("NetworkRegistry E2E tests", function () {
         split: l1SplitAddress,
         owner: users.owner.address,
       },
-      "Mainnet Registry",
+      "MainNetworkRegistry",
     );
     l1NetworkRegistry = (await ethers.getContractAt("NetworkRegistry", l1RegistryAddress, signer)) as NetworkRegistry;
 
@@ -119,9 +120,8 @@ describe("NetworkRegistry E2E tests", function () {
     await l2DepositTx.wait();
 
     // Summon a Replica Registry
-    const l2RegistryAddress = await summonRegistry(
-      summoner,
-      registrySingleton.address,
+    const l2RegistryAddress = await summonRegistryProxy(
+      l2Registry.calculatorLibrary.address,
       {
         connext: connext.address,
         updaterDomainId: parentDomainId,
@@ -130,7 +130,7 @@ describe("NetworkRegistry E2E tests", function () {
         split: l2SplitAddress,
         owner: ethers.constants.AddressZero, // renounceOwnership
       },
-      "L2 Registry",
+      "ReplicaNetworkRegistry",
     );
     l2NetworkRegistry = (await ethers.getContractAt("NetworkRegistry", l2RegistryAddress, signer)) as NetworkRegistry;
 

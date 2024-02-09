@@ -10,7 +10,7 @@ import type { TaskArguments } from "hardhat/types";
 import { deploymentConfig } from "../constants";
 import { ISplitMain, NetworkRegistry } from "../types";
 
-task("registry:ownSplit", "Transfer Split ownerhip to registry contract").setAction(async function (
+task("registry:ownSplit", "Transfer Split ownership to the registry contract").setAction(async function (
   taskArguments: TaskArguments,
   { ethers, getChainId, getNamedAccounts, network },
 ) {
@@ -35,18 +35,23 @@ task("registry:ownSplit", "Transfer Split ownerhip to registry contract").setAct
   const transferTx = await splitMain.transferControl(splitAddress, registryAddress);
   await transferTx.wait();
 
-  console.log(`Split Trasfer control at TxHash (${transferTx.hash})`);
+  console.log(`Split Transfer control at TxHash (${transferTx.hash})`);
 
-  if (!deploymentConfig[chainId].l2) {
-    const registry = (await ethers.getContractAt("NetworkRegistry", registryAddress, signer)) as NetworkRegistry;
+  if (deploymentConfig[chainId].l2) {
+    console.log(
+      "Done.\n IMPORTANT: NetworkRegistry is on an L2. Accepting Split control should be done through the Main registry via a cross-chain call",
+    );
+    return;
+  }
+
+  const registry = (await ethers.getContractAt("NetworkRegistry", registryAddress, signer)) as NetworkRegistry;
+  const currentOwner = await registry.owner();
+  if (currentOwner === deployer) {
     const acceptTx = await registry.acceptSplitControl();
     await acceptTx.wait();
 
     console.log(`Split Transfer control accepted at TxHash (${acceptTx.hash})`);
   }
-  console.log(
-    "NetworkRegistry is on an L2. Accepting Split control should be done through the Main registry via a cross-chain call",
-  );
 });
 
 task("registry:addNetwork", "Add a replica registry to be synced through Connext cross-chain communication")

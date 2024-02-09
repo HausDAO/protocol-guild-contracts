@@ -4,8 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import {
   ConnextMock,
-  NetworkRegistry,
-  NetworkRegistryShaman,
+  NetworkRegistry, // NetworkRegistryShaman, // TODO: shaman disabled
   NetworkRegistrySummoner,
   PGContribCalculator,
   SplitMain,
@@ -27,7 +26,7 @@ export type NetworkRegistryProps = {
   splitMain: SplitMain;
   summoner: NetworkRegistrySummoner;
   pgRegistrySingleton: NetworkRegistry;
-  pgRegistryShamanSingleton: NetworkRegistryShaman;
+  // pgRegistryShamanSingleton: NetworkRegistryShaman; // TODO: shaman disabled
   token: TestERC20;
 };
 
@@ -66,11 +65,12 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       deployed["NetworkRegistry"].address,
       signer,
     )) as NetworkRegistry;
-    const l1RegistryShamanSingleton = (await ethers.getContractAt(
-      "NetworkRegistryShaman",
-      deployed["NetworkRegistryShaman"].address,
-      signer,
-    )) as NetworkRegistryShaman;
+    // TODO: shaman disabled
+    // const l1RegistryShamanSingleton = (await ethers.getContractAt(
+    //   "NetworkRegistryShaman",
+    //   deployed["NetworkRegistryShaman"].address,
+    //   signer,
+    // )) as NetworkRegistryShaman;
 
     // Deploy Connext Mock
     const connextMockDeployed = await deployments.deploy("ConnextMock", {
@@ -125,20 +125,21 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       signer,
     )) as NetworkRegistry;
 
-    const pgregistryShamanDeployed = await deployments.deploy("NetworkRegistryShaman", {
-      contract: "NetworkRegistryShaman",
-      from: deployer,
-      args: [],
-      libraries: {
-        PGContribCalculator: calculatorLibraryDeployed.address,
-      },
-      log: false,
-    });
-    const pgRegistryShamanSingleton = (await ethers.getContractAt(
-      "NetworkRegistryShaman",
-      pgregistryShamanDeployed.address,
-      signer,
-    )) as NetworkRegistryShaman;
+    // TODO: shaman disabled
+    // const pgregistryShamanDeployed = await deployments.deploy("NetworkRegistryShaman", {
+    //   contract: "NetworkRegistryShaman",
+    //   from: deployer,
+    //   args: [],
+    //   libraries: {
+    //     PGContribCalculator: calculatorLibraryDeployed.address,
+    //   },
+    //   log: false,
+    // });
+    // const pgRegistryShamanSingleton = (await ethers.getContractAt(
+    //   "NetworkRegistryShaman",
+    //   pgregistryShamanDeployed.address,
+    //   signer,
+    // )) as NetworkRegistryShaman;
 
     const l2CalculatorLibrary = (await ethers.getContractAt(
       "PGContribCalculator",
@@ -178,7 +179,7 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       splitMain: l1SplitMain,
       summoner: l1Summoner,
       pgRegistrySingleton: l1RegistrySingleton,
-      pgRegistryShamanSingleton: l1RegistryShamanSingleton,
+      // pgRegistryShamanSingleton: l1RegistryShamanSingleton, // TODO: shaman disabled
       token: l1Token,
       l2: {
         calculatorLibrary: l2CalculatorLibrary,
@@ -186,7 +187,7 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
         splitMain: l2splitMain,
         summoner,
         pgRegistrySingleton,
-        pgRegistryShamanSingleton,
+        // pgRegistryShamanSingleton, // TODO: shaman disabled
         token: l2Token,
       },
       users: {

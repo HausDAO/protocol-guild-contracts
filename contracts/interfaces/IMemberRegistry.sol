@@ -56,8 +56,9 @@ interface IMemberRegistry {
      * @notice Updates seconds active since the last update epoch for every member in the registry
      * @dev It should manage a lastActivityUpdate state variable to update activity based on last update epoch.
      * For new members it should update seconds based each member startDate.
+     * @param _cutoffDate in seconds to calculate registry member's activity
      */
-    function updateSecondsActive() external;
+    function updateSecondsActive(uint32 _cutoffDate) external;
 
     /**
      * @notice Fetch a member's metadata

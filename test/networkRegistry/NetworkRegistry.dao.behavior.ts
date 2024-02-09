@@ -9,8 +9,8 @@ import { ethers, getUnnamedAccounts, network } from "hardhat";
 
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
-import { ConnextMock, GnosisSafe, NetworkRegistry, NetworkRegistrySummoner, SplitMain, TestERC20 } from "../../types";
-import { deploySplit, hashSplit, summonRegistry } from "../utils";
+import { ConnextMock, GnosisSafe, NetworkRegistry, PGContribCalculator, SplitMain, TestERC20 } from "../../types";
+import { deploySplit, hashSplit, summonRegistryProxy } from "../utils";
 // TODO: this should be fixed in the baal-contracts repo
 import { defaultDAOSettings, submitAndProcessProposal } from "../utils";
 import { NetworkRegistryProps, User, registryFixture } from "./NetworkRegistry.fixture";
@@ -29,9 +29,10 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     baalGas: 0,
   };
 
-  let summoner: NetworkRegistrySummoner;
-  let registrySingleton: NetworkRegistry;
+  // let summoner: NetworkRegistrySummoner;
+  // let registrySingleton: NetworkRegistry;
   let connext: ConnextMock;
+  let l1CalculatorLibrary: PGContribCalculator;
   let l1SplitMain: SplitMain;
   let l1SplitAddress: string;
   let l2Registry: NetworkRegistryProps;
@@ -74,10 +75,11 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     let encodedAction: string;
 
     const setup = await registryFixture({});
-    summoner = setup.summoner;
-    registrySingleton = setup.pgRegistrySingleton;
+    // summoner = setup.summoner;
+    // registrySingleton = setup.pgRegistrySingleton;
     l1Token = setup.token;
     connext = setup.connext;
+    l1CalculatorLibrary = setup.calculatorLibrary;
     l1SplitMain = setup.splitMain;
     l2Registry = setup.l2;
     users = setup.users;
@@ -119,9 +121,8 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     await l1DepositTx.wait();
 
     // Summon Main Registry
-    const l1RegistryAddress = await summonRegistry(
-      summoner,
-      registrySingleton.address,
+    const l1RegistryAddress = await summonRegistryProxy(
+      l1CalculatorLibrary.address,
       {
         connext: connext.address,
         updaterDomainId: 0, // Main Registry -> no domainId
@@ -130,7 +131,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         split: l1SplitAddress,
         owner: daoSafe.address, // NOTICE: DAO Safe as the owner
       },
-      "Mainnet Registry",
+      "MainNetworkRegistry",
     );
     l1NetworkRegistry = (await ethers.getContractAt("NetworkRegistry", l1RegistryAddress, signer)) as NetworkRegistry;
 
@@ -172,9 +173,8 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     await l2DepositTx.wait();
 
     // Summon a Replica Registry
-    const l2RegistryAddress = await summonRegistry(
-      summoner,
-      registrySingleton.address,
+    const l2RegistryAddress = await summonRegistryProxy(
+      l2Registry.calculatorLibrary.address,
       {
         connext: connext.address,
         updaterDomainId: parentDomainId,
@@ -183,7 +183,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         split: l2SplitAddress,
         owner: ethers.constants.AddressZero, // renounceOwnership
       },
-      "L2 Registry",
+      "ReplicaNetworkRegistry",
     );
     l2NetworkRegistry = (await ethers.getContractAt("NetworkRegistry", l2RegistryAddress, signer)) as NetworkRegistry;
 

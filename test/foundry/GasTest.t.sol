@@ -7,7 +7,8 @@ import { SplitMain } from "contracts/fixtures/SplitMain.sol";
 import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
 import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
-import { NetworkRegistryShaman } from "contracts/NetworkRegistryShaman.sol";
+// TODO: shaman disabled
+// import { NetworkRegistryShaman } from "contracts/NetworkRegistryShaman.sol";
 import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
 
 contract GasTest is Test {
@@ -16,7 +17,8 @@ contract GasTest is Test {
     // NetworkRegistry private replica;
     // NetworkRegistryShaman private registryShaman;
     NetworkRegistry private singleton;
-    NetworkRegistryShaman private singletonShaman;
+    // TODO: shaman disabled
+    // NetworkRegistryShaman private singletonShaman;
     NetworkRegistrySummoner private summoner;
     address private registryOwner;
     address[] private sortedAddresses;
@@ -26,7 +28,7 @@ contract GasTest is Test {
 
     uint32 private constant HOME_DOMAIN_ID = 1;
     // Change this for testing
-    uint256 private constant TOTAL_USERS = 800;
+    uint256 private constant TOTAL_USERS = 166;
 
     function _createUser(string memory name) internal returns (address payable) {
         address payable user = payable(makeAddr(name));
@@ -52,7 +54,8 @@ contract GasTest is Test {
         // deploy Registry infra
         summoner = new NetworkRegistrySummoner();
         singleton = new NetworkRegistry();
-        singletonShaman = new NetworkRegistryShaman();
+        // TODO: shaman disabled
+        // singletonShaman = new NetworkRegistryShaman();
 
         // Deploy Connext infra
         address connext = address(new ConnextMock(HOME_DOMAIN_ID));
