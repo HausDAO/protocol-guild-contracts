@@ -391,46 +391,46 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 | Contract                        | Address                                    |
 | ------------------------------- | ------------------------------------------ |
-| NetworkRegistrySummoner         | 0xd1a8c3b7F7250b50E352b51d148A29f24C0CeD62 |
-| NetworkRegistry Singleton       | 0x250F9e93822cD48269E8a24A9D4bE817A9cf389D |
+| NetworkRegistrySummoner         | ~~0xd1a8c3b7F7250b50E352b51d148A29f24C0CeD62~~ |
+| NetworkRegistry Singleton       | ~~0x250F9e93822cD48269E8a24A9D4bE817A9cf389D~~ |
 | NetworkRegistryShaman Singleton | <None>                                     |
 
 ### Optimism Goerli
 
 | Contract                        | Address                                    |
 | ------------------------------- | ------------------------------------------ |
-| NetworkRegistrySummoner         | 0x7D32b8Ae083d78ff6628271a15B162676380bd00 |
-| NetworkRegistry Singleton       | 0xF3C93FBa186758605318b2F6d0b141029a20E2a8 |
+| NetworkRegistrySummoner         | ~~0x7D32b8Ae083d78ff6628271a15B162676380bd00~~ |
+| NetworkRegistry Singleton       | ~~0xF3C93FBa186758605318b2F6d0b141029a20E2a8~~ |
 | NetworkRegistryShaman Singleton | <None>                                     |
 
 ### Arbitrum Goerli
 
 | Contract                        | Address                                    |
 | ------------------------------- | ------------------------------------------ |
-| NetworkRegistrySummoner         | 0x7D32b8Ae083d78ff6628271a15B162676380bd00 |
-| NetworkRegistry Singleton       | 0xF3C93FBa186758605318b2F6d0b141029a20E2a8 |
+| NetworkRegistrySummoner         | ~~0x7D32b8Ae083d78ff6628271a15B162676380bd00~~ |
+| NetworkRegistry Singleton       | ~~0xF3C93FBa186758605318b2F6d0b141029a20E2a8~~ |
 | NetworkRegistryShaman Singleton | <None>                                     |
 
 ### Polygon Mumbai
 
 | Contract                        | Address                                    |
 | ------------------------------- | ------------------------------------------ |
-| NetworkRegistrySummoner         | 0x00CA834F2e6505a860bEbb3eCb315D3b90D8Ecf7 |
-| NetworkRegistry Singleton       | 0xaC4137Ef604bF4DAf22F1d992B9c83A9E39A0FE1 |
+| NetworkRegistrySummoner         | ~~0x00CA834F2e6505a860bEbb3eCb315D3b90D8Ecf7~~ |
+| NetworkRegistry Singleton       | ~~0xaC4137Ef604bF4DAf22F1d992B9c83A9E39A0FE1~~ |
 | NetworkRegistryShaman Singleton | <None>                                     |
 
 ## Gas Analysis
 
 | Active Members | Method                                     |
 | -------------- | ------------------------------------------ |
-| 166            | testUpdateAll() (gas: 3.042.099)           |
-|                | testUpdateSecondsActive() (gas: 1.370.414) |
-| 500            | testUpdateAll() (gas: 9,162.926)           |
-|                | testUpdateSecondsActive() (gas: 4.059.448) |
-| 800            | testUpdateAll() (gas: 14.818.927)          |
-|                | testUpdateSecondsActive() (gas: 6.474.748) |
-| 1000           | testUpdateAll() (gas: 18.672.775)          |
-|                | testUpdateSecondsActive() (gas: 8.084.948) |
+| 167            | testUpdateAll() (gas: 3.060.585)           |
+|                | testUpdateSecondsActive() (gas: 1.378.813) |
+| 500            | testUpdateAll() (gas: 9,163.352)           |
+|                | testUpdateSecondsActive() (gas: 4.059.796) |
+| 800            | testUpdateAll() (gas: 14.819.265)          |
+|                | testUpdateSecondsActive() (gas: 6.475.096) |
+| 1000           | testUpdateAll() (gas: 18.673.090)          |
+|                | testUpdateSecondsActive() (gas: 8.085.296) |
 
 ## License
 
