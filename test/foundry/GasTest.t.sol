@@ -28,7 +28,7 @@ contract GasTest is Test {
 
     uint32 private constant HOME_DOMAIN_ID = 1;
     // Change this for testing
-    uint256 private constant TOTAL_USERS = 166;
+    uint256 private constant TOTAL_USERS = 167;
 
     function _createUser(string memory name) internal returns (address payable) {
         address payable user = payable(makeAddr(name));
@@ -128,6 +128,11 @@ contract GasTest is Test {
         vm.stopPrank();
     }
 
+    modifier moveForwardTime(uint256 _seconds) {
+        vm.warp(block.timestamp + _seconds);
+        _;
+    }
+
     modifier ownerContext() {
         vm.startPrank(registry.owner());
         _;
@@ -155,11 +160,11 @@ contract GasTest is Test {
     //     vm.stopPrank();
     // }
 
-    function testUpdateSecondsActive() external ownerContext {
+    function testUpdateSecondsActive() external moveForwardTime(86_400) ownerContext {
         registry.syncUpdateSecondsActive(chainIds, relayerFees);
     }
 
-    function testUpdateAll() external ownerContext {
+    function testUpdateAll() external moveForwardTime(86_400) ownerContext {
         registry.syncUpdateAll(sortedAddresses, 0, chainIds, relayerFees);
     }
 }
