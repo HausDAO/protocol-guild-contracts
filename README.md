@@ -390,35 +390,35 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 ### Goerli
 
-| Contract                        | Address                                    |
-| ------------------------------- | ------------------------------------------ |
+| Contract                        | Address                                        |
+| ------------------------------- | ---------------------------------------------- |
 | NetworkRegistrySummoner         | ~~0xd1a8c3b7F7250b50E352b51d148A29f24C0CeD62~~ |
 | NetworkRegistry Singleton       | ~~0x250F9e93822cD48269E8a24A9D4bE817A9cf389D~~ |
-| NetworkRegistryShaman Singleton | <None>                                     |
+| NetworkRegistryShaman Singleton | <None>                                         |
 
 ### Optimism Goerli
 
-| Contract                        | Address                                    |
-| ------------------------------- | ------------------------------------------ |
+| Contract                        | Address                                        |
+| ------------------------------- | ---------------------------------------------- |
 | NetworkRegistrySummoner         | ~~0x7D32b8Ae083d78ff6628271a15B162676380bd00~~ |
 | NetworkRegistry Singleton       | ~~0xF3C93FBa186758605318b2F6d0b141029a20E2a8~~ |
-| NetworkRegistryShaman Singleton | <None>                                     |
+| NetworkRegistryShaman Singleton | <None>                                         |
 
 ### Arbitrum Goerli
 
-| Contract                        | Address                                    |
-| ------------------------------- | ------------------------------------------ |
+| Contract                        | Address                                        |
+| ------------------------------- | ---------------------------------------------- |
 | NetworkRegistrySummoner         | ~~0x7D32b8Ae083d78ff6628271a15B162676380bd00~~ |
 | NetworkRegistry Singleton       | ~~0xF3C93FBa186758605318b2F6d0b141029a20E2a8~~ |
-| NetworkRegistryShaman Singleton | <None>                                     |
+| NetworkRegistryShaman Singleton | <None>                                         |
 
 ### Polygon Mumbai
 
-| Contract                        | Address                                    |
-| ------------------------------- | ------------------------------------------ |
+| Contract                        | Address                                        |
+| ------------------------------- | ---------------------------------------------- |
 | NetworkRegistrySummoner         | ~~0x00CA834F2e6505a860bEbb3eCb315D3b90D8Ecf7~~ |
 | NetworkRegistry Singleton       | ~~0xaC4137Ef604bF4DAf22F1d992B9c83A9E39A0FE1~~ |
-| NetworkRegistryShaman Singleton | <None>                                     |
+| NetworkRegistryShaman Singleton | <None>                                         |
 
 ## Gas Analysis
 

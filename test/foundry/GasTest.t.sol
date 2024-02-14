@@ -46,10 +46,7 @@ contract GasTest is Test {
         return addr;
     }
 
-    function _deploy(
-        string memory contractName,
-        bytes memory constructorData
-    ) private returns (address) {
+    function _deploy(string memory contractName, bytes memory constructorData) private returns (address) {
         bytes memory creationCode = vm.getCode(contractName);
         address deployedAddress = _deployFromBytecode(abi.encodePacked(creationCode, constructorData));
         if (deployedAddress == address(0)) {
@@ -113,12 +110,7 @@ contract GasTest is Test {
         bytes memory initializerData = abi.encodeCall(NetworkRegistry.initialize, (mainInitParams));
         registry = new NetworkRegistry();
         address impl = address(registry);
-        address proxy = address(
-            _deploy(
-                "ERC1967Proxy.sol:ERC1967Proxy",
-                abi.encode(impl, initializerData)
-            )
-        );
+        address proxy = address(_deploy("ERC1967Proxy.sol:ERC1967Proxy", abi.encode(impl, initializerData)));
         registry = NetworkRegistry(proxy);
 
         // TODO: deploy replica
