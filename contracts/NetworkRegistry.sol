@@ -239,10 +239,10 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         address _originSender
     );
 
-    constructor() {
-        // disable initialization on singleton contract
-        _disableInitializers();
-    }
+    // constructor() {
+    //     // disable initialization on singleton contract
+    //     _disableInitializers();
+    // }
 
     /**
      * @dev Setup the Connext bridge, Updater role & 0xSplit contracts settings.
