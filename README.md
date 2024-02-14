@@ -204,7 +204,7 @@ $ pnpm prettier:write
 ### Coverage
 
 **IMPORTANT** In order for `solidity-coverage` to work, you must disable the `@nomicfoundation/hardhat-foundry` plugin
-in `hardhat.config.ts`.
+in `hardhat.config.ts` while running the coverage command.
 
 Generate the code coverage report:
 
@@ -220,11 +220,12 @@ See the gas usage per unit test and average gas per method call:
 $ REPORT_GAS=true pnpm test
 ```
 
-If you want to analyze the gas consumption when calling the registry update functions check the
+If you want to analyze the gas consumption when calling the registry activity update functions check the
 [GasTest.t.sol](test/foundry/GasTest.t.sol) for settings and execute the following:
 
 ```sh
-$ forge test -vvv
+$ forge clean
+$ forge test --ffi -vvv
 ```
 
 ### Clean
@@ -421,6 +422,8 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 ## Gas Analysis
 
+### NetworkRegistry deployed through Summoner (Clones pattern)
+
 | Active Members | Method                                     |
 | -------------- | ------------------------------------------ |
 | 167            | testUpdateAll() (gas: 3.060.585)           |
@@ -431,6 +434,19 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 |                | testUpdateSecondsActive() (gas: 6.475.096) |
 | 1000           | testUpdateAll() (gas: 18.673.090)          |
 |                | testUpdateSecondsActive() (gas: 8.085.296) |
+
+### NetworkRegistry deployed using the UUPS proxy pattern
+
+| Active Members | Method                                     |
+| -------------- | ------------------------------------------ |
+| 167            | testUpdateAll() (gas: 3.063.027)           |
+|                | testUpdateSecondsActive() (gas: 1.381.255) |
+| 500            | testUpdateAll() (gas: 9,165.794)           |
+|                | testUpdateSecondsActive() (gas: 4.062.238) |
+| 800            | testUpdateAll() (gas: 14.821.707)          |
+|                | testUpdateSecondsActive() (gas: 6.477.538) |
+| 1000           | testUpdateAll() (gas: 18.675.532)          |
+|                | testUpdateSecondsActive() (gas: 8.087.738) |
 
 ## License
 
