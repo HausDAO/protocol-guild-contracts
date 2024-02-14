@@ -1,0 +1,5 @@
+forge-std/=lib/forge-std/src/
+@safe-global/safe-contracts/=lib/safe-contracts/contracts
+@gnosis.pm/safe-contracts/=lib/safe-contracts/
+@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/

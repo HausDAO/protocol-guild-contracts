@@ -2,6 +2,8 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
+import { console2 } from "forge-std/console2.sol";
+import { Options, Upgrades } from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 import { SplitMain } from "contracts/fixtures/SplitMain.sol";
 import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
@@ -36,6 +38,34 @@ contract GasTest is Test {
         return user;
     }
 
+    function _deployFromBytecode(bytes memory bytecode) private returns (address) {
+        address addr;
+        assembly {
+            addr := create(0, add(bytecode, 32), mload(bytecode))
+        }
+        return addr;
+    }
+
+    function _deploy(
+        string memory contractName,
+        bytes memory constructorData
+    ) private returns (address) {
+        bytes memory creationCode = vm.getCode(contractName);
+        address deployedAddress = _deployFromBytecode(abi.encodePacked(creationCode, constructorData));
+        if (deployedAddress == address(0)) {
+            revert(
+                string.concat(
+                    "Failed to deploy contract ",
+                    contractName,
+                    ' using constructor data "',
+                    string(constructorData),
+                    '"'
+                )
+            );
+        }
+        return deployedAddress;
+    }
+
     function setUp() external {
         vm.createSelectFork(vm.rpcUrl("goerli"), 10159603); // TODO: block No.
 
@@ -51,18 +81,46 @@ contract GasTest is Test {
         percentAllocations[1] = 500_000;
         address split = splitMain.createSplit(accounts, percentAllocations, 0, registryOwner);
 
-        // deploy Registry infra
-        summoner = new NetworkRegistrySummoner();
-        singleton = new NetworkRegistry();
-        // TODO: shaman disabled
-        // singletonShaman = new NetworkRegistryShaman();
+        // USING SUMMONER
+        // // deploy Registry infra
+        // summoner = new NetworkRegistrySummoner();
+        // singleton = new NetworkRegistry();
+        // // TODO: shaman disabled
+        // // singletonShaman = new NetworkRegistryShaman();
 
         // Deploy Connext infra
         address connext = address(new ConnextMock(HOME_DOMAIN_ID));
 
         // Deploy main registry
         bytes memory mainInitParams = abi.encode(connext, 0, address(0), address(splitMain), split, registryOwner);
-        registry = NetworkRegistry(summoner.summonRegistry(address(singleton), "MainRegistry", mainInitParams));
+        // USING SUMMONER
+        // registry = NetworkRegistry(summoner.summonRegistry(address(singleton), "MainRegistry", mainInitParams));
+
+        // USING UUPS Proxy
+        // // TODO: how to make it work with external libraries
+        // Options memory opts;
+        // opts.unsafeAllow = "external-library-linking"; // TODO: https://zpl.in/upgrades/error-006
+        // // opts.unsafeSkipAllChecks = true;
+        // address proxy = Upgrades.deployUUPSProxy(
+        //     "NetworkRegistry.sol",
+        //     abi.encodeCall(NetworkRegistry.initialize, (mainInitParams)),
+        //     opts
+        // );
+        // console2.log("proxy", proxy);
+        // registry = NetworkRegistry(proxy);
+
+        // NOTICE: Custom Proxy deploy impl
+        bytes memory initializerData = abi.encodeCall(NetworkRegistry.initialize, (mainInitParams));
+        registry = new NetworkRegistry();
+        address impl = address(registry);
+        address proxy = address(
+            _deploy(
+                "ERC1967Proxy.sol:ERC1967Proxy",
+                abi.encode(impl, initializerData)
+            )
+        );
+        registry = NetworkRegistry(proxy);
+
         // TODO: deploy replica
 
         // TODO: Cross-chain config
