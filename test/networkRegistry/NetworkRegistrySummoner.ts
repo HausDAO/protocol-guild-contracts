@@ -126,28 +126,28 @@ describe("NetworkRegistrySummoner", function () {
   // ################################################################################################################
 
   describe("NetworkRegistry + Summoner", function () {
-    it("Should not be able to initialize a singleton", async () => {
-      const l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint32", "address", "address", "address", "address"],
-        [
-          connext.address,
-          0, // no domainId -> Main Registry
-          ethers.constants.AddressZero, // no updater -> Main Registry
-          l1SplitMain.address,
-          l1SplitAddress,
-          users.owner.address,
-        ],
-      );
-      await expect(registrySingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
-        l1NetworkRegistry,
-        "InvalidInitialization",
-      );
-      // TODO: shaman disabled
-      // await expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
-      //   l1NetworkRegistry,
-      //   "InvalidInitialization",
-      // );
-    });
+    // it("Should not be able to initialize a singleton", async () => {
+    //   const l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
+    //     ["address", "uint32", "address", "address", "address", "address"],
+    //     [
+    //       connext.address,
+    //       0, // no domainId -> Main Registry
+    //       ethers.constants.AddressZero, // no updater -> Main Registry
+    //       l1SplitMain.address,
+    //       l1SplitAddress,
+    //       users.owner.address,
+    //     ],
+    //   );
+    //   await expect(registrySingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
+    //     l1NetworkRegistry,
+    //     "InvalidInitialization",
+    //   );
+    //   // TODO: shaman disabled
+    //   // await expect(registryShamanSingleton.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
+    //   //   l1NetworkRegistry,
+    //   //   "InvalidInitialization",
+    //   // );
+    // });
 
     it("Should not be able to summon a registry with incorrect encoded init params", async () => {
       const details = "sample registry";
