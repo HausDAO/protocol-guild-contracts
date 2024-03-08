@@ -100,7 +100,7 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @param _originSender source contract or updater
      * @param _origin origin domain ID
      */
-    modifier onlyConnext(address _originSender, uint32 _origin) {
+    modifier onlyConnextAuthorized(address _originSender, uint32 _origin) {
         if (_origin != updaterDomain || _originSender != updater || _msgSender() != address(connext))
             revert NetworkRegistry__ConnextOnly();
         _;
@@ -855,7 +855,7 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         address _originSender,
         uint32 _origin,
         bytes memory _incomingCalldata
-    ) external onlyConnext(_originSender, _origin) returns (bytes memory) {
+    ) external onlyConnextAuthorized(_originSender, _origin) returns (bytes memory) {
         bytes4 action = abi.decode(_incomingCalldata, (bytes4));
         bytes memory callData;
         if (action == IMemberRegistry.batchNewMembers.selector) {
@@ -915,9 +915,13 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
             );
             callData = abi.encodeWithSelector(action, _newImplementation, _data);
         }
+        bool success;
+        bytes memory data;
 
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory data) = address(this).call(callData);
+        if (callData.length > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (success, data) = address(this).call(callData);
+        }
         emit SyncActionPerformed(_transferId, _origin, action, success, _originSender);
         return data;
     }
