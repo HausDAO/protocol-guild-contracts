@@ -393,8 +393,8 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         address[] memory _members,
         uint32[] memory _activityMultipliers,
         uint32[] memory _startDates,
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _batchNewMembers(_members, _activityMultipliers, _startDates);
         bytes4 action = IMemberRegistry.batchNewMembers.selector;
@@ -422,8 +422,8 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     function syncBatchUpdateMembersActivity(
         address[] memory _members,
         uint32[] memory _activityMultipliers,
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _batchUpdateMembersActivity(_members, _activityMultipliers);
         bytes4 action = IMemberRegistry.batchUpdateMembersActivity.selector;
@@ -473,8 +473,8 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      */
     function syncNetworkMemberRegistry(
         address[] memory _members,
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         (
             uint32[] memory _activityMultipliers,
@@ -501,8 +501,8 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @inheritdoc INetworkMemberRegistry
      */
     function syncUpdateSecondsActive(
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
         _updateSecondsActive(cutoffDate);
@@ -512,15 +512,28 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     }
 
     /**
+     * @notice Updates the 0xSplit distribution
+     * @param _receivers sorted list (ascending order) of members to be considered in the 0xSplit distribution
+     * @param _percentAllocations allocation percent for each receiver
+     * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
+     */
+    function _updateSplit(
+        address[] memory _receivers,
+        uint32[] memory _percentAllocations,
+        uint32 _splitDistributorFee
+    ) internal returns (bytes32 splitHash) {
+        splitMain.updateSplit(split, _receivers, _percentAllocations, _splitDistributorFee);
+        splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, _splitDistributorFee));
+    }
+
+    /**
      * @notice Updates the 0xSplit distribution based on member activity during the last epoch
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
      */
-    function _updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) internal {
+    function _updateSplitDistribution(address[] memory _sortedList, uint32 _splitDistributorFee) internal {
         (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
-        // run splits update
-        splitMain.updateSplit(split, _receivers, _percentAllocations, _splitDistributorFee);
-        bytes32 splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, _splitDistributorFee));
+        bytes32 splitHash = _updateSplit(_receivers, _percentAllocations, _splitDistributorFee);
         emit SplitsDistributionUpdated(split, splitHash, _splitDistributorFee);
     }
 
@@ -530,7 +543,7 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @inheritdoc ISplitManager
      */
     function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) external onlyReplica {
-        _updateSplits(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _splitDistributorFee);
     }
 
     /**
@@ -542,10 +555,10 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     function syncUpdateSplits(
         address[] memory _sortedList,
         uint32 _splitDistributorFee,
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        _updateSplits(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateSplits.selector;
         bytes memory callData = abi.encode(action, _sortedList, _splitDistributorFee);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -562,7 +575,7 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint32 _splitDistributorFee
     ) external onlyReplica {
         _updateSecondsActive(_cutoffDate);
-        _updateSplits(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _splitDistributorFee);
     }
 
     /**
@@ -574,12 +587,12 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     function syncUpdateAll(
         address[] memory _sortedList,
         uint32 _splitDistributorFee,
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
         _updateSecondsActive(cutoffDate);
-        _updateSplits(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateAll.selector;
         bytes memory callData = abi.encode(action, cutoffDate, _sortedList, _splitDistributorFee);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -807,8 +820,8 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @inheritdoc INetworkMemberRegistry
      */
     function acceptNetworkSplitControl(
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         bytes4 action = ISplitManager.acceptSplitControl.selector;
         bytes memory callData = abi.encode(action);
@@ -831,8 +844,8 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @inheritdoc INetworkMemberRegistry
      */
     function cancelNetworkSplitControlTransfer(
-        uint32[] calldata _chainIds,
-        uint256[] calldata _relayerFees
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         bytes4 action = ISplitManager.cancelSplitControlTransfer.selector;
         bytes memory callData = abi.encode(action);
