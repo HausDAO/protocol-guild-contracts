@@ -38,14 +38,14 @@ error InvalidMember__ActivityMultiplier(address _memberAddress, uint32 _activity
  * @dev Includes minimal functions to implement an on-chain registry that tracks members & activity time
  */
 abstract contract MemberRegistry is IMemberRegistry {
+    /// @dev Activity multiplier upper bound
+    uint32 internal constant MULTIPLIER_UPPER_BOUND = 100;
     /// @notice Member registry
     /// @dev members should be fetched with proper getters that interact with Members db and index
     DataTypes.Members internal members;
     /// @notice last timestamp where the registry got updated
     /// @dev should be assigned to uint32(block.timestamp)
     uint32 public lastActivityUpdate;
-    /// @dev Activity multiplier upper bound
-    uint32 internal constant MULTIPLIER_UPPER_BOUND = 100;
 
     /**
      * EVENTS
@@ -71,6 +71,11 @@ abstract contract MemberRegistry is IMemberRegistry {
         uint32 _startDate,
         uint32 _secondsActive
     );
+    /**
+     * @notice emitted after member is removed from the registry
+     * @param _memberAddress member address
+     */
+    event RemoveMember(address indexed _memberAddress);
     /**
      * @notice emitted after each time a member registry activity is updated
      * @param _memberAddress member address
@@ -99,7 +104,7 @@ abstract contract MemberRegistry is IMemberRegistry {
             revert InvalidMember__ActivityMultiplier(_memberAddress, _activityMultiplier);
         if (_startDate > block.timestamp) revert InvalidMember__StartDateInTheFuture(_memberAddress, _startDate);
 
-        // secondsActive set to 0, will be updated in next update
+        // secondsActive set to 0, should be updated in next epoch
         members.db.push(DataTypes.Member(_memberAddress, 0, _startDate, _activityMultiplier));
         unchecked {
             members.index[_memberAddress] = ++members.count;
@@ -122,11 +127,14 @@ abstract contract MemberRegistry is IMemberRegistry {
         if (_activityMultipliers.length != batchSize || _startDates.length != batchSize)
             revert MemberRegistry__ParamsSizeMismatch();
         for (uint256 i = 0; i < batchSize; ) {
+            if (_activityMultipliers[i] == 0)
+                revert InvalidMember__ActivityMultiplier(_members[i], _activityMultipliers[i]);
             _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
             }
         }
+        members.totalActiveMembers += batchSize;
     }
 
     /**
@@ -158,6 +166,53 @@ abstract contract MemberRegistry is IMemberRegistry {
         if (_activityMultipliers.length != batchSize) revert MemberRegistry__ParamsSizeMismatch();
         for (uint256 i = 0; i < batchSize; ) {
             _updateMemberActivity(_members[i], _activityMultipliers[i]);
+            unchecked {
+                if (_activityMultipliers[i] == 0) --members.totalActiveMembers;
+                ++i; // gas optimization: very unlikely to overflow
+            }
+        }
+    }
+
+    /**
+     * @notice Removes an existing member from the registry.
+     * @dev {_getMember} function makes sure member is in the registry.
+     * Notice function is set as virtual so base functionality can be overridden by the implementer.
+     * @param _memberAddress member address
+     */
+    function _removeMember(address _memberAddress) internal virtual {
+        uint256 memberId = _getMemberId(_memberAddress);
+        if (memberId == 0) revert Member__NotRegistered(_memberAddress);
+        uint256 maxId = totalMembers();
+        if (memberId != maxId) {
+            DataTypes.Member storage member = _getMemberById(memberId);
+            unchecked {
+                if (member.activityMultiplier > 0) --members.totalActiveMembers;
+            }
+            DataTypes.Member memory swapMember = _getMemberById(maxId);
+            // swap index
+            members.index[swapMember.account] = memberId;
+            // swap member records
+            member.account = swapMember.account;
+            member.secondsActive = swapMember.secondsActive;
+            member.startDate = swapMember.startDate;
+            member.activityMultiplier = swapMember.activityMultiplier;
+        }
+        // update db
+        members.db.pop();
+        // update index
+        members.index[_memberAddress] = 0;
+
+        emit RemoveMember(_memberAddress);
+    }
+
+    /**
+     * @notice Removes a set of existing members from the registry
+     * @param _members A list of existing members
+     */
+    function _batchRemoveMembers(address[] memory _members) internal {
+        uint256 batchSize = _members.length;
+        for (uint256 i = 0; i < batchSize; ) {
+            _removeMember(_members[i]);
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
             }
@@ -259,6 +314,14 @@ abstract contract MemberRegistry is IMemberRegistry {
      */
     function totalMembers() public view returns (uint256) {
         return members.db.length;
+    }
+
+    /**
+     * @notice Returns the total No of active members in the registry
+     * @inheritdoc IMemberRegistry
+     */
+    function totalActiveMembers() public view returns (uint256) {
+        return members.totalActiveMembers;
     }
 
     /**

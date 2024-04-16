@@ -90,7 +90,7 @@ export const generateMemberBatch = async (totalMembers: number): Promise<Array<M
   return members.map((m: string, idx: number) => {
     return {
       account: m,
-      activityMultiplier: idx < 3 ? 100 : idx % 5 === 0 ? 0 : Math.floor(Math.random() * 100) > 50 ? 100 : 50,
+      activityMultiplier: idx < 3 ? 100 : Math.floor(Math.random() * 100) > 50 ? 100 : 50,
       startDate,
     };
   });

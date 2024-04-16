@@ -36,6 +36,12 @@ interface IMemberRegistry {
     function batchUpdateMembersActivity(address[] memory _members, uint32[] memory _activityMultipliers) external;
 
     /**
+     * @notice Remove a set of members from the registry
+     * @param _members A list of existing members
+     */
+    function batchRemoveMembers(address[] memory _members) external;
+
+    /**
      * @notice Adds and/or updates a set of members on the registry
      * @dev Make sure array parameters are of the same length
      * Activity multiplier could be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time)
@@ -73,6 +79,12 @@ interface IMemberRegistry {
      * @return total members in the registry
      */
     function totalMembers() external view returns (uint256);
+
+    /**
+     * @notice Returns the total No of active members in the registry
+     * @return total active members in the registry
+     */
+    function totalActiveMembers() external view returns (uint256);
 
     /**
      * @notice Fetch members metadata as separate property arrays

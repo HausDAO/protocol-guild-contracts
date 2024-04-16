@@ -5,14 +5,21 @@ import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
 import { DataTypes } from "../libraries/DataTypes.sol";
 
+/// @notice Member list size must match the amount of active members in the registry
+error InvalidSplit__MemberListSizeMismatch();
 /// @notice Member list must be sorted in ascending order
 /// @param _index index where a member address is not properly sorted
 error InvalidSplit__AccountsOutOfOrder(uint256 _index);
 /// @notice Member is not registered
 /// @param _member member address
 error InvalidSplit__MemberNotRegistered(address _member);
-/// @notice Member list does not have any active member
+/// @notice The registry does not have any active member
 error InvalidSplit__NoActiveMembers();
+/// @notice Member is currently inactive
+/// @param _member member address
+error InvalidSplit__InactiveMember(address _member);
+// @notice Empty Split distribution
+error InvalidSplit__EmptyDistribution();
 
 /**
  * @title A 0xSplit allocations calculator library
@@ -49,37 +56,34 @@ library PGContribCalculator {
         DataTypes.Members storage self,
         address[] memory _sortedList
     ) external view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
-        uint256 activeMembers;
+        uint256 activeMembers = self.totalActiveMembers;
         uint256 total;
         address previous;
+
+        if (activeMembers == 0) revert InvalidSplit__NoActiveMembers();
+
+        if (_sortedList.length != activeMembers) revert InvalidSplit__MemberListSizeMismatch();
 
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
         for (uint256 i = 0; i < _sortedList.length; ) {
             address memberAddress = _sortedList[i];
             DataTypes.Member memory member = getMember(self, memberAddress);
             if (previous >= memberAddress) revert InvalidSplit__AccountsOutOfOrder(i);
+            if (member.activityMultiplier == 0) revert InvalidSplit__InactiveMember(memberAddress);
 
-            // ignore inactive members
-            if (member.activityMultiplier > 0) {
-                memberDistribution[i] = MemberContribution({
-                    // TODO: how to allow recipient to assign different addresses per network?
-                    receiverAddress: memberAddress,
-                    calcContribution: calculateContributionOf(self, member)
-                });
-                // get the total seconds in the last period
-                // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
-                total += memberDistribution[i].calcContribution;
-                unchecked {
-                    ++activeMembers; // gas optimization: very unlikely to overflow
-                }
-                previous = memberAddress;
-            }
+            memberDistribution[i] = MemberContribution({
+                // TODO: how to allow recipient to assign different addresses per network?
+                receiverAddress: memberAddress,
+                calcContribution: calculateContributionOf(self, member)
+            });
+            // get the total seconds in the last period
+            // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
+            total += memberDistribution[i].calcContribution;
+            previous = memberAddress;
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
             }
         }
-
-        if (activeMembers == 0) revert InvalidSplit__NoActiveMembers();
 
         // define variables for split params
         _receivers = new address[](activeMembers);
@@ -114,6 +118,8 @@ library PGContribCalculator {
                 ++i; // gas optimization: very unlikely to overflow
             }
         }
+
+        if (nonZeroIndex == 0) revert InvalidSplit__EmptyDistribution();
 
         // NOTICE: In case sum(percentAllocations) < PERCENTAGE_SCALE
         // the remainder will be added to the recipient with lowest allocation

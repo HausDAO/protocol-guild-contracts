@@ -99,6 +99,22 @@ interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
     ) external payable;
 
     /**
+     * @notice Remove a set of existing members from the registry and sync with replicas
+     * @dev It should forward messages to stay in sync with provided replicas.
+     * Must be used only if registries are in sync.
+     * {msg.value} must match the total fees required to pay the Connext relayer to execute
+     * forwarded messages in the destination.
+     * @param _members A list of existing members
+     * @param _chainIds a list of network chainIds where valid replicas live
+     * @param _relayerFees a list of fees to be paid to the Connext relayer per sync message forwarded
+     */
+    function syncBatchRemoveMembers(
+        address[] memory _members,
+        uint32[] calldata _chainIds,
+        uint256[] calldata _relayerFees
+    ) external payable;
+
+    /**
      * @notice Sync the state of a set of registry members across networks.
      * Useful whether you're looking to sync a new replica from scratch or a subset of members. For example
      * this function can be used to sync member's state in batches instead of doing a full registry sync

@@ -463,6 +463,30 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     }
 
     /**
+     * @notice Remove a set of members from the registry
+     * @inheritdoc IMemberRegistry
+     */
+    function batchRemoveMembers(address[] memory _members) external onlyReplicaSync {
+        _batchRemoveMembers(_members);
+    }
+
+    /**
+     * @notice Remove a set of existing members from the registry and sync with replicas
+     * @dev Callable by the main registry owner
+     * @inheritdoc INetworkMemberRegistry
+     */
+    function syncBatchRemoveMembers(
+        address[] memory _members,
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
+    ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
+        _batchRemoveMembers(_members);
+        bytes4 action = IMemberRegistry.batchRemoveMembers.selector;
+        bytes memory callData = abi.encodeWithSelector(action, _members);
+        _syncRegistries(action, callData, _chainIds, _relayerFees);
+    }
+
+    /**
      * @notice Adds and/or updates a set of members on the registry
      * @dev Callable on a replica registry through the Connext bridge.
      * The syncNetworkMemberRegistry function ensures that array params will always
@@ -476,22 +500,34 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint32[] memory _secondsActive
     ) external onlyReplicaSync {
         uint256 totalMembers = _members.length;
+        uint256 activeMembers;
+        uint256 inactiveMembers;
         for (uint256 i = 0; i < totalMembers; ) {
             uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
+                // register a non-existent member with current activityMultiplier (even if its zero)
                 _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
+                unchecked {
+                    if (_activityMultipliers[i] > 0) ++activeMembers;
+                }
             } else {
                 DataTypes.Member storage member = _getMemberById(memberId);
+                uint32 currentActivityMultiplier = member.activityMultiplier;
                 // overrides member startDate and secondsActive in order to
                 // get in sync with the main registry
                 member.startDate = _startDates[i];
                 member.secondsActive = _secondsActive[i];
+                unchecked {
+                    if (currentActivityMultiplier > 0 && _activityMultipliers[i] == 0) ++inactiveMembers;
+                    else if (currentActivityMultiplier == 0 && _activityMultipliers[i] > 0) ++activeMembers;
+                }
                 _updateMemberActivity(_members[i], _activityMultipliers[i]);
             }
             unchecked {
                 ++i; // gas optimization: very unlikely to overflow
             }
         }
+        members.totalActiveMembers += activeMembers - inactiveMembers;
     }
 
     /**

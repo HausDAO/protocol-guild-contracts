@@ -46,10 +46,6 @@ describe("NetworkRegistry E2E tests", function () {
 
   this.beforeAll(async function () {
     sampleSplit = await readSampleSplit("pgsplit.csv");
-    // force last user to be inactive -> at least one member has activityMultiplier = 0
-    const lastSample = sampleSplit[sampleSplit.length - 1];
-    lastSample.activityMultiplier = 0;
-    sampleSplit[sampleSplit.length - 1] = lastSample;
 
     // NOTICE: set the block timestamp to a month before cutoff date
     await time.setNextBlockTimestamp(Date.parse("2023-06-01T00:00:00.000-05:00") / 1000);
@@ -155,9 +151,11 @@ describe("NetworkRegistry E2E tests", function () {
   });
 
   describe("0xSplit + NetworkRegistry", function () {
+    let memberList: string[];
+
     beforeEach(async function () {
       // Syncing a batch of members
-      const newMmembers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
+      const newMembers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
       const activityMultipliers = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.activityMultiplier);
       const startDates = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.startDateSeconds);
       const chainIds = [replicaChainId];
@@ -165,7 +163,7 @@ describe("NetworkRegistry E2E tests", function () {
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
       const batchTx = await l1NetworkRegistry.syncBatchNewMembers(
-        newMmembers,
+        newMembers,
         activityMultipliers,
         startDates,
         chainIds,
@@ -175,10 +173,23 @@ describe("NetworkRegistry E2E tests", function () {
       await batchTx.wait();
       // const blockNo = await time.latestBlock();
       // console.log('block timestamp', (await ethers.provider.getBlock(blockNo)).timestamp);
+
+      // force last user to be inactive -> at least one member has activityMultiplier = 0
+      const batch2Tx = await l1NetworkRegistry.syncBatchUpdateMembersActivity(
+        [newMembers[newMembers.length - 1]],
+        [0],
+        chainIds,
+        relayerFees,
+        { value: totalValue },
+      );
+      await batch2Tx.wait();
+
+      memberList = newMembers.slice(0, newMembers.length - 1);
+      // member list must be sorted
+      memberList.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
     });
 
     it("Should sync update seconds active and update splits prior distribution", async () => {
-      const memberList = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
@@ -190,9 +201,6 @@ describe("NetworkRegistry E2E tests", function () {
       // Update seconds active across registries
       const txUpdate = await l1NetworkRegistry.syncUpdateSecondsActive(chainIds, relayerFees, { value: totalValue });
       await txUpdate.wait();
-
-      // member list must be sorted
-      memberList.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
 
       // Validate member's activity
       const expectedSecondsActive = memberList.map((member: string) => {
@@ -327,7 +335,6 @@ describe("NetworkRegistry E2E tests", function () {
     });
 
     it("Should sync update all prior distribution", async () => {
-      const memberList = sampleSplit.map((memberSplit: SampleSplit) => memberSplit.address);
       const chainIds = [replicaChainId];
       const relayerFees = [defaultRelayerFee];
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
@@ -335,9 +342,6 @@ describe("NetworkRegistry E2E tests", function () {
 
       // Jump the cut-off date
       await time.setNextBlockTimestamp(CUTOFF_DATE);
-
-      // member list must be sorted
-      memberList.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
 
       // Update seconds active across registries
       const txSplits = await l1NetworkRegistry.syncUpdateAll(memberList, splitDistributorFee, chainIds, relayerFees, {
