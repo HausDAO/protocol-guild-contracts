@@ -1121,7 +1121,7 @@ describe("NetworkRegistry", function () {
       ).to.be.revertedWithCustomError(l2NetworkRegistry, "NetworkRegistry__ConnextOnly");
     });
 
-    it("Should returned a failed sync action performed for unknown actions", async () => {
+    it("Should revert when submitting a sync message for unauthorized/unknown actions", async () => {
       const transferId = ethers.utils.formatBytes32String("dummyId");
       // dummy action
       const action = l1SplitMain.interface.getSighash("transferControl(address,address)");
@@ -1134,18 +1134,17 @@ describe("NetworkRegistry", function () {
       await impersonateAccount(connext.address);
       const signer = await ethers.getSigner(connext.address);
       await setBalance(connext.address, ethers.utils.parseEther("1"));
-      // check SyncActionPerformed return success -> false
-      const tx = await l2NetworkRegistry.connect(signer).xReceive(
-        transferId,
-        0,
-        ethers.constants.AddressZero,
-        l1NetworkRegistry.address, // right updater
-        parentDomainId, // right updaterDomain
-        calldata,
-      );
-      await expect(tx)
-        .to.emit(l2NetworkRegistry, "SyncActionPerformed")
-        .withArgs(transferId, parentDomainId, action, false, l1NetworkRegistry.address);
+
+      await expect(
+        l2NetworkRegistry.connect(signer).xReceive(
+          transferId,
+          0,
+          ethers.constants.AddressZero,
+          l1NetworkRegistry.address, // right updater
+          parentDomainId, // right updaterDomain
+          calldata,
+        ),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__UnAuthorizedCalldata");
 
       await stopImpersonatingAccount(connext.address);
     });
