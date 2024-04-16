@@ -1,5 +1,4 @@
-// NOTICE: next line must be disabled when running pnpm coverage
-import "@nomicfoundation/hardhat-foundry";
+import "@nomicfoundation/hardhat-foundry"; // NOTICE: this line must be disabled when running pnpm coverage
 import "@nomicfoundation/hardhat-toolbox";
 import { config as dotenvConfig } from "dotenv";
 import "hardhat-contract-sizer";
