@@ -10,7 +10,14 @@ import { BigNumber, Event } from "ethers";
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
 import { PERCENTAGE_SCALE } from "../../constants";
-import { ConnextMock, NetworkRegistry, NetworkRegistryV2, PGContribCalculator, SplitMain } from "../../types";
+import {
+  ConnextMock,
+  NetworkRegistry,
+  NetworkRegistryHarness,
+  NetworkRegistryV2Mock,
+  PGContribCalculator,
+  SplitMain,
+} from "../../types";
 import { Member } from "../types";
 import { deploySplit, generateMemberBatch, hashSplit, summonRegistryProxy } from "../utils";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
@@ -136,6 +143,73 @@ describe("NetworkRegistry", function () {
   // ###############################################################################################################
 
   describe("NetworkRegistry Config", function () {
+    it("Should not be able to initialize the implementation contract", async () => {
+      const signer = await ethers.getSigner(users.owner.address);
+      const l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address"],
+        [
+          connext.address,
+          0, // no domainId -> Main Registry
+          ethers.constants.AddressZero, // no updater -> Main Registry
+          l1SplitMain.address,
+          l1SplitAddress,
+          users.owner.address,
+        ],
+      );
+      const implSlot = BigNumber.from("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc");
+      const slotValue = await ethers.provider.getStorageAt(l1NetworkRegistry.address, implSlot);
+      const implementationAddress = `0x${slotValue.substring(26, 66)}`;
+      const implementation = (await ethers.getContractAt(
+        "NetworkRegistry",
+        implementationAddress,
+        signer,
+      )) as NetworkRegistry;
+      await expect(implementation.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
+        implementation,
+        "InvalidInitialization",
+      );
+    });
+
+    it("Should not be able to call init functions if contract is not initializing", async () => {
+      const { deployer } = await getNamedAccounts();
+      const signer = await ethers.getSigner(deployer);
+      const implDeployed = await deployments.deploy("NetworkRegistryHarness", {
+        contract: "NetworkRegistryHarness",
+        from: deployer,
+        args: [],
+        libraries: {
+          PGContribCalculator: l1CalculatorLibrary.address,
+        },
+        log: true,
+      });
+      const registry = (await ethers.getContractAt(
+        "NetworkRegistryHarness",
+        implDeployed.address,
+        signer,
+      )) as NetworkRegistryHarness;
+
+      await expect(
+        registry.exposed__NetworkRegistry_init_unchained(
+          ethers.constants.AddressZero,
+          0,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+        ),
+      ).to.be.revertedWithCustomError(registry, "NotInitializing");
+
+      await expect(
+        registry.exposed__NetworkRegistry_init(
+          ethers.constants.AddressZero,
+          0,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+        ),
+      ).to.be.revertedWithCustomError(registry, "NotInitializing");
+    });
+
     it("Should have owner on L1", async () => {
       expect(await l1NetworkRegistry.owner()).to.equal(users.owner.address);
     });
@@ -2449,13 +2523,13 @@ describe("NetworkRegistry", function () {
   // ############################################################################################################
 
   describe("NetworkRegistry UUPS Upgradeability", function () {
-    let newRegistryImplementation: NetworkRegistryV2;
+    let newRegistryImplementation: NetworkRegistryV2Mock;
 
     beforeEach(async () => {
       const { deployer } = await getNamedAccounts();
       const signer = await ethers.getSigner(deployer);
-      const implDeployed = await deployments.deploy("NetworkRegistryV2", {
-        contract: "NetworkRegistryV2",
+      const implDeployed = await deployments.deploy("NetworkRegistryV2Mock", {
+        contract: "NetworkRegistryV2Mock",
         from: deployer,
         args: [],
         libraries: {
@@ -2463,7 +2537,7 @@ describe("NetworkRegistry", function () {
         },
         log: true,
       });
-      newRegistryImplementation = await ethers.getContractAt("NetworkRegistryV2", implDeployed.address, signer);
+      newRegistryImplementation = await ethers.getContractAt("NetworkRegistryV2Mock", implDeployed.address, signer);
     });
 
     it("Should not be able to upgrade the implementation of a registry if not owner", async () => {
