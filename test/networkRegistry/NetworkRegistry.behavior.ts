@@ -174,17 +174,18 @@ describe("NetworkRegistry E2E tests", function () {
       // const blockNo = await time.latestBlock();
       // console.log('block timestamp', (await ethers.provider.getBlock(blockNo)).timestamp);
 
-      // force last user to be inactive -> at least one member has activityMultiplier = 0
-      const batch2Tx = await l1NetworkRegistry.syncBatchUpdateMembersActivity(
-        [newMembers[newMembers.length - 1]],
-        [0],
-        chainIds,
-        relayerFees,
-        { value: totalValue },
-      );
-      await batch2Tx.wait();
+      // // force last user to be inactive -> at least one member has activityMultiplier = 0
+      // const batch2Tx = await l1NetworkRegistry.syncBatchUpdateMembersActivity(
+      //   [newMembers[newMembers.length - 1]],
+      //   [0],
+      //   chainIds,
+      //   relayerFees,
+      //   { value: totalValue },
+      // );
+      // await batch2Tx.wait();
 
-      memberList = newMembers.slice(0, newMembers.length - 1);
+      memberList = newMembers;
+      // memberList = newMembers.slice(0, newMembers.length - 1);
       // member list must be sorted
       memberList.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
     });

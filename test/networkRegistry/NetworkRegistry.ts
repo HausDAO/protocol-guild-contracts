@@ -1298,10 +1298,11 @@ describe("NetworkRegistry", function () {
   // ############################################################################################################
 
   describe("NetworkRegistry getters", function () {
+    const batchSize: number = 10;
     let newMembers: Array<Member>;
 
     beforeEach(async function () {
-      newMembers = await generateMemberBatch(10);
+      newMembers = await generateMemberBatch(batchSize);
       const members = newMembers.map((m: Member) => m.account);
       const activityMultipliers = newMembers.map((m: Member) => m.activityMultiplier);
       const startDates = newMembers.map((m: Member) => m.startDate);
@@ -1375,6 +1376,29 @@ describe("NetworkRegistry", function () {
       const toIndex = 5;
       const members = await l1NetworkRegistry.getMembersPaginated(0, toIndex);
       expect(members.length).to.equal(toIndex + 1);
+    });
+
+    it("Should be able to calculate members total contributions", async () => {
+      // update registry activity
+      const syncUpdateTx = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
+      await syncUpdateTx.wait();
+
+      const totalContribBefore = await l1NetworkRegistry.calculateTotalContributions();
+
+      // get member contribution before getting inactive
+      const member = newMembers[newMembers.length - 1].account;
+      const memberContrib = await l1NetworkRegistry.calculateContributionOf(member);
+
+      // member gets inactive
+      const syncTx = await l1NetworkRegistry.syncBatchUpdateMembersActivity(
+        [member],
+        [0],
+        [], [],
+      );
+      await syncTx.wait();
+
+      const totalContribAfter = await l1NetworkRegistry.calculateTotalContributions();
+      expect(totalContribBefore).to.eql(totalContribAfter.add(memberContrib));
     });
   });
 
