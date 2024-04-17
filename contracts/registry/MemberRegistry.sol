@@ -26,7 +26,7 @@ error InvalidMember__Address(address _memberAddress);
 /// @param _memberAddress member address
 /// @param _startDate start date in seconds
 error InvalidMember__StartDateInTheFuture(address _memberAddress, uint32 _startDate);
-/// @notice Invalid value for member activity multiplier
+/// @notice Invalid value for member activity multiplier given current state
 /// @param _memberAddress member address
 /// @param _activityMultiplier activity multiplier
 error InvalidMember__ActivityMultiplier(address _memberAddress, uint32 _activityMultiplier);
@@ -151,6 +151,8 @@ abstract contract MemberRegistry is IMemberRegistry {
             revert InvalidMember__ActivityMultiplier(_memberAddress, _activityMultiplier);
 
         DataTypes.Member storage member = _getMember(_memberAddress);
+        if (member.secondsActive == 0 && _activityMultiplier == 0)
+            revert InvalidMember__ActivityMultiplier(_memberAddress, _activityMultiplier);
         member.activityMultiplier = _activityMultiplier;
 
         emit UpdateMember(_memberAddress, _activityMultiplier, member.startDate, member.secondsActive);
