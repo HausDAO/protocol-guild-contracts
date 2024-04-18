@@ -318,11 +318,13 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     ) internal onlyInitializing {
         if (_connext == address(0)) revert NetworkRegistry__InvalidConnextAddress();
         address registryOwner = _owner == address(0) ? _msgSender() : _owner;
+        __UUPSUpgradeable_init();
         __Ownable_init(registryOwner);
         if (_owner == address(0)) {
             if (_updater == address(0)) revert NetworkRegistry__NeitherOwnableNorReplicaUpdater();
             renounceOwnership();
         }
+        __MemberRegistry_init();
         __NetworkRegistry_init_unchained(_connext, _updaterDomain, _updater, _splitMain, _split);
     }
 
@@ -963,6 +965,6 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             revert Registry__UnauthorizedToUpgrade();
     }
 
-    // solhint-disable-next-line state-visibility
-    uint256[49] __gap;
+    // solhint-disable-next-line state-visibility, var-name-mixedcase
+    uint256[49] __gap_nr;
 }

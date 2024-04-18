@@ -369,4 +369,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
             }
         }
     }
+
+    // solhint-disable-next-line state-visibility, var-name-mixedcase
+    uint256[49] __gap_mr;
 }
