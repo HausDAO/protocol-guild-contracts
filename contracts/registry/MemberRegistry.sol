@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import { IMemberRegistry } from "../interfaces/IMemberRegistry.sol";
 import { DataTypes } from "../libraries/DataTypes.sol";
 /**
@@ -37,7 +39,7 @@ error InvalidMember__ActivityMultiplier(address _memberAddress, uint32 _activity
  * @notice Manage an on-chain member activity registry
  * @dev Includes minimal functions to implement an on-chain registry that tracks members & activity time
  */
-abstract contract MemberRegistry is IMemberRegistry {
+abstract contract MemberRegistry is Initializable, IMemberRegistry {
     /// @dev Activity multiplier upper bound
     uint32 internal constant MULTIPLIER_UPPER_BOUND = 100;
     /// @notice Member registry
@@ -88,6 +90,14 @@ abstract contract MemberRegistry is IMemberRegistry {
      * @param _totalMemberUpdates total updated members during the epoch
      */
     event RegistryActivityUpdate(uint32 _timestamp, uint256 _totalMemberUpdates);
+
+    // solhint-disable-next-line func-name-mixedcase, no-empty-blocks
+    function ___MemberRegistry_init_unchained() internal onlyInitializing {}
+
+    // solhint-disable-next-line func-name-mixedcase
+    function __MemberRegistry_init() internal onlyInitializing {
+        ___MemberRegistry_init_unchained();
+    }
 
     /**
      * @notice Adds a new member to the registry

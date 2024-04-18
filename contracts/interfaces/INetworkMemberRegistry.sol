@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
+import { IXReceiver } from "@connext/interfaces/core/IXReceiver.sol";
+
 import { IMemberRegistry } from "./IMemberRegistry.sol";
-import { ISplitManager } from "./ISplitManager.sol";
 import { DataTypes } from "../libraries/DataTypes.sol";
 
 /**
@@ -11,9 +12,9 @@ import { DataTypes } from "../libraries/DataTypes.sol";
  * @notice Interface to manage a cross-chain member activity registry
  * @dev Includes minimal interfaces to implement a registry to keep track of members and their
  * activity time both in the home chain as well as in any replicas living in other networks.
- * It should also be able to use member activity to distribute funds escrowed on a 0xSplit contract.
+ * It uses Connext XApp architecture to manage registries across different networks.
  */
-interface INetworkMemberRegistry is IMemberRegistry, ISplitManager {
+interface INetworkMemberRegistry is IMemberRegistry, IXReceiver {
     /**
      * @notice Initializes the registry contract
      * @dev Initialization parameters are abi-encoded (i.e. through a summoner contract).

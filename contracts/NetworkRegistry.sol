@@ -2,16 +2,16 @@
 pragma solidity ^0.8.21;
 
 import { IConnext } from "@connext/interfaces/core/IConnext.sol";
-import { IXReceiver } from "@connext/interfaces/core/IXReceiver.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
-import { IMemberRegistry, INetworkMemberRegistry, ISplitManager } from "./interfaces/INetworkMemberRegistry.sol";
+import { INetworkMemberRegistry } from "./interfaces/INetworkMemberRegistry.sol";
 import { ISplitMain } from "./interfaces/ISplitMain.sol";
+import { ISplitManager } from "./interfaces/ISplitManager.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
-import { MemberRegistry } from "./registry/MemberRegistry.sol";
+import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
 
 /**
  * CUSTOM ERRORS
@@ -53,6 +53,7 @@ error NetworkRegistry__UnauthorizedToUpgrade();
  * @author DAOHaus
  * @notice Manage a cross-chain member registry to distribute funds hold in 0xSplit based on member activity
  * @dev Uses Connext XApp architecture to manage main + multiple replica registries across different networks.
+ * It should also be able to use member activity to distribute funds escrowed on a 0xSplit contract.
  * Features and important things to consider:
  * - There are syncing methods for adding/updating members, update registry activity & split funds across networks.
  * - Funds are escrowed in a 0xSplit contract so in order to split funds the NetworkRegistry must be set
@@ -66,7 +67,7 @@ error NetworkRegistry__UnauthorizedToUpgrade();
  *   bridge which could potentially froze the 0xSplit funds as the replica NetworkRegistry and thus its controller will
  *   become inaccessible.
  */
-contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INetworkMemberRegistry, MemberRegistry {
+contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeable, OwnableUpgradeable, MemberRegistry {
     using PGContribCalculator for DataTypes.Members;
 
     /// @notice Connext contract in the current domain
