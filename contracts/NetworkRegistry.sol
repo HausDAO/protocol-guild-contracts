@@ -560,12 +560,20 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     }
 
     /**
+     * @dev Updates registry activity since the last update epoch. Overrides MemberRegistry implementation
+     * to check whether if _cutoffDate is zero its value will be overridden with the current block.timestamp
+     */
+    function _updateSecondsActive(uint32 _cutoffDate) internal override(MemberRegistry) {
+        if (_cutoffDate == 0) _cutoffDate = uint32(block.timestamp);
+        super._updateSecondsActive(_cutoffDate);
+    }
+
+    /**
      * @notice Updates seconds active since the last update epoch for every member in the registry.
-     * If _cutoffDate is zero its will be override with block.timestamp
+     * If _cutoffDate is zero its value will be overridden with the current block.timestamp
      * @inheritdoc IMemberRegistry
      */
     function updateSecondsActive(uint32 _cutoffDate) external onlyReplica {
-        if (_cutoffDate == 0) _cutoffDate = uint32(block.timestamp);
         _updateSecondsActive(_cutoffDate);
     }
 
@@ -578,7 +586,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256[] memory _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
-        _updateSecondsActive(cutoffDate);
+        super._updateSecondsActive(cutoffDate);
         bytes4 action = IMemberRegistry.updateSecondsActive.selector;
         bytes memory callData = abi.encodeWithSelector(action, cutoffDate);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -639,7 +647,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
 
     /**
      * @notice Executes both {updateSecondsActive} to update registry member's activity and {updateSplits}
-     * for split distribution
+     * for split distribution. If _cutoffDate is zero its value will be overridden with the current block.timestamp
      * @inheritdoc ISplitManager
      */
     function updateAll(
@@ -664,7 +672,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256[] memory _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
-        _updateSecondsActive(cutoffDate);
+        super._updateSecondsActive(cutoffDate);
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateAll.selector;
         bytes memory callData = abi.encodeWithSelector(action, cutoffDate, _sortedList, _splitDistributorFee);
