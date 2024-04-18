@@ -4,22 +4,14 @@ pragma solidity ^0.8.21;
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
 import { DataTypes } from "../libraries/DataTypes.sol";
-
-/// @notice Member list size must match the amount of active members in the registry
-error InvalidSplit__MemberListSizeMismatch();
-/// @notice Member list must be sorted in ascending order
-/// @param _index index where a member address is not properly sorted
-error InvalidSplit__AccountsOutOfOrder(uint256 _index);
-/// @notice Member is not registered
-/// @param _member member address
-error InvalidSplit__MemberNotRegistered(address _member);
-/// @notice The registry does not have any active member
-error InvalidSplit__NoActiveMembers();
-/// @notice Member is currently inactive
-/// @param _member member address
-error InvalidSplit__InactiveMember(address _member);
-// @notice Empty Split distribution
-error InvalidSplit__EmptyDistribution();
+import {
+    MemberRegistry__NotRegistered,
+    SplitDistribution__AccountsOutOfOrder,
+    SplitDistribution__EmptyDistribution,
+    SplitDistribution__InactiveMember,
+    SplitDistribution__MemberListSizeMismatch,
+    SplitDistribution__NoActiveMembers
+} from "../utils/Errors.sol";
 
 /**
  * @title A 0xSplit allocations calculator library
@@ -60,16 +52,16 @@ library PGContribCalculator {
         uint256 total;
         address previous;
 
-        if (activeMembers == 0) revert InvalidSplit__NoActiveMembers();
+        if (activeMembers == 0) revert SplitDistribution__NoActiveMembers();
 
-        if (_sortedList.length != activeMembers) revert InvalidSplit__MemberListSizeMismatch();
+        if (_sortedList.length != activeMembers) revert SplitDistribution__MemberListSizeMismatch();
 
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
         for (uint256 i = 0; i < _sortedList.length; ) {
             address memberAddress = _sortedList[i];
             DataTypes.Member memory member = getMember(self, memberAddress);
-            if (previous >= memberAddress) revert InvalidSplit__AccountsOutOfOrder(i);
-            if (member.activityMultiplier == 0) revert InvalidSplit__InactiveMember(memberAddress);
+            if (previous >= memberAddress) revert SplitDistribution__AccountsOutOfOrder(i);
+            if (member.activityMultiplier == 0) revert SplitDistribution__InactiveMember(memberAddress);
 
             memberDistribution[i] = MemberContribution({
                 // TODO: how to allow recipient to assign different addresses per network?
@@ -119,7 +111,7 @@ library PGContribCalculator {
             }
         }
 
-        if (nonZeroIndex == 0) revert InvalidSplit__EmptyDistribution();
+        if (nonZeroIndex == 0) revert SplitDistribution__EmptyDistribution();
 
         // NOTICE: In case sum(percentAllocations) < PERCENTAGE_SCALE
         // the remainder will be added to the recipient with lowest allocation
@@ -138,7 +130,7 @@ library PGContribCalculator {
         DataTypes.Members storage self,
         address _memberAddress
     ) internal view returns (DataTypes.Member memory) {
-        if (self.index[_memberAddress] == 0) revert InvalidSplit__MemberNotRegistered(_memberAddress);
+        if (self.index[_memberAddress] == 0) revert MemberRegistry__NotRegistered(_memberAddress);
         return self.db[self.index[_memberAddress] - 1];
     }
 

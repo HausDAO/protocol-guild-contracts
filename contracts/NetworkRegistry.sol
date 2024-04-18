@@ -12,6 +12,7 @@ import { ISplitManager } from "./interfaces/ISplitManager.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
 import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
+import { Registry__ParamsSizeMismatch, Registry__UnauthorizedToUpgrade } from "./utils/Errors.sol";
 
 /**
  * CUSTOM ERRORS
@@ -37,16 +38,12 @@ error NetworkRegistry__ValueSentLessThanRelayerFees();
 error NetworkRegistry__NoReplicaOnNetwork(uint32 _chainId);
 /// @notice Control of 0xSplit contract hasn't been transferred to the registry
 error Split_ControlNotHandedOver();
-/// @notice Function array parameter size mismatch
-error NetWorkRegistry__ParamsSizeMismatch();
 /// @notice Registry has invalid domainId or registry address values
 error NetworkRegistry__InvalidReplica();
 /// @notice 0xSplit doesn't exists or is immutable
 error NetworkRegistry__InvalidOrImmutableSplit();
 /// @notice Calldata coming from Connext is not authorized
 error NetworkRegistry__UnAuthorizedCalldata();
-/// @notice Unauthorized to execute contract upgradeability
-error NetworkRegistry__UnauthorizedToUpgrade();
 
 /**
  * @title A cross-chain network registry to distribute funds escrowed in 0xSplit based on member activity
@@ -155,7 +152,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @param _relayerFees relayer fee to be paid for executing a sync message on each network
      */
     modifier validNetworkParams(uint32[] memory _chainIds, uint256[] memory _relayerFees) {
-        if (_chainIds.length != _relayerFees.length) revert NetWorkRegistry__ParamsSizeMismatch();
+        if (_chainIds.length != _relayerFees.length) revert Registry__ParamsSizeMismatch();
         uint256 totalRelayerFees;
         for (uint256 i = 0; i < _chainIds.length; ) {
             totalRelayerFees += _relayerFees[i];
@@ -755,7 +752,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
         if (_newImplementations.length != totalParams || _data.length != totalParams)
-            revert NetWorkRegistry__ParamsSizeMismatch();
+            revert Registry__ParamsSizeMismatch();
         bytes4 action = UUPSUpgradeable.upgradeToAndCall.selector;
         for (uint256 i = 0; i < totalParams; ) {
             bytes memory callData = abi.encodeWithSelector(action, _newImplementations[i], _data[i]);
@@ -796,7 +793,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             _connextAddrs.length != totalParams ||
             _updaterDomains.length != totalParams ||
             _updaterAddrs.length != totalParams
-        ) revert NetWorkRegistry__ParamsSizeMismatch();
+        ) revert Registry__ParamsSizeMismatch();
         bytes4 action = INetworkMemberRegistry.setUpdaterConfig.selector;
         for (uint256 i = 0; i < totalParams; ) {
             bytes memory callData = abi.encodeWithSelector(
@@ -840,8 +837,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
-        if (_splitsMain.length != totalParams || _splits.length != totalParams)
-            revert NetWorkRegistry__ParamsSizeMismatch();
+        if (_splitsMain.length != totalParams || _splits.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.setSplit.selector;
         for (uint256 i = 0; i < totalParams; ) {
             bytes memory callData = abi.encodeWithSelector(action, _splitsMain[i], _splits[i]);
@@ -873,7 +869,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
-        if (_newControllers.length != totalParams) revert NetWorkRegistry__ParamsSizeMismatch();
+        if (_newControllers.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.transferSplitControl.selector;
         for (uint256 i = 0; i < totalParams; ) {
             bytes memory callData = abi.encodeWithSelector(action, _newControllers[i]);
@@ -964,7 +960,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      */
     function _authorizeUpgrade(address /*newImplementation*/) internal view override {
         if (_msgSender() != owner() && (updater == address(0) || _msgSender() != address(this)))
-            revert NetworkRegistry__UnauthorizedToUpgrade();
+            revert Registry__UnauthorizedToUpgrade();
     }
 
     // solhint-disable-next-line state-visibility
