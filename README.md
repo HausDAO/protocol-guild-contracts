@@ -238,12 +238,6 @@ $ pnpm clean
 
 ### Deploy
 
-Deploy Summoner contract + singletons
-
-```sh
-$ pnpm hardhat --network <network_name> deploy --tags Summoner
-```
-
 Deploy NetworkRegistry using a UUPS Upgradeable Proxy
 
 ```sh
@@ -252,22 +246,16 @@ $ pnpm hardhat --network <network_name> deploy --tags UpgradeablePGNetworkRegist
 
 ### Verify contracts
 
-Verify smart contracts code on official block explorers
-
 ```sh
-$ pnpm hadhat --network <network_name> etherscan-verify
+$ pnpm hardhat --network <network_name> verify --contract contracts/libraries/PGContribCalculator.sol:PGContribCalculator <library_address>
 ```
 
-In case of getting the gollowing error
-`Unable to verify. Please check for missing Library or invalid name (i.e names are case senstive). Library was required but suitable match not found`
-on any contract you should verify the source "manually" using this other command:
-
 ```sh
-$ pnpm hardhat --network <network_name> verify --contract contracts/<Contract_Source_File.sol>:<ContractName> --libraries libraries.js <contract_address>
+$ pnpm hardhat --network <network_name> verify --contract contracts/NetworkRegistry.sol:NetworkRegistry --libraries libraries.js <implementation_contract_address>
 ```
 
-Notice you'll need to create a `libraries.js` file with the list of libraries that need to be attached to the contract,
-like the following:
+Notice you'll need to modify the `libraries.js` file to include the list of libraries that need to be attached to the
+contract, like the following:
 
 ```js
 module.exports = {
@@ -388,7 +376,15 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 ## Deployed Contracts
 
-### Goerli
+### Sepolia
+
+| Contract                       | Address |
+| ------------------------------ | ------- |
+| NetworkRegistry Proxy          | TBD     |
+| NetworkRegistry Implementation | TBD     |
+| PGContribCalculator            | TBD     |
+
+### ~~Goerli~~
 
 | Contract                        | Address                                        |
 | ------------------------------- | ---------------------------------------------- |
@@ -396,7 +392,7 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 | NetworkRegistry Singleton       | ~~0x250F9e93822cD48269E8a24A9D4bE817A9cf389D~~ |
 | NetworkRegistryShaman Singleton | <None>                                         |
 
-### Optimism Goerli
+### ~~Optimism Goerli~~
 
 | Contract                        | Address                                        |
 | ------------------------------- | ---------------------------------------------- |
@@ -404,7 +400,7 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 | NetworkRegistry Singleton       | ~~0xF3C93FBa186758605318b2F6d0b141029a20E2a8~~ |
 | NetworkRegistryShaman Singleton | <None>                                         |
 
-### Arbitrum Goerli
+### ~~Arbitrum Goerli~~
 
 | Contract                        | Address                                        |
 | ------------------------------- | ---------------------------------------------- |
@@ -422,31 +418,18 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 ## Gas Analysis
 
-### NetworkRegistry deployed through Summoner (Clones pattern)
-
-| Active Members | Method                                     |
-| -------------- | ------------------------------------------ |
-| 167            | testUpdateAll() (gas: 3.060.585)           |
-|                | testUpdateSecondsActive() (gas: 1.378.813) |
-| 500            | testUpdateAll() (gas: 9,163.352)           |
-|                | testUpdateSecondsActive() (gas: 4.059.796) |
-| 800            | testUpdateAll() (gas: 14.819.265)          |
-|                | testUpdateSecondsActive() (gas: 6.475.096) |
-| 1000           | testUpdateAll() (gas: 18.673.090)          |
-|                | testUpdateSecondsActive() (gas: 8.085.296) |
-
 ### NetworkRegistry deployed using the UUPS proxy pattern
 
 | Active Members | Method                                     |
 | -------------- | ------------------------------------------ |
-| 167            | testUpdateAll() (gas: 3.063.027)           |
-|                | testUpdateSecondsActive() (gas: 1.381.255) |
-| 500            | testUpdateAll() (gas: 9,165.794)           |
-|                | testUpdateSecondsActive() (gas: 4.062.238) |
-| 800            | testUpdateAll() (gas: 14.821.707)          |
-|                | testUpdateSecondsActive() (gas: 6.477.538) |
-| 1000           | testUpdateAll() (gas: 18.675.532)          |
-|                | testUpdateSecondsActive() (gas: 8.087.738) |
+| 167            | testUpdateAll() (gas: 3.064.320)           |
+|                | testUpdateSecondsActive() (gas: 1.383.170) |
+| 500            | testUpdateAll() (gas: 9.164.635)           |
+|                | testUpdateSecondsActive() (gas: 4.064.153) |
+| 800            | testUpdateAll() (gas: 14.818.412)          |
+|                | testUpdateSecondsActive() (gas: 6.479.453) |
+| 1000           | testUpdateAll() (gas: 18.670.748)          |
+|                | testUpdateSecondsActive() (gas: 8.089.653) |
 
 ## License
 
