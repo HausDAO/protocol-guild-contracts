@@ -11,14 +11,15 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   // uncomment if you get gas-related errors and need current network fee data to update params
   // console.log('Feedata', await ethers.provider.getFeeData());
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const summonerDeployed = await deploy("NetworkRegistrySummoner", {
-    contract: "NetworkRegistrySummoner",
-    from: deployer,
-    args: [],
-    log: true,
-  });
+  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // const summonerDeployed = await deploy("NetworkRegistrySummoner", {
+  //   contract: "NetworkRegistrySummoner",
+  //   from: deployer,
+  //   args: [],
+  //   log: true,
+  // });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const calculatorLibraryDeployed = await deploy("PGContribCalculator", {
     contract: "PGContribCalculator",
     from: deployer,
@@ -26,16 +27,16 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     log: true,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const registrySingletonDeployed = await deploy("NetworkRegistry", {
-    contract: "NetworkRegistry",
-    from: deployer,
-    args: [],
-    libraries: {
-      PGContribCalculator: calculatorLibraryDeployed.address,
-    },
-    log: true,
-  });
+  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // const registrySingletonDeployed = await deploy("NetworkRegistry", {
+  //   contract: "NetworkRegistry",
+  //   from: deployer,
+  //   args: [],
+  //   libraries: {
+  //     PGContribCalculator: calculatorLibraryDeployed.address,
+  //   },
+  //   log: true,
+  // });
 
   // // eslint-disable-next-line @typescript-eslint/no-unused-vars
   // const registryShamanSingletonDeployed = await deploy("NetworkRegistryShaman", {

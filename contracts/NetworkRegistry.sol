@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { IConnext } from "@connext/interfaces/core/IConnext.sol";
-import { IXReceiver } from "@connext/interfaces/core/IXReceiver.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
-import { IMemberRegistry, INetworkMemberRegistry, ISplitManager } from "./interfaces/INetworkMemberRegistry.sol";
+import { INetworkMemberRegistry } from "./interfaces/INetworkMemberRegistry.sol";
 import { ISplitMain } from "./interfaces/ISplitMain.sol";
+import { ISplitManager } from "./interfaces/ISplitManager.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
-import { MemberRegistry } from "./registry/MemberRegistry.sol";
+import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
+import { Registry__ParamsSizeMismatch, Registry__UnauthorizedToUpgrade } from "./utils/Errors.sol";
 
 /**
  * CUSTOM ERRORS
@@ -37,20 +38,19 @@ error NetworkRegistry__ValueSentLessThanRelayerFees();
 error NetworkRegistry__NoReplicaOnNetwork(uint32 _chainId);
 /// @notice Control of 0xSplit contract hasn't been transferred to the registry
 error Split_ControlNotHandedOver();
-/// @notice Function array parameter size mismatch
-error NetWorkRegistry__ParamsSizeMismatch();
 /// @notice Registry has invalid domainId or registry address values
 error NetworkRegistry__InvalidReplica();
 /// @notice 0xSplit doesn't exists or is immutable
 error NetworkRegistry__InvalidOrImmutableSplit();
-/// @notice Unauthorized to execute contract upgradeability
-error NetworkRegistry__UnauthorizedToUpgrade();
+/// @notice Calldata coming from Connext is not authorized
+error NetworkRegistry__UnAuthorizedCalldata();
 
 /**
  * @title A cross-chain network registry to distribute funds escrowed in 0xSplit based on member activity
  * @author DAOHaus
  * @notice Manage a cross-chain member registry to distribute funds hold in 0xSplit based on member activity
  * @dev Uses Connext XApp architecture to manage main + multiple replica registries across different networks.
+ * It should also be able to use member activity to distribute funds escrowed on a 0xSplit contract.
  * Features and important things to consider:
  * - There are syncing methods for adding/updating members, update registry activity & split funds across networks.
  * - Funds are escrowed in a 0xSplit contract so in order to split funds the NetworkRegistry must be set
@@ -64,7 +64,7 @@ error NetworkRegistry__UnauthorizedToUpgrade();
  *   bridge which could potentially froze the 0xSplit funds as the replica NetworkRegistry and thus its controller will
  *   become inaccessible.
  */
-contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INetworkMemberRegistry, MemberRegistry {
+contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeable, OwnableUpgradeable, MemberRegistry {
     using PGContribCalculator for DataTypes.Members;
 
     /// @notice Connext contract in the current domain
@@ -152,25 +152,51 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      * @param _relayerFees relayer fee to be paid for executing a sync message on each network
      */
     modifier validNetworkParams(uint32[] memory _chainIds, uint256[] memory _relayerFees) {
-        if (_chainIds.length != _relayerFees.length) revert NetWorkRegistry__ParamsSizeMismatch();
+        if (_chainIds.length != _relayerFees.length) revert Registry__ParamsSizeMismatch();
         uint256 totalRelayerFees;
-        for (uint256 i = 0; i < _chainIds.length; ) {
+        for (uint256 i = 0; i < _chainIds.length; ++i) {
             totalRelayerFees += _relayerFees[i];
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
         if (msg.value < totalRelayerFees) revert NetworkRegistry__ValueSentLessThanRelayerFees();
         _;
     }
 
     /**
-     * @notice A modifier to validates there's a replica NetworkRegistry setup for the `_chainId` chainId
+     * @notice A modifier to validate there's a replica NetworkRegistry setup for the provided chainId
      */
     modifier validNetworkRegistry(uint32 _chainId) {
         if (replicaRegistry[_chainId].registryAddress == address(0))
             revert NetworkRegistry__NoReplicaOnNetwork(_chainId);
         _;
+    }
+
+    /**
+     * @notice A modifier to validate that calldata coming from Connext only attempts to call authorized sync functions
+     * @dev selectors in conditional are ordered based how often the function would be called
+     * so to get these sync actions to use less gas when invoked
+     * @param _calldata incoming calldata
+     */
+    modifier whitelistedSyncAction(bytes memory _calldata) {
+        bytes4 action = bytes4(_calldata);
+        if (
+            action == IMemberRegistry.batchNewMembers.selector ||
+            action == IMemberRegistry.batchUpdateMembersActivity.selector ||
+            action == ISplitManager.updateAll.selector ||
+            action == IMemberRegistry.updateSecondsActive.selector ||
+            action == ISplitManager.updateSplits.selector ||
+            action == IMemberRegistry.addOrUpdateMembersBatch.selector ||
+            action == IMemberRegistry.batchRemoveMembers.selector ||
+            action == ISplitManager.setSplit.selector ||
+            action == INetworkMemberRegistry.setUpdaterConfig.selector ||
+            action == ISplitManager.acceptSplitControl.selector ||
+            action == ISplitManager.transferSplitControl.selector ||
+            action == ISplitManager.cancelSplitControlTransfer.selector ||
+            action == UUPSUpgradeable.upgradeToAndCall.selector
+        ) {
+            _;
+        } else {
+            revert NetworkRegistry__UnAuthorizedCalldata();
+        }
     }
 
     /**
@@ -239,10 +265,10 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         address _originSender
     );
 
-    // constructor() {
-    //     // disable initialization on singleton contract
-    //     _disableInitializers();
-    // }
+    constructor() {
+        // disable initialization on singleton contract
+        _disableInitializers();
+    }
 
     /**
      * @dev Setup the Connext bridge, Updater role & 0xSplit contracts settings.
@@ -289,11 +315,13 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     ) internal onlyInitializing {
         if (_connext == address(0)) revert NetworkRegistry__InvalidConnextAddress();
         address registryOwner = _owner == address(0) ? _msgSender() : _owner;
+        __UUPSUpgradeable_init();
         __Ownable_init(registryOwner);
         if (_owner == address(0)) {
             if (_updater == address(0)) revert NetworkRegistry__NeitherOwnableNorReplicaUpdater();
             renounceOwnership();
         }
+        __MemberRegistry_init();
         __NetworkRegistry_init_unchained(_connext, _updaterDomain, _updater, _splitMain, _split);
     }
 
@@ -363,11 +391,8 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint32[] memory _chainIds,
         uint256[] memory _relayerFees
     ) internal {
-        for (uint256 i = 0; i < _chainIds.length; ) {
+        for (uint256 i = 0; i < _chainIds.length; ++i) {
             _execSyncAction(_action, _callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -398,7 +423,7 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _batchNewMembers(_members, _activityMultipliers, _startDates);
         bytes4 action = IMemberRegistry.batchNewMembers.selector;
-        bytes memory callData = abi.encode(action, _members, _activityMultipliers, _startDates);
+        bytes memory callData = abi.encodeWithSelector(action, _members, _activityMultipliers, _startDates);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -427,7 +452,31 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _batchUpdateMembersActivity(_members, _activityMultipliers);
         bytes4 action = IMemberRegistry.batchUpdateMembersActivity.selector;
-        bytes memory callData = abi.encode(action, _members, _activityMultipliers);
+        bytes memory callData = abi.encodeWithSelector(action, _members, _activityMultipliers);
+        _syncRegistries(action, callData, _chainIds, _relayerFees);
+    }
+
+    /**
+     * @notice Remove a set of members from the registry
+     * @inheritdoc IMemberRegistry
+     */
+    function batchRemoveMembers(address[] memory _members) external onlyReplicaSync {
+        _batchRemoveMembers(_members);
+    }
+
+    /**
+     * @notice Remove a set of existing members from the registry and sync with replicas
+     * @dev Callable by the main registry owner
+     * @inheritdoc INetworkMemberRegistry
+     */
+    function syncBatchRemoveMembers(
+        address[] memory _members,
+        uint32[] memory _chainIds,
+        uint256[] memory _relayerFees
+    ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
+        _batchRemoveMembers(_members);
+        bytes4 action = IMemberRegistry.batchRemoveMembers.selector;
+        bytes memory callData = abi.encodeWithSelector(action, _members);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -445,22 +494,33 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint32[] memory _secondsActive
     ) external onlyReplicaSync {
         uint256 totalMembers = _members.length;
-        for (uint256 i = 0; i < totalMembers; ) {
+        uint256 activeMembers;
+        uint256 inactiveMembers;
+        for (uint256 i = 0; i < totalMembers; ++i) {
             uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
+                // register a non-existent member with current activityMultiplier (even if its zero)
                 _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
+                unchecked {
+                    // gas optimization: very unlikely to overflow
+                    if (_activityMultipliers[i] > 0) ++activeMembers;
+                }
             } else {
                 DataTypes.Member storage member = _getMemberById(memberId);
+                uint32 currentActivityMultiplier = member.activityMultiplier;
                 // overrides member startDate and secondsActive in order to
                 // get in sync with the main registry
                 member.startDate = _startDates[i];
                 member.secondsActive = _secondsActive[i];
+                unchecked {
+                    // gas optimization: very unlikely to overflow
+                    if (currentActivityMultiplier > 0 && _activityMultipliers[i] == 0) ++inactiveMembers;
+                    else if (currentActivityMultiplier == 0 && _activityMultipliers[i] > 0) ++activeMembers;
+                }
                 _updateMemberActivity(_members[i], _activityMultipliers[i]);
             }
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
+        members.totalActiveMembers += activeMembers - inactiveMembers;
     }
 
     /**
@@ -482,17 +542,31 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
             uint32[] memory _secondsActive
         ) = getMembersProperties(_members);
         bytes4 action = IMemberRegistry.addOrUpdateMembersBatch.selector;
-        bytes memory callData = abi.encode(action, _members, _activityMultipliers, _startDates, _secondsActive);
+        bytes memory callData = abi.encodeWithSelector(
+            action,
+            _members,
+            _activityMultipliers,
+            _startDates,
+            _secondsActive
+        );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
     /**
+     * @dev Updates registry activity since the last update epoch. Overrides MemberRegistry implementation
+     * to check whether if _cutoffDate is zero its value will be overridden with the current block.timestamp
+     */
+    function _updateSecondsActive(uint32 _cutoffDate) internal override(MemberRegistry) {
+        if (_cutoffDate == 0) _cutoffDate = uint32(block.timestamp);
+        super._updateSecondsActive(_cutoffDate);
+    }
+
+    /**
      * @notice Updates seconds active since the last update epoch for every member in the registry.
-     * If _cutoffDate is zero its will be override with block.timestamp
+     * If _cutoffDate is zero its value will be overridden with the current block.timestamp
      * @inheritdoc IMemberRegistry
      */
     function updateSecondsActive(uint32 _cutoffDate) external onlyReplica {
-        if (_cutoffDate == 0) _cutoffDate = uint32(block.timestamp);
         _updateSecondsActive(_cutoffDate);
     }
 
@@ -505,9 +579,9 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint256[] memory _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
-        _updateSecondsActive(cutoffDate);
+        super._updateSecondsActive(cutoffDate);
         bytes4 action = IMemberRegistry.updateSecondsActive.selector;
-        bytes memory callData = abi.encode(action, cutoffDate);
+        bytes memory callData = abi.encodeWithSelector(action, cutoffDate);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -560,13 +634,13 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateSplits.selector;
-        bytes memory callData = abi.encode(action, _sortedList, _splitDistributorFee);
+        bytes memory callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
     /**
      * @notice Executes both {updateSecondsActive} to update registry member's activity and {updateSplits}
-     * for split distribution
+     * for split distribution. If _cutoffDate is zero its value will be overridden with the current block.timestamp
      * @inheritdoc ISplitManager
      */
     function updateAll(
@@ -591,10 +665,10 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint256[] memory _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
-        _updateSecondsActive(cutoffDate);
+        super._updateSecondsActive(cutoffDate);
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateAll.selector;
-        bytes memory callData = abi.encode(action, cutoffDate, _sortedList, _splitDistributorFee);
+        bytes memory callData = abi.encodeWithSelector(action, cutoffDate, _sortedList, _splitDistributorFee);
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -626,13 +700,10 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      */
     function calculateTotalContributions() external view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();
-        for (uint256 i = 0; i < totalRegistryMembers; ) {
+        for (uint256 i = 0; i < totalRegistryMembers; ++i) {
             DataTypes.Member memory member = _getMemberByIndex(i);
             if (member.activityMultiplier > 0) {
                 total += members.calculateContributionOf(member);
-            }
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
@@ -681,14 +752,11 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
         if (_newImplementations.length != totalParams || _data.length != totalParams)
-            revert NetWorkRegistry__ParamsSizeMismatch();
+            revert Registry__ParamsSizeMismatch();
         bytes4 action = UUPSUpgradeable.upgradeToAndCall.selector;
-        for (uint256 i = 0; i < totalParams; ) {
-            bytes memory callData = abi.encode(action, _newImplementations[i], _data[i]);
+        for (uint256 i = 0; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeWithSelector(action, _newImplementations[i], _data[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -722,14 +790,16 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
             _connextAddrs.length != totalParams ||
             _updaterDomains.length != totalParams ||
             _updaterAddrs.length != totalParams
-        ) revert NetWorkRegistry__ParamsSizeMismatch();
+        ) revert Registry__ParamsSizeMismatch();
         bytes4 action = INetworkMemberRegistry.setUpdaterConfig.selector;
-        for (uint256 i = 0; i < totalParams; ) {
-            bytes memory callData = abi.encode(action, _connextAddrs[i], _updaterDomains[i], _updaterAddrs[i]);
+        for (uint256 i = 0; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeWithSelector(
+                action,
+                _connextAddrs[i],
+                _updaterDomains[i],
+                _updaterAddrs[i]
+            );
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -761,15 +831,11 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
-        if (_splitsMain.length != totalParams || _splits.length != totalParams)
-            revert NetWorkRegistry__ParamsSizeMismatch();
+        if (_splitsMain.length != totalParams || _splits.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.setSplit.selector;
-        for (uint256 i = 0; i < totalParams; ) {
-            bytes memory callData = abi.encode(action, _splitsMain[i], _splits[i]);
+        for (uint256 i = 0; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeWithSelector(action, _splitsMain[i], _splits[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -794,14 +860,11 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
-        if (_newControllers.length != totalParams) revert NetWorkRegistry__ParamsSizeMismatch();
+        if (_newControllers.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.transferSplitControl.selector;
-        for (uint256 i = 0; i < totalParams; ) {
-            bytes memory callData = abi.encode(action, _newControllers[i]);
+        for (uint256 i = 0; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeWithSelector(action, _newControllers[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -868,74 +931,15 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
         address _originSender,
         uint32 _origin,
         bytes memory _incomingCalldata
-    ) external onlyConnextAuthorized(_originSender, _origin) returns (bytes memory) {
-        bytes4 action = abi.decode(_incomingCalldata, (bytes4));
-        bytes memory callData;
-        if (action == IMemberRegistry.batchNewMembers.selector) {
-            (, address[] memory _members, uint32[] memory _activityMultipliers, uint32[] memory _startDates) = abi
-                .decode(_incomingCalldata, (bytes4, address[], uint32[], uint32[]));
-            callData = abi.encodeWithSelector(action, _members, _activityMultipliers, _startDates);
-        } else if (action == IMemberRegistry.batchUpdateMembersActivity.selector) {
-            (, address[] memory _members, uint32[] memory _activityMultipliers) = abi.decode(
-                _incomingCalldata,
-                (bytes4, address[], uint32[])
-            );
-            callData = abi.encodeWithSelector(action, _members, _activityMultipliers);
-        } else if (action == IMemberRegistry.addOrUpdateMembersBatch.selector) {
-            (
-                ,
-                address[] memory _members,
-                uint32[] memory _activityMultipliers,
-                uint32[] memory _startDates,
-                uint32[] memory _secondsActive
-            ) = abi.decode(_incomingCalldata, (bytes4, address[], uint32[], uint32[], uint32[]));
-            callData = abi.encodeWithSelector(action, _members, _activityMultipliers, _startDates, _secondsActive);
-        } else if (action == IMemberRegistry.updateSecondsActive.selector) {
-            (, uint32 cutoffDate) = abi.decode(_incomingCalldata, (bytes4, uint32));
-            callData = abi.encodeWithSelector(action, cutoffDate);
-        } else if (action == ISplitManager.updateSplits.selector) {
-            (, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(
-                _incomingCalldata,
-                (bytes4, address[], uint32)
-            );
-            callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
-        } else if (action == ISplitManager.updateAll.selector) {
-            (, uint32 cutoffDate, address[] memory _sortedList, uint32 _splitDistributorFee) = abi.decode(
-                _incomingCalldata,
-                (bytes4, uint32, address[], uint32)
-            );
-            callData = abi.encodeWithSelector(action, cutoffDate, _sortedList, _splitDistributorFee);
-        } else if (action == INetworkMemberRegistry.setUpdaterConfig.selector) {
-            (, address _connext, uint32 _updaterDomain, address _updater) = abi.decode(
-                _incomingCalldata,
-                (bytes4, address, uint32, address)
-            );
-            callData = abi.encodeWithSelector(action, _connext, _updaterDomain, _updater);
-        } else if (action == ISplitManager.setSplit.selector) {
-            (, address _splitMain, address _split) = abi.decode(_incomingCalldata, (bytes4, address, address));
-            callData = abi.encodeWithSelector(action, _splitMain, _split);
-        } else if (action == ISplitManager.transferSplitControl.selector) {
-            (, address _newController) = abi.decode(_incomingCalldata, (bytes4, address));
-            callData = abi.encodeWithSelector(action, _newController);
-        } else if (action == ISplitManager.acceptSplitControl.selector) {
-            callData = abi.encodeWithSelector(action);
-        } else if (action == ISplitManager.cancelSplitControlTransfer.selector) {
-            callData = abi.encodeWithSelector(action);
-        } else if (action == UUPSUpgradeable.upgradeToAndCall.selector) {
-            (, address _newImplementation, bytes memory _data) = abi.decode(
-                _incomingCalldata,
-                (bytes4, address, bytes)
-            );
-            callData = abi.encodeWithSelector(action, _newImplementation, _data);
-        }
-        bool success;
-        bytes memory data;
-
-        if (callData.length > 0) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (success, data) = address(this).call(callData);
-        }
-        emit SyncActionPerformed(_transferId, _origin, action, success, _originSender);
+    )
+        external
+        onlyConnextAuthorized(_originSender, _origin)
+        whitelistedSyncAction(_incomingCalldata)
+        returns (bytes memory)
+    {
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory data) = address(this).call(_incomingCalldata);
+        emit SyncActionPerformed(_transferId, _origin, bytes4(_incomingCalldata), success, _originSender);
         return data;
     }
 
@@ -944,9 +948,9 @@ contract NetworkRegistry is UUPSUpgradeable, OwnableUpgradeable, IXReceiver, INe
      */
     function _authorizeUpgrade(address /*newImplementation*/) internal view override {
         if (_msgSender() != owner() && (updater == address(0) || _msgSender() != address(this)))
-            revert NetworkRegistry__UnauthorizedToUpgrade();
+            revert Registry__UnauthorizedToUpgrade();
     }
 
-    // solhint-disable-next-line state-visibility
-    uint256[49] __gap;
+    // solhint-disable-next-line state-visibility, var-name-mixedcase
+    uint256[49] __gap_nr;
 }

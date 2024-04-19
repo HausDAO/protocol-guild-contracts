@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { DataTypes } from "../libraries/DataTypes.sol";
 
@@ -34,6 +34,12 @@ interface IMemberRegistry {
      * @param _activityMultipliers New activity multipliers for each member
      */
     function batchUpdateMembersActivity(address[] memory _members, uint32[] memory _activityMultipliers) external;
+
+    /**
+     * @notice Remove a set of members from the registry
+     * @param _members A list of existing members
+     */
+    function batchRemoveMembers(address[] memory _members) external;
 
     /**
      * @notice Adds and/or updates a set of members on the registry
@@ -73,6 +79,12 @@ interface IMemberRegistry {
      * @return total members in the registry
      */
     function totalMembers() external view returns (uint256);
+
+    /**
+     * @notice Returns the total No of active members in the registry
+     * @return total active members in the registry
+     */
+    function totalActiveMembers() external view returns (uint256);
 
     /**
      * @notice Fetch members metadata as separate property arrays

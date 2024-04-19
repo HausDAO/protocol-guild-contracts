@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 /**
  * @title A helper library that contains data types used for creating a registry data model
@@ -33,6 +33,9 @@ library DataTypes {
         /// @dev mapping between member address and record ID assigned during registration
         // solhint-disable-next-line named-parameters-mapping
         mapping(address => uint256) index;
+        /// @notice
+        /// @dev total active members in the registry
+        uint256 totalActiveMembers;
     }
 
     /// @dev Data structure to store a NetworkRegistry replica config

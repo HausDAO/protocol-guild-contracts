@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
 import { DataTypes } from "../libraries/DataTypes.sol";
-
-/// @notice Member list must be sorted in ascending order
-/// @param _index index where a member address is not properly sorted
-error InvalidSplit__AccountsOutOfOrder(uint256 _index);
-/// @notice Member is not registered
-/// @param _member member address
-error InvalidSplit__MemberNotRegistered(address _member);
-/// @notice Member list does not have any active member
-error InvalidSplit__NoActiveMembers();
+import {
+    MemberRegistry__NotRegistered,
+    SplitDistribution__AccountsOutOfOrder,
+    SplitDistribution__EmptyDistribution,
+    SplitDistribution__InactiveMember,
+    SplitDistribution__MemberListSizeMismatch,
+    SplitDistribution__NoActiveMembers
+} from "../utils/Errors.sol";
 
 /**
  * @title A 0xSplit allocations calculator library
@@ -49,37 +48,31 @@ library PGContribCalculator {
         DataTypes.Members storage self,
         address[] memory _sortedList
     ) external view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
-        uint256 activeMembers;
+        uint256 activeMembers = self.totalActiveMembers;
         uint256 total;
         address previous;
 
+        if (activeMembers == 0) revert SplitDistribution__NoActiveMembers();
+
+        if (_sortedList.length != activeMembers) revert SplitDistribution__MemberListSizeMismatch();
+
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
-        for (uint256 i = 0; i < _sortedList.length; ) {
+        for (uint256 i = 0; i < _sortedList.length; ++i) {
             address memberAddress = _sortedList[i];
             DataTypes.Member memory member = getMember(self, memberAddress);
-            if (previous >= memberAddress) revert InvalidSplit__AccountsOutOfOrder(i);
+            if (previous >= memberAddress) revert SplitDistribution__AccountsOutOfOrder(i);
+            if (member.activityMultiplier == 0) revert SplitDistribution__InactiveMember(memberAddress);
 
-            // ignore inactive members
-            if (member.activityMultiplier > 0) {
-                memberDistribution[i] = MemberContribution({
-                    // TODO: how to allow recipient to assign different addresses per network?
-                    receiverAddress: memberAddress,
-                    calcContribution: calculateContributionOf(self, member)
-                });
-                // get the total seconds in the last period
-                // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
-                total += memberDistribution[i].calcContribution;
-                unchecked {
-                    ++activeMembers; // gas optimization: very unlikely to overflow
-                }
-                previous = memberAddress;
-            }
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
+            memberDistribution[i] = MemberContribution({
+                // TODO: how to allow recipient to assign different addresses per network?
+                receiverAddress: memberAddress,
+                calcContribution: calculateContributionOf(self, member)
+            });
+            // get the total seconds in the last period
+            // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
+            total += memberDistribution[i].calcContribution;
+            previous = memberAddress;
         }
-
-        if (activeMembers == 0) revert InvalidSplit__NoActiveMembers();
 
         // define variables for split params
         _receivers = new address[](activeMembers);
@@ -91,7 +84,7 @@ library PGContribCalculator {
         uint256 minAllocation = type(uint256).max;
         uint256 minAllocationIndex;
         // fill 0xSplits arrays with sorted list
-        for (uint256 i = 0; i < _sortedList.length; ) {
+        for (uint256 i = 0; i < _sortedList.length; ++i) {
             if (memberDistribution[i].calcContribution > 0) {
                 _receivers[nonZeroIndex] = memberDistribution[i].receiverAddress;
                 _percentAllocations[nonZeroIndex] = uint32(
@@ -110,10 +103,9 @@ library PGContribCalculator {
                     ++nonZeroIndex; // gas optimization: very unlikely to overflow
                 }
             }
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
+
+        if (nonZeroIndex == 0) revert SplitDistribution__EmptyDistribution();
 
         // NOTICE: In case sum(percentAllocations) < PERCENTAGE_SCALE
         // the remainder will be added to the recipient with lowest allocation
@@ -132,7 +124,7 @@ library PGContribCalculator {
         DataTypes.Members storage self,
         address _memberAddress
     ) internal view returns (DataTypes.Member memory) {
-        if (self.index[_memberAddress] == 0) revert InvalidSplit__MemberNotRegistered(_memberAddress);
+        if (self.index[_memberAddress] == 0) revert MemberRegistry__NotRegistered(_memberAddress);
         return self.db[self.index[_memberAddress] - 1];
     }
 

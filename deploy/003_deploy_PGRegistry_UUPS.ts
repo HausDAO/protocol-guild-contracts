@@ -67,6 +67,7 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
             args: [initializationParams],
           },
         },
+        owner,
         proxyContract: "ERC1967Proxy",
         proxyArgs: ["{implementation}", "{data}"],
       },

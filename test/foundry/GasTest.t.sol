@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
@@ -9,19 +9,16 @@ import { SplitMain } from "contracts/fixtures/SplitMain.sol";
 import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
 import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
-// TODO: shaman disabled
-// import { NetworkRegistryShaman } from "contracts/NetworkRegistryShaman.sol";
-import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
+
+// import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
 
 contract GasTest is Test {
     SplitMain private splitMain;
     NetworkRegistry private registry;
     // NetworkRegistry private replica;
-    // NetworkRegistryShaman private registryShaman;
-    NetworkRegistry private singleton;
-    // TODO: shaman disabled
-    // NetworkRegistryShaman private singletonShaman;
-    NetworkRegistrySummoner private summoner;
+    // USING SUMMONER
+    // NetworkRegistry private singleton;
+    // NetworkRegistrySummoner private summoner;
     address private registryOwner;
     address[] private sortedAddresses;
 
@@ -64,7 +61,7 @@ contract GasTest is Test {
     }
 
     function setUp() external {
-        vm.createSelectFork(vm.rpcUrl("goerli"), 10159603); // TODO: block No.
+        vm.createSelectFork(vm.rpcUrl("sepolia"), 5729305); // TODO: block No.
 
         registryOwner = _createUser("ProtocolGuild");
 
@@ -82,8 +79,6 @@ contract GasTest is Test {
         // // deploy Registry infra
         // summoner = new NetworkRegistrySummoner();
         // singleton = new NetworkRegistry();
-        // // TODO: shaman disabled
-        // // singletonShaman = new NetworkRegistryShaman();
 
         // Deploy Connext infra
         address connext = address(new ConnextMock(HOME_DOMAIN_ID));
@@ -110,7 +105,7 @@ contract GasTest is Test {
         bytes memory initializerData = abi.encodeCall(NetworkRegistry.initialize, (mainInitParams));
         registry = new NetworkRegistry();
         address impl = address(registry);
-        address proxy = address(_deploy("ERC1967Proxy.sol:ERC1967Proxy", abi.encode(impl, initializerData)));
+        address proxy = address(_deploy("ERC1967Proxy.sol:ERC1967Proxy.0.8.23", abi.encode(impl, initializerData)));
         registry = NetworkRegistry(proxy);
 
         // TODO: deploy replica
@@ -119,7 +114,7 @@ contract GasTest is Test {
 
         DataTypes.Member[] memory members = registry.getMembers();
 
-        console.log("Before setup: Goerli registry has %d members", members.length);
+        console.log("Before setup: Sepolia registry has %d members", members.length);
 
         vm.startPrank(registry.owner());
 
@@ -145,7 +140,7 @@ contract GasTest is Test {
         registry.syncBatchNewMembers(_members, _activityMultipliers, _startDates, chainIds, relayerFees);
 
         // Verify new amount of members
-        console.log("After setup: Goerli registry has %d members", registry.totalMembers());
+        console.log("After setup: Sepolia registry has %d members", registry.totalMembers());
 
         // // Sort the member's addresses for testing purposes later.
         // (address[] memory addrs, , ) = registry.getMembersProperties();

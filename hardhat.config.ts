@@ -1,4 +1,4 @@
-// NOTICE: next line must be disabled when running pnpm coverage
+// NOTICE: hardhat-foundry must be disabled when running pnpm coverage
 import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-toolbox";
 import { config as dotenvConfig } from "dotenv";
@@ -108,11 +108,6 @@ function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
         },
     chainId: chainIds[chain],
     url: jsonRpcUrl,
-    verify: {
-      etherscan: {
-        apiKey: explorerApiKey(chain),
-      },
-    },
   };
 }
 
@@ -121,18 +116,6 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: 0,
   },
-  // etherscan: {
-  //   apiKey: {
-  //     arbitrumOne: process.env.ARBISCAN_APIKEY || "",
-  //     // avalanche: process.env.SNOWTRACE_API_KEY || "",
-  //     // bsc: process.env.BSCSCAN_API_KEY || "",
-  //     mainnet: process.env.ETHERSCAN_APIKEY || "",
-  //     optimisticEthereum: process.env.OPTIMISM_APIKEY || "",
-  //     polygon: process.env.POLYGONSCAN_API_KEY || "",
-  //     polygonMumbai: process.env.POLYGONSCAN_API_KEY || "",
-  //     sepolia: process.env.ETHERSCAN_API_KEY || "",
-  //   },
-  // },
   gasReporter: {
     currency: "USD",
     enabled: process.env.REPORT_GAS ? true : false,
@@ -198,12 +181,6 @@ const config: HardhatUserConfig = {
       initialBaseFeePerGas: 1635190000,
       gasPrice: 1635190000,
       gasMultiplier: 1.2,
-      verify: {
-        etherscan: {
-          apiKey: explorerApiKey("arbitrum-goerli"),
-          apiUrl: "https://api-goerli.arbiscan.io",
-        },
-      },
     },
     arbitrumSepolia: {
       ...getChainConfig("arbitrum-sepolia"),
@@ -213,12 +190,6 @@ const config: HardhatUserConfig = {
       initialBaseFeePerGas: 1635190000,
       gasPrice: 1635190000,
       gasMultiplier: 1.2,
-      verify: {
-        etherscan: {
-          apiKey: explorerApiKey("arbitrum-sepolia"),
-          apiUrl: "https://api-sepolia.arbiscan.io",
-        },
-      },
     },
     optimism: getChainConfig("optimism-mainnet"),
     optimismGoerli: {
@@ -227,12 +198,6 @@ const config: HardhatUserConfig = {
         l1: "goerli",
       },
       gasPrice: 2000000000,
-      verify: {
-        etherscan: {
-          apiKey: explorerApiKey("optimism-goerli"),
-          apiUrl: "https://api-goerli-optimistic.etherscan.io",
-        },
-      },
     },
     optimismSepolia: {
       ...getChainConfig("optimism-sepolia"),
@@ -240,12 +205,6 @@ const config: HardhatUserConfig = {
         l1: "sepolia",
       },
       gasPrice: 2000000000,
-      verify: {
-        etherscan: {
-          apiKey: explorerApiKey("optimism-sepolia"),
-          apiUrl: "https://api-sepolia-optimistic.etherscan.io",
-        },
-      },
     },
     polygon: getChainConfig("polygon-mainnet"),
     mumbai: {
@@ -298,7 +257,7 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: "0.8.21",
+        version: "0.8.23",
         settings: {
           metadata: {
             // Not including the metadata hash
