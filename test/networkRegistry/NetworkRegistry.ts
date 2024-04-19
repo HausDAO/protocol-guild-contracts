@@ -25,8 +25,6 @@ import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture 
 describe("NetworkRegistry", function () {
   // let summoner: NetworkRegistrySummoner;
   // let registrySingleton: NetworkRegistry;
-  // TODO: shaman disabled
-  // let registryShamanSingleton: NetworkRegistryShaman;
   let connext: ConnextMock;
   let l1CalculatorLibrary: PGContribCalculator;
   let l1SplitMain: SplitMain;
@@ -53,8 +51,6 @@ describe("NetworkRegistry", function () {
     const setup = await registryFixture({});
     // summoner = setup.summoner;
     // registrySingleton = setup.pgRegistrySingleton;
-    // TODO: shaman disabled
-    // registryShamanSingleton = setup.pgRegistryShamanSingleton;
     l1CalculatorLibrary = setup.calculatorLibrary;
     connext = setup.connext;
     l1SplitMain = setup.splitMain;

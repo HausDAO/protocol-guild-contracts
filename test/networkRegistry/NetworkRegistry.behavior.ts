@@ -12,7 +12,6 @@ import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture 
 describe("NetworkRegistry E2E tests", function () {
   // let summoner: NetworkRegistrySummoner;
   // let registrySingleton: NetworkRegistry;
-  // let registryShamanSingleton: NetworkRegistryShaman;
   let connext: ConnextMock;
   let l1CalculatorLibrary: PGContribCalculator;
   let l1SplitMain: SplitMain;
@@ -54,8 +53,7 @@ describe("NetworkRegistry E2E tests", function () {
   beforeEach(async function () {
     const setup = await registryFixture({});
     // summoner = setup.summoner;
-    // registrySingleton = setup.pgRegistrySingleton;
-    // registryShamanSingleton = setup.pgRegistryShamanSingleton;
+    // registrySingleton = setup.pgRegistrySingleton
     l1CalculatorLibrary = setup.calculatorLibrary;
     l1Token = setup.token;
     connext = setup.connext;

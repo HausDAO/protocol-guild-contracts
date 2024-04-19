@@ -1,31 +1,31 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
-import { NetworkRegistrySummoner } from "../../types";
-import { Member, NetworkRegistryArgs, NetworkRegistryShamanArgs } from "../types";
+// import { NetworkRegistrySummoner } from "../../types";
+import { Member, NetworkRegistryArgs } from "../types";
 
-export const summonRegistry = async (
-  summoner: NetworkRegistrySummoner,
-  registrySingleton: string,
-  registryArgs: NetworkRegistryArgs,
-  registryName: string = "SampleRegistry",
-) => {
-  const { connext, updaterDomainId, updaterAddress, splitMain, split, owner } = registryArgs;
-  const initializationParams = ethers.utils.defaultAbiCoder.encode(
-    ["address", "uint32", "address", "address", "address", "address"],
-    [connext, updaterDomainId, updaterAddress, splitMain, split, owner],
-  );
+// export const summonRegistry = async (
+//   summoner: NetworkRegistrySummoner,
+//   registrySingleton: string,
+//   registryArgs: NetworkRegistryArgs,
+//   registryName: string = "SampleRegistry",
+// ) => {
+//   const { connext, updaterDomainId, updaterAddress, splitMain, split, owner } = registryArgs;
+//   const initializationParams = ethers.utils.defaultAbiCoder.encode(
+//     ["address", "uint32", "address", "address", "address", "address"],
+//     [connext, updaterDomainId, updaterAddress, splitMain, split, owner],
+//   );
 
-  const tx = await summoner.summonRegistry(registrySingleton, registryName, initializationParams);
-  const receipt = await tx.wait();
+//   const tx = await summoner.summonRegistry(registrySingleton, registryName, initializationParams);
+//   const receipt = await tx.wait();
 
-  const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
+//   const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
 
-  const registryAddress =
-    summonedEvent?.topics?.[1] && ethers.utils.defaultAbiCoder.decode(["address"], summonedEvent.topics[1])[0];
-  if (!registryAddress) throw new Error("Failed to summon a Network Registry");
-  return registryAddress;
-};
+//   const registryAddress =
+//     summonedEvent?.topics?.[1] && ethers.utils.defaultAbiCoder.decode(["address"], summonedEvent.topics[1])[0];
+//   if (!registryAddress) throw new Error("Failed to summon a Network Registry");
+//   return registryAddress;
+// };
 
 export const summonRegistryProxy = async (
   calculatorLibraryAddress: string,
@@ -58,29 +58,6 @@ export const summonRegistryProxy = async (
     log: true,
   });
   return registryDeployed.address;
-};
-
-export const summonRegistryShaman = async (
-  summoner: NetworkRegistrySummoner,
-  registrySingleton: string,
-  registryArgs: NetworkRegistryShamanArgs,
-  registryName: string = "SampleRegistry",
-) => {
-  const { connext, updaterDomainId, updaterAddress, splitMain, split, baal, sharesToMint, burnShares } = registryArgs;
-  const initializationParams = ethers.utils.defaultAbiCoder.encode(
-    ["address", "uint32", "address", "address", "address", "address", "uint256", "bool"],
-    [connext, updaterDomainId, updaterAddress, splitMain, split, baal, sharesToMint, burnShares],
-  );
-
-  const tx = await summoner.summonRegistry(registrySingleton, registryName, initializationParams);
-  const receipt = await tx.wait();
-
-  const summonedEvent = receipt.events?.find((e) => e.event === "NetworkRegistrySummoned");
-
-  const registryAddress =
-    summonedEvent?.topics?.[1] && ethers.utils.defaultAbiCoder.decode(["address"], summonedEvent.topics[1])[0];
-  if (!registryAddress) throw new Error("Failed to summon a Network Registry");
-  return registryAddress;
 };
 
 export const generateMemberBatch = async (totalMembers: number): Promise<Array<Member>> => {

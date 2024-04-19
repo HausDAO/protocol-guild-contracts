@@ -9,19 +9,15 @@ import { SplitMain } from "contracts/fixtures/SplitMain.sol";
 import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
 import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
-// TODO: shaman disabled
-// import { NetworkRegistryShaman } from "contracts/NetworkRegistryShaman.sol";
-import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
+// import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
 
 contract GasTest is Test {
     SplitMain private splitMain;
     NetworkRegistry private registry;
     // NetworkRegistry private replica;
-    // NetworkRegistryShaman private registryShaman;
-    NetworkRegistry private singleton;
-    // TODO: shaman disabled
-    // NetworkRegistryShaman private singletonShaman;
-    NetworkRegistrySummoner private summoner;
+    // USING SUMMONER
+    // NetworkRegistry private singleton;
+    // NetworkRegistrySummoner private summoner;
     address private registryOwner;
     address[] private sortedAddresses;
 
@@ -82,8 +78,6 @@ contract GasTest is Test {
         // // deploy Registry infra
         // summoner = new NetworkRegistrySummoner();
         // singleton = new NetworkRegistry();
-        // // TODO: shaman disabled
-        // // singletonShaman = new NetworkRegistryShaman();
 
         // Deploy Connext infra
         address connext = address(new ConnextMock(HOME_DOMAIN_ID));

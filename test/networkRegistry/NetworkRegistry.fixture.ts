@@ -4,8 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import {
   ConnextMock,
-  NetworkRegistry, // NetworkRegistryShaman, // TODO: shaman disabled
-  NetworkRegistrySummoner,
+  NetworkRegistry, // NetworkRegistrySummoner,
   PGContribCalculator,
   SplitMain,
   TestERC20,
@@ -17,16 +16,15 @@ export type NetworkRegistryOpts = {
 
 export type User = {
   address: string;
-  summoner: NetworkRegistrySummoner;
+  // summoner: NetworkRegistrySummoner;
 };
 
 export type NetworkRegistryProps = {
   calculatorLibrary: PGContribCalculator;
   connext: ConnextMock;
   splitMain: SplitMain;
-  summoner: NetworkRegistrySummoner;
-  pgRegistrySingleton: NetworkRegistry;
-  // pgRegistryShamanSingleton: NetworkRegistryShaman; // TODO: shaman disabled
+  // summoner: NetworkRegistrySummoner;
+  // pgRegistrySingleton: NetworkRegistry;
   token: TestERC20;
 };
 
@@ -49,28 +47,22 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
     // const deployed = await deployments.fixture(['Infra', 'Summoner']);
     const deployed = await deployments.fixture(["Summoner"]);
 
-    // Deploy registry summoner on L1
-    const l1Summoner = (await ethers.getContractAt(
-      "NetworkRegistrySummoner",
-      deployed["NetworkRegistrySummoner"].address,
-      signer,
-    )) as NetworkRegistrySummoner;
+    // // Deploy registry summoner on L1
+    // const l1Summoner = (await ethers.getContractAt(
+    //   "NetworkRegistrySummoner",
+    //   deployed["NetworkRegistrySummoner"].address,
+    //   signer,
+    // )) as NetworkRegistrySummoner;
     const l1CalculatorLibrary = (await ethers.getContractAt(
       "PGContribCalculator",
       deployed["PGContribCalculator"].address,
       signer,
     )) as PGContribCalculator;
-    const l1RegistrySingleton = (await ethers.getContractAt(
-      "NetworkRegistry",
-      deployed["NetworkRegistry"].address,
-      signer,
-    )) as NetworkRegistry;
-    // TODO: shaman disabled
-    // const l1RegistryShamanSingleton = (await ethers.getContractAt(
-    //   "NetworkRegistryShaman",
-    //   deployed["NetworkRegistryShaman"].address,
+    // const l1RegistrySingleton = (await ethers.getContractAt(
+    //   "NetworkRegistry",
+    //   deployed["NetworkRegistry"].address,
     //   signer,
-    // )) as NetworkRegistryShaman;
+    // )) as NetworkRegistry;
 
     // Deploy Connext Mock
     const connextMockDeployed = await deployments.deploy("ConnextMock", {
@@ -91,17 +83,18 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
     const l1SplitMain = (await ethers.getContractAt("SplitMain", l1SplitMainDeployed.address, signer)) as SplitMain;
 
     // Deploy registry summoner for L2
-    const summonerDeployed = await deployments.deploy("NetworkRegistrySummoner", {
-      contract: "NetworkRegistrySummoner",
-      from: deployer,
-      args: [],
-      log: false,
-    });
-    const summoner = (await ethers.getContractAt(
-      "NetworkRegistrySummoner",
-      summonerDeployed.address,
-      signer,
-    )) as NetworkRegistrySummoner;
+
+    // const summonerDeployed = await deployments.deploy("NetworkRegistrySummoner", {
+    //   contract: "NetworkRegistrySummoner",
+    //   from: deployer,
+    //   args: [],
+    //   log: false,
+    // });
+    // const summoner = (await ethers.getContractAt(
+    //   "NetworkRegistrySummoner",
+    //   summonerDeployed.address,
+    //   signer,
+    // )) as NetworkRegistrySummoner;
 
     const calculatorLibraryDeployed = await deployments.deploy("PGContribCalculator", {
       contract: "PGContribCalculator",
@@ -110,24 +103,8 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       log: true,
     });
 
-    const pgNetRegistryDeployed = await deployments.deploy("NetworkRegistry", {
-      contract: "NetworkRegistry",
-      from: deployer,
-      args: [],
-      libraries: {
-        PGContribCalculator: calculatorLibraryDeployed.address,
-      },
-      log: false,
-    });
-    const pgRegistrySingleton = (await ethers.getContractAt(
-      "NetworkRegistry",
-      pgNetRegistryDeployed.address,
-      signer,
-    )) as NetworkRegistry;
-
-    // TODO: shaman disabled
-    // const pgregistryShamanDeployed = await deployments.deploy("NetworkRegistryShaman", {
-    //   contract: "NetworkRegistryShaman",
+    // const pgNetRegistryDeployed = await deployments.deploy("NetworkRegistry", {
+    //   contract: "NetworkRegistry",
     //   from: deployer,
     //   args: [],
     //   libraries: {
@@ -135,11 +112,11 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
     //   },
     //   log: false,
     // });
-    // const pgRegistryShamanSingleton = (await ethers.getContractAt(
-    //   "NetworkRegistryShaman",
-    //   pgregistryShamanDeployed.address,
+    // const pgRegistrySingleton = (await ethers.getContractAt(
+    //   "NetworkRegistry",
+    //   pgNetRegistryDeployed.address,
     //   signer,
-    // )) as NetworkRegistryShaman;
+    // )) as NetworkRegistry;
 
     const l2CalculatorLibrary = (await ethers.getContractAt(
       "PGContribCalculator",
@@ -177,35 +154,33 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       calculatorLibrary: l1CalculatorLibrary,
       connext,
       splitMain: l1SplitMain,
-      summoner: l1Summoner,
-      pgRegistrySingleton: l1RegistrySingleton,
-      // pgRegistryShamanSingleton: l1RegistryShamanSingleton, // TODO: shaman disabled
+      // summoner: l1Summoner,
+      // pgRegistrySingleton: l1RegistrySingleton,
       token: l1Token,
       l2: {
         calculatorLibrary: l2CalculatorLibrary,
         connext,
         splitMain: l2splitMain,
-        summoner,
-        pgRegistrySingleton,
-        // pgRegistryShamanSingleton, // TODO: shaman disabled
+        // summoner,
+        // pgRegistrySingleton,
         token: l2Token,
       },
       users: {
         owner: {
           address: deployer,
-          summoner: summoner.connect(await ethers.getSigner(deployer)),
+          // summoner: summoner.connect(await ethers.getSigner(deployer)),
         },
         applicant: {
           address: applicant,
-          summoner: summoner.connect(await ethers.getSigner(applicant)),
+          // summoner: summoner.connect(await ethers.getSigner(applicant)),
         },
         alice: {
           address: alice,
-          summoner: summoner.connect(await ethers.getSigner(alice)),
+          // summoner: summoner.connect(await ethers.getSigner(alice)),
         },
         bob: {
           address: bob,
-          summoner: summoner.connect(await ethers.getSigner(bob)),
+          // summoner: summoner.connect(await ethers.getSigner(bob)),
         },
       },
     };
