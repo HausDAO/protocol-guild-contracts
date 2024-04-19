@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
@@ -64,7 +64,7 @@ contract GasTest is Test {
     }
 
     function setUp() external {
-        vm.createSelectFork(vm.rpcUrl("goerli"), 10159603); // TODO: block No.
+        vm.createSelectFork(vm.rpcUrl("sepolia"), 5729305); // TODO: block No.
 
         registryOwner = _createUser("ProtocolGuild");
 
@@ -110,7 +110,7 @@ contract GasTest is Test {
         bytes memory initializerData = abi.encodeCall(NetworkRegistry.initialize, (mainInitParams));
         registry = new NetworkRegistry();
         address impl = address(registry);
-        address proxy = address(_deploy("ERC1967Proxy.sol:ERC1967Proxy", abi.encode(impl, initializerData)));
+        address proxy = address(_deploy("ERC1967Proxy.sol:ERC1967Proxy.0.8.23", abi.encode(impl, initializerData)));
         registry = NetworkRegistry(proxy);
 
         // TODO: deploy replica
@@ -119,7 +119,7 @@ contract GasTest is Test {
 
         DataTypes.Member[] memory members = registry.getMembers();
 
-        console.log("Before setup: Goerli registry has %d members", members.length);
+        console.log("Before setup: Sepolia registry has %d members", members.length);
 
         vm.startPrank(registry.owner());
 
@@ -145,7 +145,7 @@ contract GasTest is Test {
         registry.syncBatchNewMembers(_members, _activityMultipliers, _startDates, chainIds, relayerFees);
 
         // Verify new amount of members
-        console.log("After setup: Goerli registry has %d members", registry.totalMembers());
+        console.log("After setup: Sepolia registry has %d members", registry.totalMembers());
 
         // // Sort the member's addresses for testing purposes later.
         // (address[] memory addrs, , ) = registry.getMembersProperties();

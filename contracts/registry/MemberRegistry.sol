@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -119,13 +119,10 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         uint256 batchSize = _members.length;
         if (_activityMultipliers.length != batchSize || _startDates.length != batchSize)
             revert Registry__ParamsSizeMismatch();
-        for (uint256 i = 0; i < batchSize; ) {
+        for (uint256 i = 0; i < batchSize; ++i) {
             if (_activityMultipliers[i] == 0)
                 revert MemberRegistry__InvalidActivityMultiplier(_members[i], _activityMultipliers[i]);
             _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
         members.totalActiveMembers += batchSize;
     }
@@ -159,12 +156,9 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
     function _batchUpdateMembersActivity(address[] memory _members, uint32[] memory _activityMultipliers) internal {
         uint256 batchSize = _members.length;
         if (_activityMultipliers.length != batchSize) revert Registry__ParamsSizeMismatch();
-        for (uint256 i = 0; i < batchSize; ) {
+        for (uint256 i = 0; i < batchSize; ++i) {
             _updateMemberActivity(_members[i], _activityMultipliers[i]);
-            unchecked {
-                if (_activityMultipliers[i] == 0) --members.totalActiveMembers;
-                ++i; // gas optimization: very unlikely to overflow
-            }
+            if (_activityMultipliers[i] == 0) --members.totalActiveMembers;
         }
     }
 
@@ -180,9 +174,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         uint256 maxId = totalMembers();
         if (memberId != maxId) {
             DataTypes.Member storage member = _getMemberById(memberId);
-            unchecked {
-                if (member.activityMultiplier > 0) --members.totalActiveMembers;
-            }
+            if (member.activityMultiplier > 0) --members.totalActiveMembers;
             DataTypes.Member memory swapMember = _getMemberById(maxId);
             // swap index
             members.index[swapMember.account] = memberId;
@@ -206,11 +198,8 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
      */
     function _batchRemoveMembers(address[] memory _members) internal {
         uint256 batchSize = _members.length;
-        for (uint256 i = 0; i < batchSize; ) {
+        for (uint256 i = 0; i < batchSize; ++i) {
             _removeMember(_members[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -233,7 +222,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
             revert MemberRegistry__InvalidCutoffDate();
         uint256 membersLength = totalMembers();
         // update Member total seconds active
-        for (uint256 i = 0; i < membersLength; ) {
+        for (uint256 i = 0; i < membersLength; ++i) {
             DataTypes.Member storage _member = _getMemberByIndex(i);
             uint32 newSecondsActive;
             if (_member.activityMultiplier > 0) {
@@ -244,9 +233,6 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
                 _member.secondsActive += newSecondsActive;
             }
             emit UpdateMemberSeconds(_member.account, newSecondsActive);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
         emit RegistryActivityUpdate(_cutoffDate, membersLength);
         lastActivityUpdate = _cutoffDate;
@@ -330,14 +316,11 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         uint32[] memory activityMultipliers = new uint32[](membersLength);
         uint32[] memory startDates = new uint32[](membersLength);
         uint32[] memory secondsActive = new uint32[](membersLength);
-        for (uint256 i = 0; i < membersLength; ) {
+        for (uint256 i = 0; i < membersLength; ++i) {
             DataTypes.Member memory member = _getMember(_members[i]);
             activityMultipliers[i] = member.activityMultiplier;
             startDates[i] = member.startDate;
             secondsActive[i] = member.secondsActive;
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
         return (activityMultipliers, startDates, secondsActive);
     }
@@ -361,12 +344,9 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         uint256 maxIndex = totalMembers();
         if (_fromIndex >= maxIndex || _toIndex >= maxIndex) revert MemberRegistry__IndexOutOfBounds();
         memberList = new DataTypes.Member[](_toIndex - _fromIndex + 1);
-        for (uint256 i = _fromIndex; i <= _toIndex; ) {
+        for (uint256 i = _fromIndex; i <= _toIndex; ++i) {
             DataTypes.Member memory member = _getMemberByIndex(i);
             memberList[i] = member;
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 

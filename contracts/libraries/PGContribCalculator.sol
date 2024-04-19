@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
@@ -57,7 +57,7 @@ library PGContribCalculator {
         if (_sortedList.length != activeMembers) revert SplitDistribution__MemberListSizeMismatch();
 
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
-        for (uint256 i = 0; i < _sortedList.length; ) {
+        for (uint256 i = 0; i < _sortedList.length; ++i) {
             address memberAddress = _sortedList[i];
             DataTypes.Member memory member = getMember(self, memberAddress);
             if (previous >= memberAddress) revert SplitDistribution__AccountsOutOfOrder(i);
@@ -72,9 +72,6 @@ library PGContribCalculator {
             // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
             total += memberDistribution[i].calcContribution;
             previous = memberAddress;
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
 
         // define variables for split params
@@ -87,7 +84,7 @@ library PGContribCalculator {
         uint256 minAllocation = type(uint256).max;
         uint256 minAllocationIndex;
         // fill 0xSplits arrays with sorted list
-        for (uint256 i = 0; i < _sortedList.length; ) {
+        for (uint256 i = 0; i < _sortedList.length; ++i) {
             if (memberDistribution[i].calcContribution > 0) {
                 _receivers[nonZeroIndex] = memberDistribution[i].receiverAddress;
                 _percentAllocations[nonZeroIndex] = uint32(
@@ -105,9 +102,6 @@ library PGContribCalculator {
                 unchecked {
                     ++nonZeroIndex; // gas optimization: very unlikely to overflow
                 }
-            }
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
             }
         }
 

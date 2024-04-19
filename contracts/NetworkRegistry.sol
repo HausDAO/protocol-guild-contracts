@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { IConnext } from "@connext/interfaces/core/IConnext.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -154,11 +154,8 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     modifier validNetworkParams(uint32[] memory _chainIds, uint256[] memory _relayerFees) {
         if (_chainIds.length != _relayerFees.length) revert Registry__ParamsSizeMismatch();
         uint256 totalRelayerFees;
-        for (uint256 i = 0; i < _chainIds.length; ) {
+        for (uint256 i = 0; i < _chainIds.length; ++i) {
             totalRelayerFees += _relayerFees[i];
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
         if (msg.value < totalRelayerFees) revert NetworkRegistry__ValueSentLessThanRelayerFees();
         _;
@@ -394,11 +391,8 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint32[] memory _chainIds,
         uint256[] memory _relayerFees
     ) internal {
-        for (uint256 i = 0; i < _chainIds.length; ) {
+        for (uint256 i = 0; i < _chainIds.length; ++i) {
             _execSyncAction(_action, _callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -502,12 +496,13 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256 totalMembers = _members.length;
         uint256 activeMembers;
         uint256 inactiveMembers;
-        for (uint256 i = 0; i < totalMembers; ) {
+        for (uint256 i = 0; i < totalMembers; ++i) {
             uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
                 // register a non-existent member with current activityMultiplier (even if its zero)
                 _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
                 unchecked {
+                    // gas optimization: very unlikely to overflow
                     if (_activityMultipliers[i] > 0) ++activeMembers;
                 }
             } else {
@@ -518,13 +513,11 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
                 member.startDate = _startDates[i];
                 member.secondsActive = _secondsActive[i];
                 unchecked {
+                    // gas optimization: very unlikely to overflow
                     if (currentActivityMultiplier > 0 && _activityMultipliers[i] == 0) ++inactiveMembers;
                     else if (currentActivityMultiplier == 0 && _activityMultipliers[i] > 0) ++activeMembers;
                 }
                 _updateMemberActivity(_members[i], _activityMultipliers[i]);
-            }
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
             }
         }
         members.totalActiveMembers += activeMembers - inactiveMembers;
@@ -707,13 +700,10 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      */
     function calculateTotalContributions() external view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();
-        for (uint256 i = 0; i < totalRegistryMembers; ) {
+        for (uint256 i = 0; i < totalRegistryMembers; ++i) {
             DataTypes.Member memory member = _getMemberByIndex(i);
             if (member.activityMultiplier > 0) {
                 total += members.calculateContributionOf(member);
-            }
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
             }
         }
     }
@@ -764,12 +754,9 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         if (_newImplementations.length != totalParams || _data.length != totalParams)
             revert Registry__ParamsSizeMismatch();
         bytes4 action = UUPSUpgradeable.upgradeToAndCall.selector;
-        for (uint256 i = 0; i < totalParams; ) {
+        for (uint256 i = 0; i < totalParams; ++i) {
             bytes memory callData = abi.encodeWithSelector(action, _newImplementations[i], _data[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -805,7 +792,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             _updaterAddrs.length != totalParams
         ) revert Registry__ParamsSizeMismatch();
         bytes4 action = INetworkMemberRegistry.setUpdaterConfig.selector;
-        for (uint256 i = 0; i < totalParams; ) {
+        for (uint256 i = 0; i < totalParams; ++i) {
             bytes memory callData = abi.encodeWithSelector(
                 action,
                 _connextAddrs[i],
@@ -813,9 +800,6 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
                 _updaterAddrs[i]
             );
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -849,12 +833,9 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256 totalParams = _chainIds.length;
         if (_splitsMain.length != totalParams || _splits.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.setSplit.selector;
-        for (uint256 i = 0; i < totalParams; ) {
+        for (uint256 i = 0; i < totalParams; ++i) {
             bytes memory callData = abi.encodeWithSelector(action, _splitsMain[i], _splits[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
@@ -881,12 +862,9 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256 totalParams = _chainIds.length;
         if (_newControllers.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.transferSplitControl.selector;
-        for (uint256 i = 0; i < totalParams; ) {
+        for (uint256 i = 0; i < totalParams; ++i) {
             bytes memory callData = abi.encodeWithSelector(action, _newControllers[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
-            unchecked {
-                ++i; // gas optimization: very unlikely to overflow
-            }
         }
     }
 
