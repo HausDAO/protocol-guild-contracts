@@ -24,4 +24,12 @@ contract NetworkRegistryHarness is NetworkRegistry {
     ) external {
         super.__NetworkRegistry_init(_connext, _updaterDomain, _updater, _splitMain, _split, _owner);
     }
+
+    function exposed__MemberRegistry_init_unchained() external {
+        super.___MemberRegistry_init_unchained();
+    }
+
+    function exposed__MemberRegistry_init() external {
+        super.__MemberRegistry_init();
+    }
 }

@@ -139,6 +139,73 @@ describe("NetworkRegistry", function () {
   // ###############################################################################################################
 
   describe("NetworkRegistry Config", function () {
+    it("Should be not be able to initialize proxy with wrong parameters", async () => {
+      const { deployer } = await getNamedAccounts();
+      let initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address"],
+        [
+          ethers.constants.AddressZero, // invalid Connext address
+          0, // updaterDomain
+          ethers.constants.AddressZero, // updater address
+          l1SplitMain.address, // splitMain address
+          l1SplitAddress, // split address
+          deployer, // owner
+        ],
+      );
+
+      await expect(
+        deployments.deploy("NetworkRegistry", {
+          contract: "NetworkRegistry",
+          from: deployer,
+          args: [],
+          libraries: {
+            PGContribCalculator: l1CalculatorLibrary.address,
+          },
+          proxy: {
+            execute: {
+              methodName: "initialize",
+              args: [initializationParams],
+            },
+            proxyContract: "ERC1967Proxy",
+            proxyArgs: ["{implementation}", "{data}"],
+          },
+          log: true,
+        }),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__InvalidConnextAddress");
+
+      initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint32", "address", "address", "address", "address"],
+        [
+          connext.address, // connext address
+          0, // updaterDomain
+          ethers.constants.AddressZero, // updater address -> WRONG if owner is also address(0)
+          l1SplitMain.address, // splitMain address
+          l1SplitAddress, // split address
+          ethers.constants.AddressZero, // owner address -> WRONG if updater address is also address(0)
+        ],
+      );
+
+      await expect(
+        deployments.deploy("NetworkRegistry", {
+          contract: "NetworkRegistry",
+          from: deployer,
+          args: [],
+          libraries: {
+            PGContribCalculator: l1CalculatorLibrary.address,
+          },
+          proxy: {
+            execute: {
+              methodName: "initialize",
+              args: [initializationParams],
+            },
+            proxyContract: "ERC1967Proxy",
+            proxyArgs: ["{implementation}", "{data}"],
+          },
+          log: true,
+        }),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__NeitherOwnableNorReplicaUpdater");
+    });
+
     it("Should not be able to initialize the implementation contract", async () => {
       const signer = await ethers.getSigner(users.owner.address);
       const l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
@@ -183,6 +250,13 @@ describe("NetworkRegistry", function () {
         implDeployed.address,
         signer,
       )) as NetworkRegistryHarness;
+
+      await expect(registry.exposed__MemberRegistry_init_unchained()).to.be.revertedWithCustomError(
+        registry,
+        "NotInitializing",
+      );
+
+      await expect(registry.exposed__MemberRegistry_init()).to.be.revertedWithCustomError(registry, "NotInitializing");
 
       await expect(
         registry.exposed__NetworkRegistry_init_unchained(
@@ -2929,13 +3003,13 @@ describe("NetworkRegistry", function () {
     it("Should not be able to upgrade the implementation of a registry if not owner", async () => {
       const [, , , , outsider] = await getUnnamedAccounts();
       const signer = await ethers.getSigner(outsider);
-      const l1Registry = l1NetworkRegistry.connect(signer);
-      const l2Registry = l2NetworkRegistry.connect(signer);
-      await expect(l1Registry.upgradeToAndCall(ethers.constants.AddressZero, "0x")).to.be.revertedWithCustomError(
+      const l1NetRegistry = l1NetworkRegistry.connect(signer);
+      const l2NetRegistry = l2NetworkRegistry.connect(signer);
+      await expect(l1NetRegistry.upgradeToAndCall(ethers.constants.AddressZero, "0x")).to.be.revertedWithCustomError(
         l1NetworkRegistry,
         "Registry__UnauthorizedToUpgrade",
       );
-      await expect(l2Registry.upgradeToAndCall(ethers.constants.AddressZero, "0x")).to.be.revertedWithCustomError(
+      await expect(l2NetRegistry.upgradeToAndCall(ethers.constants.AddressZero, "0x")).to.be.revertedWithCustomError(
         l2NetworkRegistry,
         "Registry__UnauthorizedToUpgrade",
       );
