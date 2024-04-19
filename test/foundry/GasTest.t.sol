@@ -9,6 +9,7 @@ import { SplitMain } from "contracts/fixtures/SplitMain.sol";
 import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
 import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
+
 // import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
 
 contract GasTest is Test {
