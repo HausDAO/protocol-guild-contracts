@@ -185,7 +185,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             action == ISplitManager.updateAll.selector ||
             action == IMemberRegistry.updateSecondsActive.selector ||
             action == ISplitManager.updateSplits.selector ||
-            action == IMemberRegistry.addOrUpdateMembersBatch.selector ||
+            action == INetworkMemberRegistry.addOrUpdateMembersBatch.selector ||
             action == IMemberRegistry.batchRemoveMembers.selector ||
             action == ISplitManager.setSplit.selector ||
             action == INetworkMemberRegistry.setUpdaterConfig.selector ||
@@ -486,7 +486,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @dev Callable on a replica registry through the Connext bridge.
      * The syncNetworkMemberRegistry function ensures that array params will always
      * be the same length so there is no need for args validation
-     * @inheritdoc IMemberRegistry
+     * @inheritdoc INetworkMemberRegistry
      */
     function addOrUpdateMembersBatch(
         address[] memory _members,
@@ -542,7 +542,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             uint32[] memory _startDates,
             uint32[] memory _secondsActive
         ) = getMembersProperties(_members);
-        bytes4 action = IMemberRegistry.addOrUpdateMembersBatch.selector;
+        bytes4 action = INetworkMemberRegistry.addOrUpdateMembersBatch.selector;
         bytes memory callData = abi.encodeWithSelector(
             action,
             _members,

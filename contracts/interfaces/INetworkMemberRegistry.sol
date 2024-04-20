@@ -116,6 +116,24 @@ interface INetworkMemberRegistry is IMemberRegistry, IXReceiver {
     ) external payable;
 
     /**
+     * @notice Adds and/or updates a set of members on the registry
+     * @dev It should be used for syncing an already existing replica registry.
+     * Make sure array parameters are of the same length
+     * Activity multiplier could be set within 0-100 (%) range (i.e. 50 -> part-time 100 -> full-time)
+     * but it's up to the implementer to establish the multiplier boundaries
+     * @param _members A list of member addresses to be added to the registry
+     * @param _activityMultipliers Activity multipliers for each new member
+     * @param _startDates A list of dates when each member got active
+     * @param _secondsActive A list of members reported activity in seconds
+     */
+    function addOrUpdateMembersBatch(
+        address[] memory _members,
+        uint32[] memory _activityMultipliers,
+        uint32[] memory _startDates,
+        uint32[] memory _secondsActive
+    ) external;
+
+    /**
      * @notice Sync the state of a set of registry members across networks.
      * Useful whether you're looking to sync a new replica from scratch or a subset of members. For example
      * this function can be used to sync member's state in batches instead of doing a full registry sync
