@@ -130,7 +130,8 @@ library PGContribCalculator {
 
     /**
      * @notice Calculates individual contribution based on member activity
-     * @dev Contribution is calculated as SQRT(member.secondsActive)
+     * @dev Contribution is calculated using the following time-weighted formula
+     *  - SQRT(member.secondsActive)
      * @param _member Member metadata
      * @return calculated contribution as uint256 value
      */
