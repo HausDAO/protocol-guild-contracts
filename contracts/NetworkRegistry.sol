@@ -49,11 +49,12 @@ error NetworkRegistry__UnAuthorizedCalldata();
 /**
  * @title A cross-chain network registry to distribute funds escrowed in 0xSplit based on member activity
  * @author DAOHaus
- * @notice Manage a cross-chain member registry to distribute funds hold in 0xSplit based on member activity
+ * @notice Manage a cross-chain time-weighted member registry to distribute funds hold in 0xSplit based on member activity.
  * @dev Uses Connext XApp architecture to manage main + multiple replica registries across different networks.
  * It should also be able to use member activity to distribute funds escrowed on a 0xSplit contract.
  * Features and important things to consider:
- * - There are syncing methods for adding/updating members, update registry activity & split funds across networks.
+ * - There are syncing methods for adding/updating members, update registry activity & split funds across networks
+ *   using on a time-weighted formula.
  * - Funds are escrowed in a 0xSplit contract so in order to split funds the NetworkRegistry must be set
  *   as the controller.
  * - A NetworkRegistry contract can be setup either as the main registry (updater == address(0)) or as a replica.
@@ -327,7 +328,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
 
     /**
      * @notice Initializes the registry contract
-     * @dev Initialization parameters are abi-encoded (i.e. through the NetworkRegistrySummoner contract)
+     * @dev Initialization parameters are abi-encoded
      * @param _initializationParams abi-encoded parameters
      */
     function initialize(bytes memory _initializationParams) external virtual initializer {
