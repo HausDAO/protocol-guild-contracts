@@ -293,7 +293,6 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         updater = _updater;
         splitMain = ISplitMain(_splitMain);
         split = _split;
-        lastActivityUpdate = uint32(block.timestamp);
     }
 
     /**

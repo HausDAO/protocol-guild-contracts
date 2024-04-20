@@ -74,8 +74,10 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
      */
     event RegistryActivityUpdate(uint32 _timestamp, uint256 _totalMemberUpdates);
 
-    // solhint-disable-next-line func-name-mixedcase, no-empty-blocks
-    function ___MemberRegistry_init_unchained() internal onlyInitializing {}
+    // solhint-disable-next-line func-name-mixedcase
+    function ___MemberRegistry_init_unchained() internal onlyInitializing {
+        lastActivityUpdate = uint32(block.timestamp);
+    }
 
     // solhint-disable-next-line func-name-mixedcase
     function __MemberRegistry_init() internal onlyInitializing {
