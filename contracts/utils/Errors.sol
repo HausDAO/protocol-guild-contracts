@@ -37,6 +37,15 @@ error MemberRegistry__InvalidActivityMultiplier(address _memberAddress, uint32 _
 error MemberRegistry__StartDateInTheFuture(address _memberAddress, uint32 _startDate);
 
 /**
+ * 0xSplit related errors
+ */
+
+/// @notice Control of 0xSplit contract hasn't been transferred to the registry
+error Split__ControlNotHandedOver();
+/// @notice 0xSplit doesn't exists or is immutable
+error Split__InvalidOrImmutable();
+
+/**
  * Split distribution Errors
  */
 

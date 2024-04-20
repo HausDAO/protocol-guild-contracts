@@ -12,7 +12,12 @@ import { ISplitManager } from "./interfaces/ISplitManager.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
 import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
-import { Registry__ParamsSizeMismatch, Registry__UnauthorizedToUpgrade } from "./utils/Errors.sol";
+import {
+    Registry__ParamsSizeMismatch,
+    Registry__UnauthorizedToUpgrade,
+    Split__ControlNotHandedOver,
+    Split__InvalidOrImmutable
+} from "./utils/Errors.sol";
 
 /**
  * CUSTOM ERRORS
@@ -36,12 +41,8 @@ error NetworkRegistry__OnlyReplicaRegistrySync();
 error NetworkRegistry__ValueSentLessThanRelayerFees();
 /// @notice No replica registered on network with ID `_chainId`
 error NetworkRegistry__NoReplicaOnNetwork(uint32 _chainId);
-/// @notice Control of 0xSplit contract hasn't been transferred to the registry
-error Split_ControlNotHandedOver();
 /// @notice Registry has invalid domainId or registry address values
 error NetworkRegistry__InvalidReplica();
-/// @notice 0xSplit doesn't exists or is immutable
-error NetworkRegistry__InvalidOrImmutableSplit();
 /// @notice Calldata coming from Connext is not authorized
 error NetworkRegistry__UnAuthorizedCalldata();
 
@@ -811,9 +812,9 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     function setSplit(address _splitMain, address _split) external onlyOwnerOrUpdater {
         splitMain = ISplitMain(_splitMain);
         address currentController = splitMain.getController(_split);
-        if (currentController == address(0)) revert NetworkRegistry__InvalidOrImmutableSplit();
+        if (currentController == address(0)) revert Split__InvalidOrImmutable();
         address newController = splitMain.getNewPotentialController(_split);
-        if (currentController != address(this) && newController != address(this)) revert Split_ControlNotHandedOver();
+        if (currentController != address(this) && newController != address(this)) revert Split__ControlNotHandedOver();
         split = _split;
         emit SplitUpdated(_splitMain, split);
         acceptSplitControl();

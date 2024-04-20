@@ -522,7 +522,7 @@ describe("NetworkRegistry", function () {
       const dummySplitAddress = users.applicant.address;
       await expect(l1NetworkRegistry.setSplit(l1SplitMain.address, dummySplitAddress)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
-        "NetworkRegistry__InvalidOrImmutableSplit",
+        "Split__InvalidOrImmutable",
       );
 
       const newSplitAddress = await deploySplit(
@@ -534,7 +534,7 @@ describe("NetworkRegistry", function () {
       );
       await expect(l1NetworkRegistry.setSplit(l1SplitMain.address, newSplitAddress)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
-        "NetworkRegistry__InvalidOrImmutableSplit",
+        "Split__InvalidOrImmutable",
       );
     });
 
@@ -549,7 +549,7 @@ describe("NetworkRegistry", function () {
 
       await expect(l1NetworkRegistry.setSplit(l1SplitMain.address, newSplitAddress)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
-        "Split_ControlNotHandedOver",
+        "Split__ControlNotHandedOver",
       );
     });
 
