@@ -49,15 +49,16 @@ library PGContribCalculator {
         address[] memory _sortedList
     ) external view returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
         uint256 activeMembers = self.totalActiveMembers;
+        uint256 listSize = _sortedList.length;
         uint256 total;
         address previous;
 
         if (activeMembers == 0) revert SplitDistribution__NoActiveMembers();
 
-        if (_sortedList.length != activeMembers) revert SplitDistribution__MemberListSizeMismatch();
+        if (listSize != activeMembers) revert SplitDistribution__MemberListSizeMismatch();
 
         MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
-        for (uint256 i = 0; i < _sortedList.length; ++i) {
+        for (uint256 i; i < listSize; ++i) {
             address memberAddress = _sortedList[i];
             DataTypes.Member memory member = getMember(self, memberAddress);
             if (previous >= memberAddress) revert SplitDistribution__AccountsOutOfOrder(i);
@@ -84,7 +85,7 @@ library PGContribCalculator {
         uint256 minAllocation = type(uint256).max;
         uint256 minAllocationIndex;
         // fill 0xSplits arrays with sorted list
-        for (uint256 i = 0; i < _sortedList.length; ++i) {
+        for (uint256 i; i < listSize; ++i) {
             if (memberDistribution[i].calcContribution > 0) {
                 _receivers[nonZeroIndex] = memberDistribution[i].receiverAddress;
                 _percentAllocations[nonZeroIndex] = uint32(

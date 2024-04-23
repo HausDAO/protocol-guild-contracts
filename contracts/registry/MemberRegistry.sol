@@ -121,7 +121,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         uint256 batchSize = _members.length;
         if (_activityMultipliers.length != batchSize || _startDates.length != batchSize)
             revert Registry__ParamsSizeMismatch();
-        for (uint256 i = 0; i < batchSize; ++i) {
+        for (uint256 i; i < batchSize; ++i) {
             if (_activityMultipliers[i] == 0)
                 revert MemberRegistry__InvalidActivityMultiplier(_members[i], _activityMultipliers[i]);
             _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
@@ -160,7 +160,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
     function _batchUpdateMembersActivity(address[] memory _members, uint32[] memory _activityMultipliers) internal {
         uint256 batchSize = _members.length;
         if (_activityMultipliers.length != batchSize) revert Registry__ParamsSizeMismatch();
-        for (uint256 i = 0; i < batchSize; ++i) {
+        for (uint256 i; i < batchSize; ++i) {
             _updateMemberActivity(_members[i], _activityMultipliers[i]);
             if (_activityMultipliers[i] == 0) --members.totalActiveMembers;
         }
@@ -202,7 +202,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
      */
     function _batchRemoveMembers(address[] memory _members) internal {
         uint256 batchSize = _members.length;
-        for (uint256 i = 0; i < batchSize; ++i) {
+        for (uint256 i; i < batchSize; ++i) {
             _removeMember(_members[i]);
         }
     }
@@ -226,7 +226,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
             revert MemberRegistry__InvalidCutoffDate();
         uint256 membersLength = totalMembers();
         // update Member total seconds active
-        for (uint256 i = 0; i < membersLength; ++i) {
+        for (uint256 i; i < membersLength; ++i) {
             DataTypes.Member storage _member = _getMemberByIndex(i);
             uint32 newSecondsActive;
             if (_member.activityMultiplier > 0) {
@@ -320,7 +320,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         uint32[] memory activityMultipliers = new uint32[](membersLength);
         uint32[] memory startDates = new uint32[](membersLength);
         uint32[] memory secondsActive = new uint32[](membersLength);
-        for (uint256 i = 0; i < membersLength; ++i) {
+        for (uint256 i; i < membersLength; ++i) {
             DataTypes.Member memory member = _getMember(_members[i]);
             activityMultipliers[i] = member.activityMultiplier;
             startDates[i] = member.startDate;

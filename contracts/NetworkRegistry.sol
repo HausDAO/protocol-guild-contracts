@@ -157,7 +157,8 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     modifier validNetworkParams(uint32[] memory _chainIds, uint256[] memory _relayerFees) {
         if (_chainIds.length != _relayerFees.length) revert Registry__ParamsSizeMismatch();
         uint256 totalRelayerFees;
-        for (uint256 i = 0; i < _chainIds.length; ++i) {
+        uint256 totalParams = _chainIds.length;
+        for (uint256 i; i < totalParams; ++i) {
             totalRelayerFees += _relayerFees[i];
         }
         if (msg.value < totalRelayerFees) revert NetworkRegistry__ValueSentLessThanRelayerFees();
@@ -393,7 +394,8 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint32[] memory _chainIds,
         uint256[] memory _relayerFees
     ) internal {
-        for (uint256 i = 0; i < _chainIds.length; ++i) {
+        uint256 totalParams = _chainIds.length;
+        for (uint256 i; i < totalParams; ++i) {
             _execSyncAction(_action, _callData, _chainIds[i], _relayerFees[i]);
         }
     }
@@ -425,7 +427,10 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _batchNewMembers(_members, _activityMultipliers, _startDates);
         bytes4 action = IMemberRegistry.batchNewMembers.selector;
-        bytes memory callData = abi.encodeWithSelector(action, _members, _activityMultipliers, _startDates);
+        bytes memory callData = abi.encodeCall(
+            IMemberRegistry.batchNewMembers,
+            (_members, _activityMultipliers, _startDates)
+        );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -454,7 +459,10 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _batchUpdateMembersActivity(_members, _activityMultipliers);
         bytes4 action = IMemberRegistry.batchUpdateMembersActivity.selector;
-        bytes memory callData = abi.encodeWithSelector(action, _members, _activityMultipliers);
+        bytes memory callData = abi.encodeCall(
+            IMemberRegistry.batchUpdateMembersActivity,
+            (_members, _activityMultipliers)
+        );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -478,7 +486,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _batchRemoveMembers(_members);
         bytes4 action = IMemberRegistry.batchRemoveMembers.selector;
-        bytes memory callData = abi.encodeWithSelector(action, _members);
+        bytes memory callData = abi.encodeCall(IMemberRegistry.batchRemoveMembers, (_members));
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -498,7 +506,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256 totalMembers = _members.length;
         uint256 activeMembers;
         uint256 inactiveMembers;
-        for (uint256 i = 0; i < totalMembers; ++i) {
+        for (uint256 i; i < totalMembers; ++i) {
             uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
                 // register a non-existent member with current activityMultiplier (even if its zero)
@@ -544,12 +552,9 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             uint32[] memory _secondsActive
         ) = getMembersProperties(_members);
         bytes4 action = INetworkMemberRegistry.addOrUpdateMembersBatch.selector;
-        bytes memory callData = abi.encodeWithSelector(
-            action,
-            _members,
-            _activityMultipliers,
-            _startDates,
-            _secondsActive
+        bytes memory callData = abi.encodeCall(
+            INetworkMemberRegistry.addOrUpdateMembersBatch,
+            (_members, _activityMultipliers, _startDates, _secondsActive)
         );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
@@ -583,7 +588,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint32 cutoffDate = uint32(block.timestamp);
         super._updateSecondsActive(cutoffDate);
         bytes4 action = IMemberRegistry.updateSecondsActive.selector;
-        bytes memory callData = abi.encodeWithSelector(action, cutoffDate);
+        bytes memory callData = abi.encodeCall(IMemberRegistry.updateSecondsActive, (cutoffDate));
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -636,7 +641,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateSplits.selector;
-        bytes memory callData = abi.encodeWithSelector(action, _sortedList, _splitDistributorFee);
+        bytes memory callData = abi.encodeCall(ISplitManager.updateSplits, (_sortedList, _splitDistributorFee));
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -670,7 +675,10 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         super._updateSecondsActive(cutoffDate);
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
         bytes4 action = ISplitManager.updateAll.selector;
-        bytes memory callData = abi.encodeWithSelector(action, cutoffDate, _sortedList, _splitDistributorFee);
+        bytes memory callData = abi.encodeCall(
+            ISplitManager.updateAll,
+            (cutoffDate, _sortedList, _splitDistributorFee)
+        );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -702,7 +710,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      */
     function calculateTotalContributions() external view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();
-        for (uint256 i = 0; i < totalRegistryMembers; ++i) {
+        for (uint256 i; i < totalRegistryMembers; ++i) {
             DataTypes.Member memory member = _getMemberByIndex(i);
             if (member.activityMultiplier > 0) {
                 total += members.calculateContributionOf(member);
@@ -756,7 +764,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         if (_newImplementations.length != totalParams || _data.length != totalParams)
             revert Registry__ParamsSizeMismatch();
         bytes4 action = UUPSUpgradeable.upgradeToAndCall.selector;
-        for (uint256 i = 0; i < totalParams; ++i) {
+        for (uint256 i; i < totalParams; ++i) {
             bytes memory callData = abi.encodeWithSelector(action, _newImplementations[i], _data[i]);
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
         }
@@ -794,12 +802,10 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             _updaterAddrs.length != totalParams
         ) revert Registry__ParamsSizeMismatch();
         bytes4 action = INetworkMemberRegistry.setUpdaterConfig.selector;
-        for (uint256 i = 0; i < totalParams; ++i) {
-            bytes memory callData = abi.encodeWithSelector(
-                action,
-                _connextAddrs[i],
-                _updaterDomains[i],
-                _updaterAddrs[i]
+        for (uint256 i; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeCall(
+                INetworkMemberRegistry.setUpdaterConfig,
+                (_connextAddrs[i], _updaterDomains[i], _updaterAddrs[i])
             );
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
         }
@@ -835,8 +841,8 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256 totalParams = _chainIds.length;
         if (_splitsMain.length != totalParams || _splits.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.setSplit.selector;
-        for (uint256 i = 0; i < totalParams; ++i) {
-            bytes memory callData = abi.encodeWithSelector(action, _splitsMain[i], _splits[i]);
+        for (uint256 i; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeCall(ISplitManager.setSplit, (_splitsMain[i], _splits[i]));
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
         }
     }
@@ -864,8 +870,8 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         uint256 totalParams = _chainIds.length;
         if (_newControllers.length != totalParams) revert Registry__ParamsSizeMismatch();
         bytes4 action = ISplitManager.transferSplitControl.selector;
-        for (uint256 i = 0; i < totalParams; ++i) {
-            bytes memory callData = abi.encodeWithSelector(action, _newControllers[i]);
+        for (uint256 i; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeCall(ISplitManager.transferSplitControl, (_newControllers[i]));
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
         }
     }
