@@ -127,6 +127,8 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
             _setNewMember(_members[i], _activityMultipliers[i], _startDates[i]);
         }
         members.totalActiveMembers += batchSize;
+        // make sure registry is ahead of a member most recent start date
+        lastActivityUpdate = uint32(block.timestamp);
     }
 
     /**
@@ -173,10 +175,10 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
     function _removeMember(address _memberAddress) internal virtual {
         uint256 memberId = _getMemberId(_memberAddress);
         if (memberId == 0) revert MemberRegistry__NotRegistered(_memberAddress);
+        DataTypes.Member storage member = _getMemberById(memberId);
         uint256 maxId = totalMembers();
+        if (member.activityMultiplier > 0) --members.totalActiveMembers;
         if (memberId != maxId) {
-            DataTypes.Member storage member = _getMemberById(memberId);
-            if (member.activityMultiplier > 0) --members.totalActiveMembers;
             DataTypes.Member memory swapMember = _getMemberById(maxId);
             // swap index
             members.index[swapMember.account] = memberId;
