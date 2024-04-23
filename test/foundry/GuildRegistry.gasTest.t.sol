@@ -6,28 +6,18 @@ import { console2 } from "forge-std/console2.sol";
 import { Options, Upgrades } from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 import { SplitMain } from "contracts/fixtures/SplitMain.sol";
-import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
 import { DataTypes } from "contracts/libraries/DataTypes.sol";
-import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
+import { GuildRegistry } from "contracts/GuildRegistry.sol";
 
-// import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
-
-contract GasTest is Test {
+contract GuildRegistryGasTest is Test {
     SplitMain private splitMain;
-    NetworkRegistry private registry;
-    // NetworkRegistry private replica;
-    // USING SUMMONER
-    // NetworkRegistry private singleton;
-    // NetworkRegistrySummoner private summoner;
+    GuildRegistry private registry;
+
     address private registryOwner;
     address[] private sortedAddresses;
 
-    uint32[] private chainIds;
-    uint256[] private relayerFees;
-
-    uint32 private constant HOME_DOMAIN_ID = 1;
     // Change this for testing
-    uint256 private constant TOTAL_USERS = 167;
+    uint256 private constant TOTAL_USERS = 1000;
 
     function _createUser(string memory name) internal returns (address payable) {
         address payable user = payable(makeAddr(name));
@@ -75,18 +65,8 @@ contract GasTest is Test {
         percentAllocations[1] = 500_000;
         address split = splitMain.createSplit(accounts, percentAllocations, 0, registryOwner);
 
-        // USING SUMMONER
-        // // deploy Registry infra
-        // summoner = new NetworkRegistrySummoner();
-        // singleton = new NetworkRegistry();
-
-        // Deploy Connext infra
-        address connext = address(new ConnextMock(HOME_DOMAIN_ID));
-
-        // Deploy main registry
-        bytes memory mainInitParams = abi.encode(connext, 0, address(0), address(splitMain), split, registryOwner);
-        // USING SUMMONER
-        // registry = NetworkRegistry(summoner.summonRegistry(address(singleton), "MainRegistry", mainInitParams));
+        // Deploy registry
+        bytes memory initParams = abi.encode(address(splitMain), split, registryOwner);
 
         // USING UUPS Proxy
         // // TODO: how to make it work with external libraries
@@ -102,15 +82,11 @@ contract GasTest is Test {
         // registry = NetworkRegistry(proxy);
 
         // NOTICE: Custom Proxy deploy impl
-        bytes memory initializerData = abi.encodeCall(NetworkRegistry.initialize, (mainInitParams));
-        registry = new NetworkRegistry();
+        bytes memory initializerData = abi.encodeCall(GuildRegistry.initialize, (initParams));
+        registry = new GuildRegistry();
         address impl = address(registry);
         address proxy = address(_deploy("ERC1967Proxy.sol:ERC1967Proxy.0.8.23", abi.encode(impl, initializerData)));
-        registry = NetworkRegistry(proxy);
-
-        // TODO: deploy replica
-
-        // TODO: Cross-chain config
+        registry = GuildRegistry(proxy);
 
         DataTypes.Member[] memory members = registry.getMembers();
 
@@ -137,7 +113,7 @@ contract GasTest is Test {
             }
         }
 
-        registry.syncBatchNewMembers(_members, _activityMultipliers, _startDates, chainIds, relayerFees);
+        registry.batchNewMembers(_members, _activityMultipliers, _startDates);
 
         // Verify new amount of members
         console.log("After setup: Sepolia registry has %d members", registry.totalMembers());
@@ -206,10 +182,10 @@ contract GasTest is Test {
     // }
 
     function testUpdateSecondsActive() external moveForwardTime(86_400) ownerContext {
-        registry.syncUpdateSecondsActive(chainIds, relayerFees);
+        registry.updateSecondsActive(0);
     }
 
     function testUpdateAll() external moveForwardTime(86_400) ownerContext {
-        registry.syncUpdateAll(sortedAddresses, 0, chainIds, relayerFees);
+        registry.updateAll(0, sortedAddresses, 0);
     }
 }
