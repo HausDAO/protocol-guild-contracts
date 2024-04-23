@@ -10,7 +10,7 @@ import { ethers, getUnnamedAccounts, network } from "hardhat";
 import { PERCENTAGE_SCALE } from "../../constants";
 import { SampleSplit, readSampleSplit } from "../../src/utils";
 import { ConnextMock, GnosisSafe, NetworkRegistry, PGContribCalculator, SplitMain, TestERC20 } from "../../types";
-import { deploySplit, hashSplit, summonRegistryProxy } from "../utils";
+import { deploySplit, hashSplit, summonNetworkRegistryProxy } from "../utils";
 // TODO: this should be fixed in the baal-contracts repo
 import { defaultDAOSettings, submitAndProcessProposal } from "../utils";
 import { NetworkRegistryProps, User, registryFixture } from "./NetworkRegistry.fixture";
@@ -121,7 +121,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     await l1DepositTx.wait();
 
     // Summon Main Registry
-    const l1RegistryAddress = await summonRegistryProxy(
+    const l1RegistryAddress = await summonNetworkRegistryProxy(
       l1CalculatorLibrary.address,
       {
         connext: connext.address,
@@ -173,7 +173,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
     await l2DepositTx.wait();
 
     // Summon a Replica Registry
-    const l2RegistryAddress = await summonRegistryProxy(
+    const l2RegistryAddress = await summonNetworkRegistryProxy(
       l2Registry.calculatorLibrary.address,
       {
         connext: connext.address,

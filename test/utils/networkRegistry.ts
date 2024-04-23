@@ -27,21 +27,16 @@ import { Member, NetworkRegistryArgs } from "../types";
 //   return registryAddress;
 // };
 
-export const summonRegistryProxy = async (
+const summonRegistryProxy = async (
   calculatorLibraryAddress: string,
-  registryArgs: NetworkRegistryArgs,
+  initializationParams: string,
   registryName: string = "NetworkRegistry",
+  registryContract: string = "NetworkRegistry",
 ) => {
-  const { connext, updaterDomainId, updaterAddress, splitMain, split, owner } = registryArgs;
-  const initializationParams = ethers.utils.defaultAbiCoder.encode(
-    ["address", "uint32", "address", "address", "address", "address"],
-    [connext, updaterDomainId, updaterAddress, splitMain, split, owner],
-  );
-
   const { deployer } = await getNamedAccounts();
 
   const registryDeployed = await deployments.deploy(registryName, {
-    contract: "NetworkRegistry",
+    contract: registryContract,
     from: deployer,
     args: [],
     libraries: {
@@ -60,6 +55,19 @@ export const summonRegistryProxy = async (
   return registryDeployed.address;
 };
 
+export const summonNetworkRegistryProxy = async (
+  calculatorLibraryAddress: string,
+  registryArgs: NetworkRegistryArgs,
+  registryName: string = "NetworkRegistry",
+) => {
+  const { connext, updaterDomainId, updaterAddress, splitMain, split, owner } = registryArgs;
+  const initializationParams = ethers.utils.defaultAbiCoder.encode(
+    ["address", "uint32", "address", "address", "address", "address"],
+    [connext, updaterDomainId, updaterAddress, splitMain, split, owner],
+  );
+
+  return await summonRegistryProxy(calculatorLibraryAddress, initializationParams, registryName, "NetworkRegistry");
+};
 export const generateMemberBatch = async (totalMembers: number): Promise<Array<Member>> => {
   const accounts = await getUnnamedAccounts();
   const members = accounts.slice(0, totalMembers);

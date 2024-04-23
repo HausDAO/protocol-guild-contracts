@@ -55,7 +55,7 @@ error NetworkRegistry__UnAuthorizedCalldata();
  * It should also be able to use member activity to distribute funds escrowed on a 0xSplit contract.
  * Features and important things to consider:
  * - There are syncing methods for adding/updating members, update registry activity & split funds across networks
- *   using on a time-weighted formula.
+ *   based on a time-weighted formula.
  * - Funds are escrowed in a 0xSplit contract so in order to split funds the NetworkRegistry must be set
  *   as the controller.
  * - A NetworkRegistry contract can be setup either as the main registry (updater == address(0)) or as a replica.

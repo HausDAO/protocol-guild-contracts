@@ -19,7 +19,7 @@ import {
   SplitMain,
 } from "../../types";
 import { Member } from "../types";
-import { deploySplit, generateMemberBatch, hashSplit, summonRegistryProxy } from "../utils";
+import { deploySplit, generateMemberBatch, hashSplit, summonNetworkRegistryProxy } from "../utils";
 import { NetworkRegistryProps, User, acceptNetworkSplitControl, registryFixture } from "./NetworkRegistry.fixture";
 
 describe("NetworkRegistry", function () {
@@ -73,7 +73,7 @@ describe("NetworkRegistry", function () {
     );
 
     // Summon Main Registry
-    const l1RegistryAddress = await summonRegistryProxy(
+    const l1RegistryAddress = await summonNetworkRegistryProxy(
       l1CalculatorLibrary.address,
       {
         connext: connext.address,
@@ -102,7 +102,7 @@ describe("NetworkRegistry", function () {
     );
 
     // Summon a Replica Registry
-    const l2RegistryAddress = await summonRegistryProxy(
+    const l2RegistryAddress = await summonNetworkRegistryProxy(
       l2Registry.calculatorLibrary.address,
       {
         connext: connext.address,
@@ -420,7 +420,7 @@ describe("NetworkRegistry", function () {
     it("Should be able to set new updater settings", async () => {
       const signer = await ethers.getSigner(users.owner.address);
       // Summon a Replica Registry
-      const l2RegistryAddress = await summonRegistryProxy(
+      const l2RegistryAddress = await summonNetworkRegistryProxy(
         l2Registry.calculatorLibrary.address,
         {
           connext: connext.address,
@@ -588,7 +588,7 @@ describe("NetworkRegistry", function () {
         splitConfig.distributorFee,
         users.owner.address,
       );
-      const l1RegistryAddress = await summonRegistryProxy(
+      const l1RegistryAddress = await summonNetworkRegistryProxy(
         l1CalculatorLibrary.address,
         {
           connext: connext.address,
@@ -620,7 +620,7 @@ describe("NetworkRegistry", function () {
         splitConfig.distributorFee,
         users.owner.address,
       );
-      const l1RegistryAddress = await summonRegistryProxy(
+      const l1RegistryAddress = await summonNetworkRegistryProxy(
         l1CalculatorLibrary.address,
         {
           connext: connext.address,
@@ -1582,7 +1582,7 @@ describe("NetworkRegistry", function () {
         ),
       ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__ConnextOnly");
       const connextCaller = await ethers.getSigner(users.applicant.address);
-      const l2RegistryAddress = await summonRegistryProxy(
+      const l2RegistryAddress = await summonNetworkRegistryProxy(
         l2Registry.calculatorLibrary.address,
         {
           connext: users.applicant.address, // fake connext caller
@@ -1636,7 +1636,7 @@ describe("NetworkRegistry", function () {
       const parentChainId = 1;
 
       const signer = await ethers.getSigner(users.owner.address);
-      const l2RegistryAddress = await summonRegistryProxy(
+      const l2RegistryAddress = await summonNetworkRegistryProxy(
         l2Registry.calculatorLibrary.address,
         {
           connext: connext.address,
@@ -2584,7 +2584,7 @@ describe("NetworkRegistry", function () {
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
       const signer = await ethers.getSigner(users.owner.address);
-      const l2RegistryAddress = await summonRegistryProxy(
+      const l2RegistryAddress = await summonNetworkRegistryProxy(
         l2Registry.calculatorLibrary.address,
         {
           connext: connext.address,
@@ -3063,7 +3063,7 @@ describe("NetworkRegistry", function () {
 
     it("Should not be able upgrade replica contract by direct call", async () => {
       const signer = await ethers.getSigner(users.owner.address);
-      const l2RegistryAddress = await summonRegistryProxy(
+      const l2RegistryAddress = await summonNetworkRegistryProxy(
         l2Registry.calculatorLibrary.address,
         {
           connext: connext.address,
