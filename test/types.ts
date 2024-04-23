@@ -25,15 +25,10 @@ export type NetworkRegistryArgs = {
   owner: string;
 };
 
-export type NetworkRegistryShamanArgs = {
-  connext: string;
-  updaterDomainId: number;
-  updaterAddress: string;
+export type GuildRegistryArgs = {
   splitMain: string;
   split: string;
-  baal: string;
-  sharesToMint: BigNumberish;
-  burnShares: boolean;
+  owner: string;
 };
 
 export type Member = {

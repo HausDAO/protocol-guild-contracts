@@ -225,7 +225,7 @@ const config: HardhatUserConfig = {
     disambiguatePaths: false,
     runOnCompile: true,
     strict: false,
-    only: ["NetworkRegistry.sol", "NetworkRegistrySummoner", "PGContribCalculator"],
+    only: ["GuildRegistry.sol", "NetworkRegistry.sol", "PGContribCalculator"],
   },
   solidity: {
     compilers: [

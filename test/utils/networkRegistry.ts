@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
 // import { NetworkRegistrySummoner } from "../../types";
-import { Member, NetworkRegistryArgs } from "../types";
+import { GuildRegistryArgs, Member, NetworkRegistryArgs } from "../types";
 
 // export const summonRegistry = async (
 //   summoner: NetworkRegistrySummoner,
@@ -68,6 +68,21 @@ export const summonNetworkRegistryProxy = async (
 
   return await summonRegistryProxy(calculatorLibraryAddress, initializationParams, registryName, "NetworkRegistry");
 };
+
+export const summonGuildRegistryProxy = async (
+  calculatorLibraryAddress: string,
+  registryArgs: GuildRegistryArgs,
+  registryName: string = "GuildRegistry",
+) => {
+  const { splitMain, split, owner } = registryArgs;
+  const initializationParams = ethers.utils.defaultAbiCoder.encode(
+    ["address", "address", "address"],
+    [splitMain, split, owner],
+  );
+
+  return await summonRegistryProxy(calculatorLibraryAddress, initializationParams, registryName, "GuildRegistry");
+};
+
 export const generateMemberBatch = async (totalMembers: number): Promise<Array<Member>> => {
   const accounts = await getUnnamedAccounts();
   const members = accounts.slice(0, totalMembers);
