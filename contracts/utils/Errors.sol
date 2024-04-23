@@ -40,6 +40,8 @@ error MemberRegistry__StartDateInTheFuture(address _memberAddress, uint32 _start
  * 0xSplit related errors
  */
 
+/// @notice Invalid 0xSplit contract addresses
+error Split_InvalidAddress();
 /// @notice Control of 0xSplit contract hasn't been transferred to the registry
 error Split__ControlNotHandedOver();
 /// @notice 0xSplit doesn't exists or is immutable

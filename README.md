@@ -244,6 +244,12 @@ Deploy NetworkRegistry using a UUPS Upgradeable Proxy
 $ pnpm hardhat --network <network_name> deploy --tags UpgradeablePGNetworkRegistry
 ```
 
+Deploy GuildRegistry using a UUPS Upgradeable Proxy
+
+```sh
+$ pnpm hardhat --network <network_name> deploy --tags UpgradeablePGuildRegistry
+```
+
 ### Verify contracts
 
 ```sh
