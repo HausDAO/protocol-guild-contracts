@@ -221,7 +221,7 @@ $ REPORT_GAS=true pnpm test
 ```
 
 If you want to analyze the gas consumption when calling the registry activity update functions check the
-[GasTest.t.sol](test/foundry/GasTest.t.sol) for settings and execute the following:
+[\*.gasTest.t.sol](test/foundry) files for settings and execute the following:
 
 ```sh
 $ forge clean
@@ -424,18 +424,31 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 ## Gas Analysis
 
-### NetworkRegistry deployed using the UUPS proxy pattern
+### GuildRegistry deployed using the UUPS proxy pattern
 
 | Active Members | Method                                     |
 | -------------- | ------------------------------------------ |
-| 167            | testUpdateAll() (gas: 3.064.320)           |
-|                | testUpdateSecondsActive() (gas: 1.383.170) |
-| 500            | testUpdateAll() (gas: 9.164.635)           |
-|                | testUpdateSecondsActive() (gas: 4.064.153) |
-| 800            | testUpdateAll() (gas: 14.818.412)          |
-|                | testUpdateSecondsActive() (gas: 6.479.453) |
-| 1000           | testUpdateAll() (gas: 18.670.748)          |
-|                | testUpdateSecondsActive() (gas: 8.089.653) |
+| 167            | testUpdateAll() (gas: 3.033.000)           |
+|                | testUpdateSecondsActive() (gas: 1.370.791) |
+| 500            | testUpdateAll() (gas: 9.091.458)           |
+|                | testUpdateSecondsActive() (gas: 4.051.774) |
+| 800            | testUpdateAll() (gas: 14.701.963)          |
+|                | testUpdateSecondsActive() (gas: 6.467.074) |
+| 1000           | testUpdateAll() (gas: 18.522.520)          |
+|                | testUpdateSecondsActive() (gas: 8.077.274) |
+
+### NetworkRegistry deployed using the UUPS proxy pattern
+
+| Active Members | Method                                         |
+| -------------- | ---------------------------------------------- |
+| 167            | testSyncUpdateAll() (gas: 3.063.294)           |
+|                | testSyncUpdateSecondsActive() (gas: 1.383.176) |
+| 500            | testSyncUpdateAll() (gas: 9.161.611)           |
+|                | testSyncUpdateSecondsActive() (gas: 4.064.159) |
+| 800            | testSyncUpdateAll() (gas: 14.813.588)          |
+|                | testSyncUpdateSecondsActive() (gas: 6.479.459) |
+| 1000           | testSyncUpdateAll() (gas: 18.664.724)          |
+|                | testSyncUpdateSecondsActive() (gas: 8.089.659) |
 
 ## License
 

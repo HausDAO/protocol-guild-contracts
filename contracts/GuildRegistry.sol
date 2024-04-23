@@ -124,7 +124,7 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
     ) external onlyOwner {
         uint256 batchSize = _members.length;
         if (_activityMultipliers.length != batchSize) revert Registry__ParamsSizeMismatch();
-        for (uint256 i = 0; i < batchSize; ++i) {
+        for (uint256 i; i < batchSize; ++i) {
             if (_activityMultipliers[i] > 0) _updateMemberActivity(_members[i], _activityMultipliers[i]);
             else _removeMember(_members[i]);
         }
@@ -215,7 +215,7 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
      */
     function calculateTotalContributions() external view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();
-        for (uint256 i = 0; i < totalRegistryMembers; ++i) {
+        for (uint256 i; i < totalRegistryMembers; ++i) {
             DataTypes.Member memory member = _getMemberByIndex(i);
             total += members.calculateContributionOf(member);
         }
