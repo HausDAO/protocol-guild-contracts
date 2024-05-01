@@ -169,6 +169,12 @@ Run the tests with Hardhat:
 $ pnpm test
 ```
 
+Run fuzz/invariant tests using Foundry
+
+```sh
+$ forge test --nmc GasUsage --ffi -vvv
+```
+
 ### Lint
 
 Lint + Prettier check:
@@ -225,7 +231,7 @@ If you want to analyze the gas consumption when calling the registry activity up
 
 ```sh
 $ forge clean
-$ forge test --ffi -vvv
+$ forge test --mc "GasUsage" --ffi -vvv
 ```
 
 ### Clean
@@ -442,13 +448,13 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 | Active Members | Method                                         |
 | -------------- | ---------------------------------------------- |
 | 167            | testSyncUpdateAll() (gas: 3.063.294)           |
-|                | testSyncUpdateSecondsActive() (gas: 1.383.176) |
+|                | testSyncUpdateSecondsActive() (gas: 1.383.197) |
 | 500            | testSyncUpdateAll() (gas: 9.161.611)           |
-|                | testSyncUpdateSecondsActive() (gas: 4.064.159) |
+|                | testSyncUpdateSecondsActive() (gas: 4.064.180) |
 | 800            | testSyncUpdateAll() (gas: 14.813.588)          |
-|                | testSyncUpdateSecondsActive() (gas: 6.479.459) |
+|                | testSyncUpdateSecondsActive() (gas: 6.479.480) |
 | 1000           | testSyncUpdateAll() (gas: 18.664.724)          |
-|                | testSyncUpdateSecondsActive() (gas: 8.089.659) |
+|                | testSyncUpdateSecondsActive() (gas: 8.089.680) |
 
 ## License
 
