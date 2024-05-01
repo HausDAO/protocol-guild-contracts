@@ -11,8 +11,8 @@ import {
     MemberRegistry__InvalidActivityMultiplier,
     MemberRegistry__InvalidAddress,
     MemberRegistry__InvalidCutoffDate,
+    MemberRegistry__InvalidStartDate,
     MemberRegistry__NotRegistered,
-    MemberRegistry__StartDateInTheFuture,
     Registry__ParamsSizeMismatch
 } from "../utils/Errors.sol";
 
@@ -97,7 +97,8 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         if (_getMemberId(_memberAddress) != 0) revert MemberRegistry__AlreadyRegistered(_memberAddress);
         if (_activityMultiplier > MULTIPLIER_UPPER_BOUND)
             revert MemberRegistry__InvalidActivityMultiplier(_memberAddress, _activityMultiplier);
-        if (_startDate > block.timestamp) revert MemberRegistry__StartDateInTheFuture(_memberAddress, _startDate);
+        if (_startDate == 0 || _startDate > block.timestamp)
+            revert MemberRegistry__InvalidStartDate(_memberAddress, _startDate);
 
         // secondsActive set to 0, should be updated in next epoch
         members.db.push(DataTypes.Member(_memberAddress, 0, _startDate, _activityMultiplier));
@@ -145,8 +146,19 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
             revert MemberRegistry__InvalidActivityMultiplier(_memberAddress, _activityMultiplier);
 
         DataTypes.Member storage member = _getMember(_memberAddress);
-        if (member.secondsActive == 0 && _activityMultiplier == 0)
+        bool isActive = member.activityMultiplier > 0;
+        bool becomeActive = _activityMultiplier != 0;
+        if (member.secondsActive == 0 && !becomeActive)
             revert MemberRegistry__InvalidActivityMultiplier(_memberAddress, _activityMultiplier);
+        bool statusChanged; // wether member becomes active/inactive
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            statusChanged := mod(add(isActive, becomeActive), 2)
+        }
+        if (statusChanged) {
+            if (isActive) --members.totalActiveMembers;
+            else ++members.totalActiveMembers;
+        }
         member.activityMultiplier = _activityMultiplier;
 
         emit UpdateMember(_memberAddress, _activityMultiplier, member.startDate, member.secondsActive);
@@ -162,7 +174,6 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         if (_activityMultipliers.length != batchSize) revert Registry__ParamsSizeMismatch();
         for (uint256 i; i < batchSize; ++i) {
             _updateMemberActivity(_members[i], _activityMultipliers[i]);
-            if (_activityMultipliers[i] == 0) --members.totalActiveMembers;
         }
     }
 
@@ -190,6 +201,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         }
         // update db
         members.db.pop();
+        --members.count;
         // update index
         members.index[_memberAddress] = 0;
 
@@ -222,6 +234,7 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
      * @param _cutoffDate in seconds to calculate registry member's activity
      */
     function _updateSecondsActive(uint32 _cutoffDate) internal virtual {
+        // `_cutoffDate <= lastActivityUpdate` ensures that there's no new member with startDate > cutoffDate
         if (_cutoffDate <= lastActivityUpdate || _cutoffDate > block.timestamp)
             revert MemberRegistry__InvalidCutoffDate();
         uint256 membersLength = totalMembers();

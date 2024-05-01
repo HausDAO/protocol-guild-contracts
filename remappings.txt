@@ -3,3 +3,5 @@ forge-std/=lib/forge-std/src/
 @gnosis.pm/safe-contracts/=node_modules/@gnosis.pm/safe-contracts/
 @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
 @openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
+@prb/math/=node_modules/@prb/math/
+@prb/test/=node_modules/@prb/test/src/

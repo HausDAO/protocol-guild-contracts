@@ -460,9 +460,14 @@ describe("GuildRegistry", function () {
         .to.be.revertedWithCustomError(guildRegistry, "MemberRegistry__InvalidActivityMultiplier")
         .withArgs(member1, 0);
 
+      await expect(guildRegistry.batchNewMembers([member1], [activityMultiplier], [0])).to.be.revertedWithCustomError(
+        guildRegistry,
+        "MemberRegistry__InvalidStartDate",
+      );
+
       await expect(
         guildRegistry.batchNewMembers([member1], [activityMultiplier], [(await time.latest()) + 1e6]),
-      ).to.be.revertedWithCustomError(guildRegistry, "MemberRegistry__StartDateInTheFuture");
+      ).to.be.revertedWithCustomError(guildRegistry, "MemberRegistry__InvalidStartDate");
 
       // tx success
       const tx = await guildRegistry.batchNewMembers([member1], [activityMultiplier], [startDate]);

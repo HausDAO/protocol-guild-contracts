@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.23;
 
+// solhint-disable-next-line no-glbal-imports
 import "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
 import { Options, Upgrades } from "openzeppelin-foundry-upgrades/Upgrades.sol";
@@ -12,7 +13,7 @@ import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
 
 // import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
 
-contract NetworkRegistryGasTest is Test {
+contract GasUsage_Fork_Test is Test {
     SplitMain private splitMain;
     NetworkRegistry private registry;
     // NetworkRegistry private replica;
@@ -37,6 +38,7 @@ contract NetworkRegistryGasTest is Test {
 
     function _deployFromBytecode(bytes memory bytecode) private returns (address) {
         address addr;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             addr := create(0, add(bytecode, 32), mload(bytecode))
         }
@@ -51,9 +53,9 @@ contract NetworkRegistryGasTest is Test {
                 string.concat(
                     "Failed to deploy contract ",
                     contractName,
-                    ' using constructor data "',
+                    " using constructor data '",
                     string(constructorData),
-                    '"'
+                    "'"
                 )
             );
         }

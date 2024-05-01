@@ -57,6 +57,9 @@ devDependencies:
   '@nomiclabs/hardhat-ethers':
     specifier: npm:hardhat-deploy-ethers@0.3.0-beta.13
     version: /hardhat-deploy-ethers@0.3.0-beta.13(ethers@5.7.2)(hardhat@2.22.3)
+  '@prb/test':
+    specifier: ^0.6.4
+    version: 0.6.4
   '@trivago/prettier-plugin-sort-imports':
     specifier: ^4.0.0
     version: 4.0.0(@vue/compiler-sfc@3.3.4)(prettier@2.8.4)
@@ -1524,6 +1527,10 @@ packages:
   /@prb/math@4.0.1:
     resolution: {integrity: sha512-ANTz2KMV+dMdZ57mWgDTR6jZo5uQzUczQEHCxd7CvJZZ9yafnfPhUUILHvvigIOZ85fZbTPVkC8YoRG1z5Qf7g==}
     dev: false
+
+  /@prb/test@0.6.4:
+    resolution: {integrity: sha512-P0tTMsB6XQ0Wp61EYdXJYFhsOVGyZvcOFub2y9yk0sF+GYDusctR7DzEI+vOP0SILm3knFkEJASjewHEBppdRQ==}
+    dev: true
 
   /@scure/base@1.1.1:
     resolution: {integrity: sha512-ZxOhsSyxYwLJj3pLZCefNitxsj093tb2vq90mp2txoYeBqbcjDjqFhyM8eUjq/uFm6zJ+mUuqxlS2FkuSY1MTA==}

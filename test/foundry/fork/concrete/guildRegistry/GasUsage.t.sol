@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.23;
 
+// solhint-disable-next-line no-global-import
 import "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
 import { Options, Upgrades } from "openzeppelin-foundry-upgrades/Upgrades.sol";
@@ -9,7 +10,7 @@ import { SplitMain } from "contracts/fixtures/SplitMain.sol";
 import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { GuildRegistry } from "contracts/GuildRegistry.sol";
 
-contract GuildRegistryGasTest is Test {
+contract GasUsage_Fork_Test is Test {
     SplitMain private splitMain;
     GuildRegistry private registry;
 
@@ -17,7 +18,7 @@ contract GuildRegistryGasTest is Test {
     address[] private sortedAddresses;
 
     // Change this for testing
-    uint256 private constant TOTAL_USERS = 1000;
+    uint256 private constant TOTAL_USERS = 167;
 
     function _createUser(string memory name) internal returns (address payable) {
         address payable user = payable(makeAddr(name));
@@ -27,6 +28,7 @@ contract GuildRegistryGasTest is Test {
 
     function _deployFromBytecode(bytes memory bytecode) private returns (address) {
         address addr;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             addr := create(0, add(bytecode, 32), mload(bytecode))
         }
@@ -41,9 +43,9 @@ contract GuildRegistryGasTest is Test {
                 string.concat(
                     "Failed to deploy contract ",
                     contractName,
-                    ' using constructor data "',
+                    " using constructor data '",
                     string(constructorData),
-                    '"'
+                    "'"
                 )
             );
         }
