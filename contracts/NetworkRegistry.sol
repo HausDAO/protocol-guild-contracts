@@ -505,7 +505,6 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     ) external onlyReplicaSync {
         uint256 totalMembers = _members.length;
         uint256 activeMembers;
-        uint256 inactiveMembers;
         for (uint256 i; i < totalMembers; ++i) {
             uint256 memberId = _getMemberId(_members[i]);
             if (memberId == 0) {
@@ -517,20 +516,14 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
                 }
             } else {
                 DataTypes.Member storage member = _getMemberById(memberId);
-                uint32 currentActivityMultiplier = member.activityMultiplier;
                 // overrides member startDate and secondsActive in order to
                 // get in sync with the main registry
                 member.startDate = _startDates[i];
                 member.secondsActive = _secondsActive[i];
-                unchecked {
-                    // gas optimization: very unlikely to overflow
-                    if (currentActivityMultiplier > 0 && _activityMultipliers[i] == 0) ++inactiveMembers;
-                    else if (currentActivityMultiplier == 0 && _activityMultipliers[i] > 0) ++activeMembers;
-                }
                 _updateMemberActivity(_members[i], _activityMultipliers[i]);
             }
         }
-        members.totalActiveMembers += activeMembers - inactiveMembers;
+        members.totalActiveMembers += activeMembers;
     }
 
     /**
