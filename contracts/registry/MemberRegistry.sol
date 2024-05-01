@@ -11,8 +11,8 @@ import {
     MemberRegistry__InvalidActivityMultiplier,
     MemberRegistry__InvalidAddress,
     MemberRegistry__InvalidCutoffDate,
+    MemberRegistry__InvalidStartDate,
     MemberRegistry__NotRegistered,
-    MemberRegistry__StartDateInTheFuture,
     Registry__ParamsSizeMismatch
 } from "../utils/Errors.sol";
 
@@ -97,7 +97,8 @@ abstract contract MemberRegistry is Initializable, IMemberRegistry {
         if (_getMemberId(_memberAddress) != 0) revert MemberRegistry__AlreadyRegistered(_memberAddress);
         if (_activityMultiplier > MULTIPLIER_UPPER_BOUND)
             revert MemberRegistry__InvalidActivityMultiplier(_memberAddress, _activityMultiplier);
-        if (_startDate > block.timestamp) revert MemberRegistry__StartDateInTheFuture(_memberAddress, _startDate);
+        if (_startDate == 0 || _startDate > block.timestamp)
+            revert MemberRegistry__InvalidStartDate(_memberAddress, _startDate);
 
         // secondsActive set to 0, should be updated in next epoch
         members.db.push(DataTypes.Member(_memberAddress, 0, _startDate, _activityMultiplier));

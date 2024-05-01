@@ -411,7 +411,7 @@ describe("NetworkRegistry", function () {
       ).to.be.revertedWithCustomError(applicantRegistry, "OwnableUnauthorizedAccount");
     });
 
-    it("SHould not be able to set an invalid Connext address", async () => {
+    it("Should not be able to set an invalid Connext address", async () => {
       await expect(
         l1NetworkRegistry.setUpdaterConfig(ethers.constants.AddressZero, 0, ethers.constants.AddressZero),
       ).to.be.revertedWithCustomError(l1NetworkRegistry, "NetworkRegistry__InvalidConnextAddress");
@@ -758,8 +758,12 @@ describe("NetworkRegistry", function () {
         .withArgs(member1, 0);
 
       await expect(
+        l1NetworkRegistry.syncBatchNewMembers([member1], [activityMultiplier], [0], [], []),
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "MemberRegistry__InvalidStartDate");
+
+      await expect(
         l1NetworkRegistry.syncBatchNewMembers([member1], [activityMultiplier], [(await time.latest()) + 1e6], [], []),
-      ).to.be.revertedWithCustomError(l1NetworkRegistry, "MemberRegistry__StartDateInTheFuture");
+      ).to.be.revertedWithCustomError(l1NetworkRegistry, "MemberRegistry__InvalidStartDate");
 
       // tx success
       const tx = await l1NetworkRegistry.syncBatchNewMembers([member1], [activityMultiplier], [startDate], [], []);

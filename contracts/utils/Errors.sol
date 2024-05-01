@@ -34,7 +34,7 @@ error MemberRegistry__InvalidActivityMultiplier(address _memberAddress, uint32 _
 /// @notice Invalid member start date
 /// @param _memberAddress member address
 /// @param _startDate start date in seconds
-error MemberRegistry__StartDateInTheFuture(address _memberAddress, uint32 _startDate);
+error MemberRegistry__InvalidStartDate(address _memberAddress, uint32 _startDate);
 
 /**
  * 0xSplit related errors
