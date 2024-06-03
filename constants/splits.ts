@@ -10,4 +10,4 @@ export const PERCENTAGE_SCALE = BigNumber.from(1e6);
 
 // Min & max distribution fee (0-10%)
 export const MIN_DISTRIBUTION_FEE = BigNumber.from(0);
-export const MAX_DISTRIBUTION_FEE = BigNumber.from(2^16);
+export const MAX_DISTRIBUTION_FEE = BigNumber.from(2 ^ 16);

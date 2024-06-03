@@ -4,7 +4,10 @@ pragma solidity >=0.8.23 <0.9.0;
 import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
 import { NetworkRegistryV2 } from "contracts/NetworkRegistryV2.sol";
 import { InvariantTest } from "test/foundry/invariant/Invariant.t.sol";
-import { NetworkRegistryHandler, NetworkRegistryV2Handler } from "test/foundry/invariant/handlers/NetworkRegistryHandler.sol";
+import {
+    NetworkRegistryHandler,
+    NetworkRegistryV2Handler
+} from "test/foundry/invariant/handlers/NetworkRegistryHandler.sol";
 
 contract NetworkRegistry_Invariant_Test is InvariantTest {
     address internal owner = makeAddr("owner");

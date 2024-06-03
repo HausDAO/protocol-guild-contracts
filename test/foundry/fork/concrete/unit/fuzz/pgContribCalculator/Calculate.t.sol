@@ -31,8 +31,9 @@ abstract contract Calculate_Unit_Fuzz_Base_Test is BaseTest {
         vm.warp(1704103200); // Jan 1st, 2024
     }
 
-    function _splitCalculation(address[] memory _memberList) virtual internal;
-    function _splitCalculation2(address[] memory _memberList) virtual internal;
+    function _splitCalculation(address[] memory _memberList) internal virtual;
+
+    function _splitCalculation2(address[] memory _memberList) internal virtual;
 
     /**
         We intend to test:
@@ -109,7 +110,6 @@ abstract contract Calculate_Unit_Fuzz_Base_Test is BaseTest {
         _sortedList[0] = alice;
         _sortedList[1] = bob;
         _sortedList[2] = charlie;
-
 
         _splitCalculation(_sortedList);
     }
@@ -235,7 +235,8 @@ contract Calculate_Unit_Fuzz_Test is Calculate_Unit_Fuzz_Base_Test {
 
     function _splitCalculation(address[] memory _sortedList) internal override {
         // We retrieve the calculation of weights
-        (address[] memory receivers, uint32[] memory percentAllocations) = ISplitManager(address(memberRegistry)).calculate(_sortedList);
+        (address[] memory receivers, uint32[] memory percentAllocations) = ISplitManager(address(memberRegistry))
+            .calculate(_sortedList);
 
         // We check order of receivers
         assertEq(receivers[0], alice, "Alice not first receiver");
@@ -264,7 +265,8 @@ contract Calculate_Unit_Fuzz_Test is Calculate_Unit_Fuzz_Base_Test {
 
     function _splitCalculation2(address[] memory _sortedList) internal override {
         // We retrieve the calculation of weights
-        (address[] memory receivers, uint32[] memory percentAllocations) = ISplitManager(address(memberRegistry)).calculate(_sortedList);
+        (address[] memory receivers, uint32[] memory percentAllocations) = ISplitManager(address(memberRegistry))
+            .calculate(_sortedList);
 
         // We check order of receivers
         assertEq(receivers[0], alice, "Alice not first receiver");
@@ -295,7 +297,8 @@ contract CalculateV2_Unit_Fuzz_Test is Calculate_Unit_Fuzz_Base_Test {
 
     function _splitCalculation(address[] memory _sortedList) internal override {
         // We retrieve the calculation of weights
-        (address[] memory receivers, uint256[] memory percentAllocations) = ISplitV2Manager(address(memberRegistry)).calculate(_sortedList);
+        (address[] memory receivers, uint256[] memory percentAllocations) = ISplitV2Manager(address(memberRegistry))
+            .calculate(_sortedList);
 
         // We check order of receivers
         assertEq(receivers[0], alice, "Alice not first receiver");
@@ -324,7 +327,8 @@ contract CalculateV2_Unit_Fuzz_Test is Calculate_Unit_Fuzz_Base_Test {
 
     function _splitCalculation2(address[] memory _sortedList) internal override {
         // We retrieve the calculation of weights
-        (address[] memory receivers, uint256[] memory percentAllocations) = ISplitV2Manager(address(memberRegistry)).calculate(_sortedList);
+        (address[] memory receivers, uint256[] memory percentAllocations) = ISplitV2Manager(address(memberRegistry))
+            .calculate(_sortedList);
 
         // We check order of receivers
         assertEq(receivers[0], alice, "Alice not first receiver");

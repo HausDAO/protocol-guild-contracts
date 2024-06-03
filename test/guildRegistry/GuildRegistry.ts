@@ -789,11 +789,11 @@ describe("GuildRegistry", function () {
       const sortedMembers = newMembers.map((m: Member) => m.account);
 
       await expect(
-        guildRegistry.updateSplits(sortedMembers.map(() => sortedMembers[0]), splitDistributorFee)
-      ).to.be.revertedWithCustomError(
-        l1CalculatorLibrary,
-        "SplitDistribution__AccountsOutOfOrderOrInvalid",
-      );
+        guildRegistry.updateSplits(
+          sortedMembers.map(() => sortedMembers[0]),
+          splitDistributorFee,
+        ),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 
       // first member in sortedList becomes inactive
       const batch2Tx = await guildRegistry.batchUpdateMembersActivity(sortedMembers.slice(0, 1), [0]);
@@ -1028,12 +1028,13 @@ describe("GuildRegistry", function () {
       const updateTx = await guildRegistry.updateSecondsActive(0);
       await updateTx.wait();
 
-      await expect(guildRegistry.updateAll(
-        0, sortedMembers.map(() => sortedMembers[0]), splitDistributorFee
-      )).to.be.revertedWithCustomError(
-        l1CalculatorLibrary,
-        "SplitDistribution__AccountsOutOfOrderOrInvalid",
-      );
+      await expect(
+        guildRegistry.updateAll(
+          0,
+          sortedMembers.map(() => sortedMembers[0]),
+          splitDistributorFee,
+        ),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 
       // first member in sortedList becomes inactive
       const batch2Tx = await guildRegistry.batchUpdateMembersActivity(sortedMembers.slice(0, 1), [0]);

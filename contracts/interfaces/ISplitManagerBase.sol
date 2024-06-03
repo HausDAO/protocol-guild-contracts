@@ -9,7 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @notice Base interface to allow a contract to become a 0xSplit controller and trigger a split distribution based
  * on member contributions
  * @dev Includes minimal functions to calculate contributions and update 0xSplit distributions.
- * Calculate functions can be implemented in different ways and use both on-chain and/or off-chain data (e.g. via oracles)
+ * Calculate functions can be implemented in different ways and use both on-chain and/or off-chain data
  */
 interface ISplitManagerBase {
     /**

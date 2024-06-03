@@ -1067,7 +1067,8 @@ describe("NetworkRegistry", function () {
         l1NetworkRegistry.syncUpdateSplits(
           sortedMembers.map(() => sortedMembers[0]),
           splitDistributorFee,
-          [], []
+          [],
+          [],
         ),
       ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 
@@ -1303,7 +1304,8 @@ describe("NetworkRegistry", function () {
         l1NetworkRegistry.syncUpdateAll(
           sortedMembers.map(() => sortedMembers[0]),
           splitDistributorFee,
-          [], []
+          [],
+          [],
         ),
       ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 

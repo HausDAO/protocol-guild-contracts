@@ -383,24 +383,24 @@ pnpm hardhat --network sepolia registry:newMember --member <member_address> --mu
 - Copy/Paste Origin Transfer query from [this link](https://docs.connext.network/developers/guides/xcall-status) and
   replace the txHash parameter. You'll get the `transferId` from both cross-chain actions submitted to optimism and
   arbitrum
-- Open [Connextscan](https://testnet.connextscan.io/) to monitor cross-chain actions status. It usually takes ~30min to get a Complete status (Tx
-  Reconciled & Executed)
+- Open [Connextscan](https://testnet.connextscan.io/) to monitor cross-chain actions status. It usually takes ~30min to
+  get a Complete status (Tx Reconciled & Executed)
 
 ## Deployed Contracts
 
 ### Sepolia
 
-| Contract                          | Address |
-| --------------------------------- | ------- |
-| NetworkRegistry Proxy             | TBD     |
-| NetworkRegistry Implementation    | TBD     |
-| NetworkRegistryV2 Proxy           | TBD     |
-| NetworkRegistryV2  Implementation | TBD     |
-| GuildRegistry Proxy               | TBD     |
-| GuildRegistry Implementation      | TBD     |
-| GuildRegistryV2 Proxy             | TBD     |
-| GuildRegistryV2 Implementation    | TBD     |
-| PGContribCalculator               | TBD     |
+| Contract                         | Address |
+| -------------------------------- | ------- |
+| NetworkRegistry Proxy            | TBD     |
+| NetworkRegistry Implementation   | TBD     |
+| NetworkRegistryV2 Proxy          | TBD     |
+| NetworkRegistryV2 Implementation | TBD     |
+| GuildRegistry Proxy              | TBD     |
+| GuildRegistry Implementation     | TBD     |
+| GuildRegistryV2 Proxy            | TBD     |
+| GuildRegistryV2 Implementation   | TBD     |
+| PGContribCalculator              | TBD     |
 
 ### Polygon Mumbai
 

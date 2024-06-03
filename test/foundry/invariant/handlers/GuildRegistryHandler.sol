@@ -71,9 +71,9 @@ contract GuildRegistryBaseHandler is BaseHandler {
 }
 
 contract GuildRegistryHandler is GuildRegistryBaseHandler {
-    constructor(GuildRegistry _registry) GuildRegistryBaseHandler(_registry, _registry.owner()) { }
+    constructor(GuildRegistry _registry) GuildRegistryBaseHandler(_registry, _registry.owner()) {}
 }
 
 contract GuildRegistryV2Handler is GuildRegistryBaseHandler {
-    constructor(GuildRegistryV2 _registry) GuildRegistryBaseHandler(_registry, _registry.owner()) { }
+    constructor(GuildRegistryV2 _registry) GuildRegistryBaseHandler(_registry, _registry.owner()) {}
 }

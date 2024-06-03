@@ -1029,7 +1029,8 @@ describe("NetworkRegistryV2", function () {
         l1NetworkRegistry.syncUpdateAll(
           sortedMembers.map(() => sortedMembers[0]),
           splitDistributorFee,
-          [], []
+          [],
+          [],
         ),
       ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 
@@ -1267,7 +1268,8 @@ describe("NetworkRegistryV2", function () {
         l1NetworkRegistry.syncUpdateAll(
           sortedMembers.map(() => sortedMembers[0]),
           splitDistributorFee,
-          [], []
+          [],
+          [],
         ),
       ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 
@@ -2245,7 +2247,7 @@ describe("NetworkRegistryV2", function () {
       const totalValue = relayerFees.reduce((a: BigNumber, b: BigNumber) => a.add(b), BigNumber.from(0));
 
       await expect(
-        l1NetworkRegistry.pauseNetworkSplit(chainIds, [], relayerFees, { value: totalValue })
+        l1NetworkRegistry.pauseNetworkSplit(chainIds, [], relayerFees, { value: totalValue }),
       ).to.be.revertedWithCustomError(l1NetworkRegistry, "Registry__ParamsSizeMismatch");
 
       const action = l2NetworkRegistry.interface.getSighash("pauseSplit(bool)");
@@ -2278,7 +2280,7 @@ describe("NetworkRegistryV2", function () {
       ];
 
       await expect(
-        l1NetworkRegistry.networkSplitWalletExecCalls(chainIds, [], relayerFees, { value: totalValue })
+        l1NetworkRegistry.networkSplitWalletExecCalls(chainIds, [], relayerFees, { value: totalValue }),
       ).to.be.revertedWithCustomError(l1NetworkRegistry, "Registry__ParamsSizeMismatch");
 
       const syncTx = await l1NetworkRegistry.networkSplitWalletExecCalls(chainIds, calls, relayerFees, {

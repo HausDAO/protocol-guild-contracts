@@ -85,9 +85,9 @@ contract NetworkRegistryBaseHandler is BaseHandler {
 }
 
 contract NetworkRegistryHandler is NetworkRegistryBaseHandler {
-    constructor(NetworkRegistry _registry) NetworkRegistryBaseHandler(_registry, _registry.owner()) { }
+    constructor(NetworkRegistry _registry) NetworkRegistryBaseHandler(_registry, _registry.owner()) {}
 }
 
 contract NetworkRegistryV2Handler is NetworkRegistryBaseHandler {
-    constructor(NetworkRegistryV2 _registry) NetworkRegistryBaseHandler(_registry, _registry.owner()) { }
+    constructor(NetworkRegistryV2 _registry) NetworkRegistryBaseHandler(_registry, _registry.owner()) {}
 }

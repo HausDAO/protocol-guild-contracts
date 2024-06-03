@@ -6,8 +6,8 @@ import type { TaskArguments } from "hardhat/types";
 
 import { MAX_DISTRIBUTION_FEE, PERCENTAGE_SCALE, deploymentConfig } from "../constants";
 import { Member } from "../src/utils";
-import type { ISplitMain } from "../types/contracts/interfaces/ISplitMain";
 import { SplitFactoryV2 } from "../types";
+import type { ISplitMain } from "../types/contracts/interfaces/ISplitMain";
 
 task("deploy:split")
   .addFlag("controller", "Set the deployer address as Split controller")
@@ -124,13 +124,14 @@ task("deploy:splitV2")
         distributionIncentive: distributorFee,
       },
       controller,
-      deployer
+      deployer,
     );
 
     const receipt = await tx.wait();
 
     const splitAddress =
-      receipt.events?.[1].topics[1] && ethers.utils.defaultAbiCoder.decode(["address"], receipt.events?.[1].topics[1])[0];
+      receipt.events?.[1].topics[1] &&
+      ethers.utils.defaultAbiCoder.decode(["address"], receipt.events?.[1].topics[1])[0];
 
     console.log(
       `New Split contract deployed to ${network.name}:`,
