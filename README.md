@@ -434,27 +434,53 @@ pnpm hardhat --network goerli registry:newMember --member <member_address> --mul
 
 | Active Members | Method                                     |
 | -------------- | ------------------------------------------ |
-| 167            | testUpdateAll() (gas: 3.033.000)           |
-|                | testUpdateSecondsActive() (gas: 1.370.791) |
-| 500            | testUpdateAll() (gas: 9.091.458)           |
-|                | testUpdateSecondsActive() (gas: 4.051.774) |
-| 800            | testUpdateAll() (gas: 14.701.963)          |
-|                | testUpdateSecondsActive() (gas: 6.467.074) |
-| 1000           | testUpdateAll() (gas: 18.522.520)          |
-|                | testUpdateSecondsActive() (gas: 8.077.274) |
+| 167            | testUpdateAll() (gas: 3.033.062)           |
+|                | testUpdateSecondsActive() (gas: 1.370.681) |
+| 500            | testUpdateAll() (gas: 9.091.520)           |
+|                | testUpdateSecondsActive() (gas: 4.051.664) |
+| 800            | testUpdateAll() (gas: 14.702.025)          |
+|                | testUpdateSecondsActive() (gas: 6.466.964) |
+| 1000           | testUpdateAll() (gas: 18.522.582)          |
+|                | testUpdateSecondsActive() (gas: 8.077.164) |
+
+### GuildRegistryV2 deployed using the UUPS proxy pattern
+
+| Active Members | Method                                     |
+| -------------- | ------------------------------------------ |
+| 167            | testUpdateAll() (gas: 3.077.926)           |
+|                | testUpdateSecondsActive() (gas: 1.370.743) |
+| 500            | testUpdateAll() (gas: 9.214.433)           |
+|                | testUpdateSecondsActive() (gas: 4.051.726) |
+| 800            | testUpdateAll() (gas: 14.889.324)          |
+|                | testUpdateSecondsActive() (gas: 6.467.026) |
+| 1000           | testUpdateAll() (gas: 18.749.677)          |
+|                | testUpdateSecondsActive() (gas: 8.077.226) |
 
 ### NetworkRegistry deployed using the UUPS proxy pattern
 
 | Active Members | Method                                         |
 | -------------- | ---------------------------------------------- |
-| 167            | testSyncUpdateAll() (gas: 3.063.294)           |
-|                | testSyncUpdateSecondsActive() (gas: 1.383.197) |
-| 500            | testSyncUpdateAll() (gas: 9.161.611)           |
-|                | testSyncUpdateSecondsActive() (gas: 4.064.180) |
-| 800            | testSyncUpdateAll() (gas: 14.813.588)          |
-|                | testSyncUpdateSecondsActive() (gas: 6.479.480) |
-| 1000           | testSyncUpdateAll() (gas: 18.664.724)          |
-|                | testSyncUpdateSecondsActive() (gas: 8.089.680) |
+| 167            | testSyncUpdateAll() (gas: 3.063.537)           |
+|                | testSyncUpdateSecondsActive() (gas: 1.383.241) |
+| 500            | testSyncUpdateAll() (gas: 9.161.885)           |
+|                | testSyncUpdateSecondsActive() (gas: 4.064.224) |
+| 800            | testSyncUpdateAll() (gas: 14.813.891)          |
+|                | testSyncUpdateSecondsActive() (gas: 6.479.524) |
+| 1000           | testSyncUpdateAll() (gas: 18.665.045)          |
+|                | testSyncUpdateSecondsActive() (gas: 8.089.724) |
+
+### NetworkRegistryV2 deployed using the UUPS proxy pattern
+
+| Active Members | Method                                         |
+| -------------- | ---------------------------------------------- |
+| 167            | testSyncUpdateAll() (gas: 3.106.957)           |
+|                | testSyncUpdateSecondsActive() (gas: 1.383.273) |
+| 500            | testSyncUpdateAll() (gas: 9.275.791)           |
+|                | testSyncUpdateSecondsActive() (gas: 4.064.256) |
+| 800            | testSyncUpdateAll() (gas: 14.979.806)          |
+|                | testSyncUpdateSecondsActive() (gas: 6.479.556) |
+| 1000           | testSyncUpdateAll() (gas: 18.859.574)          |
+|                | testSyncUpdateSecondsActive() (gas: 8.089.756) |
 
 ## License
 

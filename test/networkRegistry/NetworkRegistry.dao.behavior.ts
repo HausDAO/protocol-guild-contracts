@@ -393,7 +393,7 @@ describe("NetworkRegistry + DAO E2E tests", function () {
         proposal,
         daoSettings: defaultDAOSettings,
       });
-      action = l2NetworkRegistry.interface.getSighash("updateSplits(address[],uint32)");
+      action = l2NetworkRegistry.interface.getSighash("updateSplits");
       await expect(tx_update_splits)
         .to.emit(l2NetworkRegistry, "SyncActionPerformed")
         .withArgs(anyValue, parentDomainId, action, true, l1NetworkRegistry.address);

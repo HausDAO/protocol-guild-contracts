@@ -2,13 +2,15 @@
 pragma solidity ^0.8.23;
 
 import { console2 } from "forge-std/console2.sol";
+import { IMemberRegistry } from "contracts/interfaces/IMemberRegistry.sol";
 import { GuildRegistry } from "contracts/GuildRegistry.sol";
+import { GuildRegistryV2 } from "contracts/GuildRegistryV2.sol";
 import { MemberRegistry } from "contracts/registry/MemberRegistry.sol";
 import { MemberRegistry__InvalidCutoffDate } from "contracts/utils/Errors.sol";
 import { BaseTest } from "test/foundry/Base.t.sol";
 
-contract UpdateSecondsActive_Unit_Fuzz_Test is BaseTest {
-    GuildRegistry public memberRegistry;
+abstract contract UpdateSecondsActive_Unit_Fuzz_Base_Test is BaseTest {
+    IMemberRegistry public memberRegistry;
 
     address internal alice = address(uint160(0x1001));
     address internal bob = address(uint160(0x1002));
@@ -18,11 +20,8 @@ contract UpdateSecondsActive_Unit_Fuzz_Test is BaseTest {
 
     uint32 private constant QUARTER_SECONDS = 10_368_000;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         BaseTest.setUp();
-
-        address proxyAddress = deployGuildRegistry(address(this));
-        memberRegistry = GuildRegistry(proxyAddress);
 
         assertEq(memberRegistry.totalMembers(), 0);
         assertEq(memberRegistry.lastActivityUpdate(), uint32(block.timestamp));
@@ -89,5 +88,23 @@ contract UpdateSecondsActive_Unit_Fuzz_Test is BaseTest {
         vm.expectEmit({ emitter: address(memberRegistry) });
         emit MemberRegistry.RegistryActivityUpdate(_cutoffTimestamp, _totalMembers);
         memberRegistry.updateSecondsActive(_cutoffTimestamp);
+    }
+}
+
+contract UpdateSecondsActive_Unit_Fuzz_Test is UpdateSecondsActive_Unit_Fuzz_Base_Test {
+    function setUp() public override {
+        address proxyAddress = deployGuildRegistry(address(this));
+        memberRegistry = GuildRegistry(proxyAddress);
+
+        super.setUp();
+    }
+}
+
+contract UpdateSecondsActive_V2_Unit_Fuzz_Test is UpdateSecondsActive_Unit_Fuzz_Base_Test {
+    function setUp() public override {
+        address proxyAddress = deployGuildRegistryV2(address(this));
+        memberRegistry = GuildRegistryV2(proxyAddress);
+
+        super.setUp();
     }
 }

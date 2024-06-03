@@ -25,8 +25,21 @@ export type NetworkRegistryArgs = {
   owner: string;
 };
 
+export type NetworkRegistryV2Args = {
+  connext: string;
+  updaterDomainId: number;
+  updaterAddress: string;
+  split: string;
+  owner: string;
+};
+
 export type GuildRegistryArgs = {
   splitMain: string;
+  split: string;
+  owner: string;
+};
+
+export type GuildRegistryV2Args = {
   split: string;
   owner: string;
 };

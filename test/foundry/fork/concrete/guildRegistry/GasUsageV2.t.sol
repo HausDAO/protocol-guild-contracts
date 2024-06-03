@@ -6,16 +6,19 @@ import "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
 import { Options, Upgrades } from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-import { GuildRegistry } from "contracts/GuildRegistry.sol";
-import { SplitMain } from "contracts/fixtures/SplitMain.sol";
+import { GuildRegistryV2 } from "contracts/GuildRegistryV2.sol";
+import { SplitsWarehouse } from "contracts/fixtures/splitV2/SplitsWarehouse.sol";
+import { SplitV2Lib } from "contracts/fixtures/splitV2/libraries/SplitV2.sol";
+import { SplitWalletV2 } from "contracts/fixtures/splitV2/splitters/SplitWalletV2.sol";
+import { PullSplitFactory } from "contracts/fixtures/splitV2/splitters/pull/PullSplitFactory.sol";
 import { DataTypes } from "contracts/libraries/DataTypes.sol";
 
-contract GasUsage_Fork_Test is Test {
-    SplitMain private splitMain;
-    GuildRegistry private registry;
+contract GasUsage_V2_Fork_Test is Test {
+    PullSplitFactory private splitFactory;
+    GuildRegistryV2 private registry;
 
     address private registryOwner;
-    address[] private sortedAddresses;
+    address[] private memberAddresses;
 
     // Change this for testing
     uint256 private constant TOTAL_USERS = 167;
@@ -58,17 +61,28 @@ contract GasUsage_Fork_Test is Test {
         registryOwner = _createUser("ProtocolGuild");
 
         // Deploy 0xSplit infra
-        splitMain = new SplitMain();
+        SplitsWarehouse warehouse = new SplitsWarehouse("Ether", "ETH");
+        splitFactory = new PullSplitFactory(address(warehouse));
         address[] memory accounts = new address[](2);
         accounts[0] = registryOwner;
         accounts[1] = address(this);
-        uint32[] memory percentAllocations = new uint32[](2);
+        uint256[] memory percentAllocations = new uint256[](2);
         percentAllocations[0] = 500_000;
         percentAllocations[1] = 500_000;
-        address split = splitMain.createSplit(accounts, percentAllocations, 0, registryOwner);
+        address split = splitFactory.createSplit(
+            SplitV2Lib.Split({
+                recipients: accounts,
+                allocations: percentAllocations,
+                totalAllocation: 1e6,
+                distributionIncentive: 0
+            }),
+            registryOwner,
+            address(this)
+        );
+        SplitWalletV2 splitWallet = SplitWalletV2(split);
 
         // Deploy registry
-        bytes memory initParams = abi.encode(address(splitMain), split, registryOwner);
+        bytes memory initParams = abi.encode(split, registryOwner);
 
         // USING UUPS Proxy
         // // TODO: how to make it work with external libraries
@@ -84,11 +98,11 @@ contract GasUsage_Fork_Test is Test {
         // registry = NetworkRegistry(proxy);
 
         // NOTICE: Custom Proxy deploy impl
-        bytes memory initializerData = abi.encodeCall(GuildRegistry.initialize, (initParams));
-        registry = new GuildRegistry();
+        bytes memory initializerData = abi.encodeCall(GuildRegistryV2.initialize, (initParams));
+        registry = new GuildRegistryV2();
         address impl = address(registry);
         address proxy = address(_deploy("ERC1967Proxy.sol:ERC1967Proxy.0.8.23", abi.encode(impl, initializerData)));
-        registry = GuildRegistry(proxy);
+        registry = GuildRegistryV2(proxy);
 
         DataTypes.Member[] memory members = registry.getMembers();
 
@@ -96,17 +110,15 @@ contract GasUsage_Fork_Test is Test {
 
         vm.startPrank(registry.owner());
 
-        // Transfer 0xSplit control
-        splitMain.transferControl(split, address(registry));
-        // Accept 0xSplit control
-        registry.acceptSplitControl();
+        // Transfer 0xSplit ownership
+        splitWallet.transferOwnership(address(registry));
 
-        address[] memory _members = new address[](TOTAL_USERS);
+        // address[] memory _members = new address[](TOTAL_USERS);
         uint32[] memory _activityMultipliers = new uint32[](TOTAL_USERS);
         uint32[] memory _startDates = new uint32[](TOTAL_USERS);
 
         for (uint256 i = 0; i < TOTAL_USERS; ) {
-            _members[i] = address(uint160(0x1000 + i));
+            memberAddresses.push(address(uint160(0x1000 + i)));
             _activityMultipliers[i] = 100;
             // force latest member to have the lowest allocation
             _startDates[i] = 1_672_531_200 + uint32(5000 * i);
@@ -115,38 +127,10 @@ contract GasUsage_Fork_Test is Test {
             }
         }
 
-        registry.batchNewMembers(_members, _activityMultipliers, _startDates);
+        registry.batchNewMembers(memberAddresses, _activityMultipliers, _startDates);
 
         // Verify new amount of members
         console.log("After setup: Sepolia registry has %d members", registry.totalMembers());
-
-        // // Sort the member's addresses for testing purposes later.
-        // (address[] memory addrs, , ) = registry.getMembersProperties();
-
-        // Standard bubblesort
-        // bool swapped;
-        // do {
-        //     swapped = false;
-
-        //     for (uint256 i = 1; i < _members.length; ) {
-        //         if (_members[i - 1] > _members[i]) {
-        //             swapped = true;
-        //             address temp = _members[i - 1];
-        //             _members[i - 1] = _members[i];
-        //             _members[i] = temp;
-        //         }
-        //         unchecked {
-        //             ++i;
-        //         }
-        //     }
-        // } while (swapped);
-
-        for (uint256 i = 0; i < _members.length; ) {
-            sortedAddresses.push(_members[i]);
-            unchecked {
-                ++i;
-            }
-        }
 
         vm.stopPrank();
     }
@@ -162,32 +146,11 @@ contract GasUsage_Fork_Test is Test {
         vm.stopPrank();
     }
 
-    // function testCalculateTotalContributions() external {
-    //     uint256 totalContribution = registry.calculateTotalContributions();
-    // }
-
-    // function testUpdateSecondsActive() external {
-    //     registry.updateSecondsActive();
-    // }
-
-    // function testGetMembersProperties() external {
-    //     (address[] memory _members, uint32[] memory _activityMultipliers, uint32[] memory _startDates) = registry
-    //         .getMembersProperties();
-    // }
-
-    // function testSetNewMember() external {
-    //     vm.startPrank(registryOwner);
-
-    //     registry.setNewMember(address(0x1337), 100, 12345678);
-
-    //     vm.stopPrank();
-    // }
-
     function testUpdateSecondsActive() external moveForwardTime(86_400) ownerContext {
         registry.updateSecondsActive(0);
     }
 
     function testUpdateAll() external moveForwardTime(86_400) ownerContext {
-        registry.updateAll(0, sortedAddresses, 0);
+        registry.updateAll(0, memberAddresses, 0);
     }
 }

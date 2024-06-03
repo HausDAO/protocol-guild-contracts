@@ -4,10 +4,11 @@ pragma solidity ^0.8.23;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import { ISplitMain } from "./interfaces/ISplitMain.sol";
-import { ISplitManager, ISplitManagerBase } from "./interfaces/ISplitManager.sol";
+import { ISplitV2Manager, ISplitManagerBase } from "./interfaces/ISplitV2Manager.sol";
+import { ISplitWalletV2 } from "./interfaces/ISplitWalletV2.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
+import { SplitV2Lib } from "./libraries/SplitV2.sol";
 import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
 import {
     Registry__ParamsSizeMismatch,
@@ -18,7 +19,7 @@ import {
 } from "./utils/Errors.sol";
 
 /**
- * @title A guild registry to distribute funds escrowed in 0xSplit V1 based on member activity
+ * @title A guild registry to distribute funds escrowed in 0xSplit V2 based on member activity
  * @author DAOHaus
  * @notice Manage a time-weighted member registry to distribute funds hold in 0xSplit V2 based on member activity
  * @dev Features and important things to consider:
@@ -28,15 +29,14 @@ import {
  *   as the controller.
  * - A main GuildRegistry should be owned by the community (i.e. Safe or a DAO),
  */
-contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, MemberRegistry {
+contract GuildRegistryV2 is ISplitV2Manager, UUPSUpgradeable, OwnableUpgradeable, MemberRegistry {
     using PGContribCalculator for DataTypes.Members;
 
-    /// @notice 0xSplit proxy contract
-    /// @dev 0xSplitMain contract
-    ISplitMain public splitMain;
+    /// @dev empty slot to comply with V1 storage layout
+    address private _emptySlot0;
     /// @notice 0xSplit contract where funds are hold
     /// @dev 0xSplitWallet contract
-    address public split;
+    ISplitWalletV2 public split;
 
     /**
      * EVENTS
@@ -44,10 +44,9 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
 
     /**
      * @notice emitted when the 0xSplit contract is updated
-     * @param _splitMain new 0xSplitMain contract address
-     * @param _split new 0xSplitWallet contract address
+     * @param _split new SplitWalletV2 contract address
      */
-    event SplitUpdated(address _splitMain, address _split);
+    event SplitUpdated(address _split);
     /**
      * @notice emitted when a new split distribution is registered on the 0xSplit contract
      * @param _split 0xSplit contract address
@@ -63,28 +62,25 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
 
     /**
      * @dev Setup the 0xSplit contracts settings.
-     * @param _splitMain 0xSplit proxy contract
      * @param _split 0xSplit contract address
      */
     // solhint-disable-next-line func-name-mixedcase
-    function __GuildRegistry_init_unchained(address _splitMain, address _split) internal onlyInitializing {
-        splitMain = ISplitMain(_splitMain);
-        split = _split;
+    function __GuildRegistryV2_init_unchained(address _split) internal onlyInitializing {
+        split = ISplitWalletV2(_split);
     }
 
     /**
      * @dev Executes initializers from parent contracts
-     * @param _splitMain 0xSplit proxy contract
      * @param _split 0xSplit contract address
      * @param _owner Account address that will own the registry contract
      */
     // solhint-disable-next-line func-name-mixedcase
-    function __GuildRegistry_init(address _splitMain, address _split, address _owner) internal onlyInitializing {
-        if (_splitMain == address(0) || _split == address(0)) revert Split_InvalidAddress();
+    function __GuildRegistryV2_init(address _split, address _owner) internal onlyInitializing {
+        if (_split == address(0)) revert Split_InvalidAddress();
         __UUPSUpgradeable_init();
         __Ownable_init(_owner);
         __MemberRegistry_init();
-        __GuildRegistry_init_unchained(_splitMain, _split);
+        __GuildRegistryV2_init_unchained(_split);
     }
 
     /**
@@ -93,11 +89,8 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
      * @param _initializationParams abi-encoded parameters
      */
     function initialize(bytes memory _initializationParams) external virtual initializer {
-        (address _splitMain, address _split, address _owner) = abi.decode(
-            _initializationParams,
-            (address, address, address)
-        );
-        __GuildRegistry_init(_splitMain, _split, _owner);
+        (address _split, address _owner) = abi.decode(_initializationParams, (address, address));
+        __GuildRegistryV2_init(_split, _owner);
     }
 
     /**
@@ -159,43 +152,70 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
     /**
      * @notice Updates the 0xSplit distribution based on member activity during the last epoch
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
-     * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
+     * @param _distributionIncentive split fee set as reward for the address that executes the distribution
      */
-    function _updateSplitDistribution(address[] memory _sortedList, uint16 _splitDistributorFee) internal {
-        (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
-        splitMain.updateSplit(split, _receivers, _percentAllocations, _splitDistributorFee);
-        bytes32 splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, uint32(_splitDistributorFee)));
-        emit SplitsDistributionUpdated(split, splitHash, _splitDistributorFee);
+    function _updateSplitDistribution(address[] memory _sortedList, uint16 _distributionIncentive) internal {
+        (address[] memory _recipients, uint256[] memory _allocations) = _calculate(
+            _sortedList,
+            PGContribCalculator.DEFAULT_TOTAL_ALLOCATION
+        );
+        split.updateSplit(
+            SplitV2Lib.Split({
+                recipients: _recipients,
+                allocations: _allocations,
+                totalAllocation: PGContribCalculator.DEFAULT_TOTAL_ALLOCATION,
+                distributionIncentive: _distributionIncentive
+            })
+        );
+        emit SplitsDistributionUpdated(address(split), split.splitHash(), _distributionIncentive);
     }
 
     /**
      * @notice Updates the 0xSplit distribution based on member activity during the last epoch.
-     * Consider calling {updateSecondsActive} prior triggering a 0xSplit distribution update
-     * @inheritdoc ISplitManagerBase
+     * Consider calling {updateSecondsActive} prior triggering a 0xSplit distribution update.
+     * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
+     * @param _distributionIncentive reward incentive for the address that executes the distribution (max 6.5%)
      */
-    function updateSplits(address[] memory _sortedList, uint16 _splitDistributorFee) external {
-        _updateSplitDistribution(_sortedList, _splitDistributorFee);
+    function updateSplits(address[] memory _sortedList, uint16 _distributionIncentive) external {
+        _updateSplitDistribution(_sortedList, _distributionIncentive);
     }
 
     /**
      * @notice Executes both {updateSecondsActive} to update registry member's activity and {updateSplits}
      * for split distribution. If _cutoffDate is zero its value will be overridden with the current block.timestamp
-     * @inheritdoc ISplitManagerBase
+     * @param _cutoffDate in seconds to calculate registry member's activity
+     * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
+     * @param _distributionIncentive reward incentive for the address that executes the distribution (max 6.5%)
      */
-    function updateAll(uint32 _cutoffDate, address[] memory _sortedList, uint16 _splitDistributorFee) external {
+    function updateAll(uint32 _cutoffDate, address[] memory _sortedList, uint16 _distributionIncentive) external {
         _updateSecondsActive(_cutoffDate);
-        _updateSplitDistribution(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _distributionIncentive);
+    }
+
+    /**
+     * @notice Calculate 0xSplit distribution allocations
+     * @dev Verify if the address list is sorted, has no duplicates and is valid.
+     * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
+     * @param _totalAllocation the total allocation of the split distribution
+     * @return _recipients list of eligible recipients (non-zero allocation) for the next split distribution
+     * @return _allocations list of split allocations for each eligible recipient
+     */
+    function _calculate(
+        address[] memory _sortedList,
+        uint256 _totalAllocation
+    ) internal view returns (address[] memory _recipients, uint256[] memory _allocations) {
+        (_recipients, _allocations) = members.calculateV2(_sortedList, _totalAllocation);
     }
 
     /**
      * @notice Calculate 0xSplit distribution allocations
      * @dev It uses the PGContribCalculator library to calculate member allocations
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitV2Manager
      */
     function calculate(
         address[] memory _sortedList
-    ) public view virtual returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
-        (_receivers, _percentAllocations) = members.calculate(_sortedList);
+    ) external view virtual returns (address[] memory _recipients, uint256[] memory _allocations) {
+        (_recipients, _allocations) = _calculate(_sortedList, PGContribCalculator.DEFAULT_TOTAL_ALLOCATION);
     }
 
     /**
@@ -223,45 +243,40 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
 
     /**
      * @notice Updates the the 0xSplitMain proxy and 0xSplit contract addresses
-     * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitV2Manager
      */
-    function setSplit(address _splitMain, address _split) external onlyOwner {
-        splitMain = ISplitMain(_splitMain);
-        address currentController = splitMain.getController(_split);
-        if (currentController == address(0)) revert Split__InvalidOrImmutable();
-        address newController = splitMain.getNewPotentialController(_split);
-        if (currentController != address(this) && newController != address(this)) revert Split__ControlNotHandedOver();
-        split = _split;
-        emit SplitUpdated(_splitMain, split);
-        acceptSplitControl();
+    function setSplit(address _splitWalletV2) external onlyOwner {
+        split = ISplitWalletV2(_splitWalletV2);
+        address currentOwner = split.owner();
+        if (currentOwner == address(0)) revert Split__InvalidOrImmutable();
+        if (currentOwner != address(this)) revert Split__ControlNotHandedOver();
+        emit SplitUpdated(_splitWalletV2);
     }
 
     /**
-     * @notice Transfer control of the current 0xSplit contract to `_newController`
-     * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @notice Transfer ownership of the current 0xSplit contract to `_newOwner`
+     * @inheritdoc ISplitV2Manager
      */
-    function transferSplitControl(address _newController) external onlyOwner {
-        splitMain.transferControl(split, _newController);
+    function transferSplitOwnership(address _newOwner) external onlyOwner {
+        split.transferOwnership(_newOwner);
     }
 
     /**
-     * @notice Accepts control of the current 0xSplit contract
-     * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @notice Pause the current SplitWalletV2 contract
+     * @inheritdoc ISplitV2Manager
      */
-    function acceptSplitControl() public onlyOwner {
-        splitMain.acceptControl(split);
+    function pauseSplit(bool _paused) external onlyOwner {
+        split.setPaused(_paused);
     }
 
     /**
-     * @notice Cancel controller transfer of the current 0xSplit contract
-     * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @notice Execute a batch of calls through SplitWallet
+     * @inheritdoc ISplitV2Manager
      */
-    function cancelSplitControlTransfer() external onlyOwner {
-        splitMain.cancelControlTransfer(split);
+    function splitWalletExecCalls(
+        ISplitWalletV2.Call[] calldata _calls
+    ) external payable onlyOwner returns (uint256 _blockNumber, bytes[] memory _returnData) {
+        (_blockNumber, _returnData) = split.execCalls{ value: msg.value }(_calls);
     }
 
     /**

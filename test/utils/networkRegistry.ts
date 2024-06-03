@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
 // import { NetworkRegistrySummoner } from "../../types";
-import { GuildRegistryArgs, Member, NetworkRegistryArgs } from "../types";
+import { GuildRegistryArgs, GuildRegistryV2Args, Member, NetworkRegistryArgs, NetworkRegistryV2Args } from "../types";
 
 // export const summonRegistry = async (
 //   summoner: NetworkRegistrySummoner,
@@ -69,6 +69,20 @@ export const summonNetworkRegistryProxy = async (
   return await summonRegistryProxy(calculatorLibraryAddress, initializationParams, registryName, "NetworkRegistry");
 };
 
+export const summonNetworkRegistryV2Proxy = async (
+  calculatorLibraryAddress: string,
+  registryArgs: NetworkRegistryV2Args,
+  registryName: string = "NetworkRegistry",
+) => {
+  const { connext, updaterDomainId, updaterAddress, split, owner } = registryArgs;
+  const initializationParams = ethers.utils.defaultAbiCoder.encode(
+    ["address", "uint32", "address", "address", "address"],
+    [connext, updaterDomainId, updaterAddress, split, owner],
+  );
+
+  return await summonRegistryProxy(calculatorLibraryAddress, initializationParams, registryName, "NetworkRegistryV2");
+};
+
 export const summonGuildRegistryProxy = async (
   calculatorLibraryAddress: string,
   registryArgs: GuildRegistryArgs,
@@ -81,6 +95,17 @@ export const summonGuildRegistryProxy = async (
   );
 
   return await summonRegistryProxy(calculatorLibraryAddress, initializationParams, registryName, "GuildRegistry");
+};
+
+export const summonGuildRegistryV2Proxy = async (
+  calculatorLibraryAddress: string,
+  registryArgs: GuildRegistryV2Args,
+  registryName: string = "GuildRegistry",
+) => {
+  const { split, owner } = registryArgs;
+  const initializationParams = ethers.utils.defaultAbiCoder.encode(["address", "address"], [split, owner]);
+
+  return await summonRegistryProxy(calculatorLibraryAddress, initializationParams, registryName, "GuildRegistryV2");
 };
 
 export const generateMemberBatch = async (totalMembers: number): Promise<Array<Member>> => {

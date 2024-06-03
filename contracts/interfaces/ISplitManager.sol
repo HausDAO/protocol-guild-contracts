@@ -3,15 +3,16 @@ pragma solidity ^0.8.23;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISplitManagerBase } from "./ISplitManagerBase.sol";
+
 /**
- * @title A 0xSplit manager interface
+ * @title A 0xSplit V1 manager interface
  * @author DAOHaus
- * @notice Allows a contract to become a 0xSplit controller and trigger a split distribution based
+ * @notice Allows a contract to become a 0xSplit V1 controller and trigger a split distribution based
  * on member contributions
- * @dev Includes minimal functions to calculate contributions and manage 0xSplit contract.
- * Calculate functions can be implemented in different flavours and use on-chain and/or off-chain via oracles
+ * @dev Includes minimal functions to calculate contributions and update 0xSplit distributions.
  */
-interface ISplitManager {
+interface ISplitManager is ISplitManagerBase {
     /**
      * @notice Calculate 0xSplit distribution allocations
      * @dev Verify if the address list is sorted, has no duplicates and is valid.
@@ -20,38 +21,6 @@ interface ISplitManager {
      * @return _percentAllocations list of split allocations for each eligible recipient
      */
     function calculate(address[] memory _sortedList) external view returns (address[] memory, uint32[] memory);
-
-    /**
-     * @notice Calculates a member individual contribution
-     * @dev It could use member activity / other metadata
-     * @param _memberAddress member address
-     * @return calculated contribution as uin256 value
-     */
-    function calculateContributionOf(address _memberAddress) external view returns (uint256);
-
-    /**
-     * @notice Calculates the sum of all member contributions
-     * @return total calculated contributions from active members
-     */
-    function calculateTotalContributions() external view returns (uint256 total);
-
-    /**
-     * @notice Updates the 0xSplit distribution based on member activity during the last epoch
-     * @dev Verify if the address list is sorted, has no duplicates and is valid
-     * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
-     * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
-     */
-    function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) external;
-
-    /**
-     * @notice Executes both {updateSecondsActive} to update registry member's activity and {updateSplits}
-     * for split distribution
-     * @dev Verify if the address list is sorted, has no duplicates and is valid
-     * @param _cutoffDate in seconds to calculate registry member's activity
-     * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
-     * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
-     */
-    function updateAll(uint32 _cutoffDate, address[] memory _sortedList, uint32 _splitDistributorFee) external;
 
     /**
      * @notice Updates the the 0xSplitMain proxy and 0xSplit contract addresses

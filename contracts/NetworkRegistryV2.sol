@@ -6,11 +6,12 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
-import { INetworkMemberRegistry, INetworkRegistryManager } from "./interfaces/INetworkMemberRegistry.sol";
-import { ISplitMain } from "./interfaces/ISplitMain.sol";
-import { ISplitManager, ISplitManagerBase } from "./interfaces/ISplitManager.sol";
+import { INetworkMemberRegistryV2, INetworkRegistryManager } from "./interfaces/INetworkMemberRegistryV2.sol";
+import { ISplitV2Manager, ISplitManagerBase } from "./interfaces/ISplitV2Manager.sol";
+import { ISplitWalletV2 } from "./interfaces/ISplitWalletV2.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
+import { SplitV2Lib } from "./libraries/SplitV2.sol";
 import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
 import {
     Registry__ParamsSizeMismatch,
@@ -47,12 +48,12 @@ error NetworkRegistry__InvalidReplica();
 error NetworkRegistry__UnAuthorizedCalldata();
 
 /**
- * @title A cross-chain network registry to distribute funds escrowed in 0xSplit V1 based on member activity
+ * @title A cross-chain network registry to distribute funds escrowed in 0xSplit V2 based on member activity
  * @author DAOHaus
- * @notice Manage a cross-chain time-weighted member registry to distribute funds hold in 0xSplit V1
+ * @notice Manage a cross-chain time-weighted member registry to distribute funds hold in 0xSplit
  * based on member activity.
  * @dev Uses Connext XApp architecture to manage main + multiple replica registries across different networks.
- * It should also be able to use member activity to distribute funds escrowed on a 0xSplit contract.
+ * It should also be able to use member activity to distribute funds escrowed on a 0xSplit V2 contract.
  * Features and important things to consider:
  * - There are syncing methods for adding/updating members, update registry activity & split funds across networks
  *   based on a time-weighted formula.
@@ -67,15 +68,20 @@ error NetworkRegistry__UnAuthorizedCalldata();
  *   bridge which could potentially froze the 0xSplit funds as the replica NetworkRegistry and thus its controller will
  *   become inaccessible.
  */
-contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeable, OwnableUpgradeable, MemberRegistry {
+contract NetworkRegistryV2 is
+    INetworkMemberRegistryV2,
+    ISplitV2Manager,
+    UUPSUpgradeable,
+    OwnableUpgradeable,
+    MemberRegistry
+{
     using PGContribCalculator for DataTypes.Members;
 
-    /// @notice 0xSplit proxy contract
-    /// @dev 0xSplitMain contract
-    ISplitMain public splitMain;
+    /// @dev empty slot to comply with V1 storage layout
+    address private _emptySlot0;
     /// @notice 0xSplit contract where funds are hold
     /// @dev 0xSplitWallet contract
-    address public split;
+    ISplitWalletV2 public split;
     /// @notice Connext contract in the current domain
     IConnext public connext;
     /// @notice Connext domain ID where the updater contract is deployed
@@ -190,11 +196,11 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             action == ISplitManagerBase.updateSplits.selector ||
             action == INetworkRegistryManager.addOrUpdateMembersBatch.selector ||
             action == IMemberRegistry.batchRemoveMembers.selector ||
-            action == ISplitManager.setSplit.selector ||
+            action == ISplitV2Manager.setSplit.selector ||
             action == INetworkRegistryManager.setUpdaterConfig.selector ||
-            action == ISplitManager.acceptSplitControl.selector ||
-            action == ISplitManager.transferSplitControl.selector ||
-            action == ISplitManager.cancelSplitControlTransfer.selector ||
+            action == ISplitV2Manager.transferSplitOwnership.selector ||
+            action == ISplitV2Manager.pauseSplit.selector ||
+            action == ISplitV2Manager.splitWalletExecCalls.selector ||
             action == UUPSUpgradeable.upgradeToAndCall.selector
         ) {
             _;
@@ -216,10 +222,9 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     event NewUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater);
     /**
      * @notice emitted when the 0xSplit contract is updated
-     * @param _splitMain new 0xSplitMain contract address
-     * @param _split new 0xSplitWallet contract address
+     * @param _split new SplitWalletV2 contract address
      */
-    event SplitUpdated(address _splitMain, address _split);
+    event SplitUpdated(address _split);
     /**
      * @notice emitted when a new replica NetworkRegistry is added/updated
      * @param _chainId network chainId where the replica lives
@@ -280,22 +285,19 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @param _connext Connext contract address in the current network
      * @param _updaterDomain Connext domain ID where the updater lives (replica only)
      * @param _updater Account that will update a registry through the Connext bridge (replica only)
-     * @param _splitMain 0xSplit proxy contract
      * @param _split 0xSplit contract address
      */
     // solhint-disable-next-line func-name-mixedcase
-    function __NetworkRegistry_init_unchained(
+    function __NetworkRegistryV2_init_unchained(
         address _connext,
         uint32 _updaterDomain,
         address _updater,
-        address _splitMain,
         address _split
     ) internal onlyInitializing {
         connext = IConnext(_connext);
         updaterDomain = _updaterDomain;
         updater = _updater;
-        splitMain = ISplitMain(_splitMain);
-        split = _split;
+        split = ISplitWalletV2(_split);
     }
 
     /**
@@ -303,16 +305,14 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @param _connext Connext contract address in the current network
      * @param _updaterDomain Connext domain ID where the updater lives (replica only)
      * @param _updater Account that will update the registry through the Connext bridge (replica only)
-     * @param _splitMain 0xSplit proxy contract
      * @param _split 0xSplit contract address
      * @param _owner Account address that will own the registry contract
      */
     // solhint-disable-next-line func-name-mixedcase
-    function __NetworkRegistry_init(
+    function __NetworkRegistryV2_init(
         address _connext,
         uint32 _updaterDomain,
         address _updater,
-        address _splitMain,
         address _split,
         address _owner
     ) internal onlyInitializing {
@@ -325,7 +325,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             renounceOwnership();
         }
         __MemberRegistry_init();
-        __NetworkRegistry_init_unchained(_connext, _updaterDomain, _updater, _splitMain, _split);
+        __NetworkRegistryV2_init_unchained(_connext, _updaterDomain, _updater, _split);
     }
 
     /**
@@ -334,15 +334,11 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @param _initializationParams abi-encoded parameters
      */
     function initialize(bytes memory _initializationParams) external virtual initializer {
-        (
-            address _connext,
-            uint32 _updaterDomain,
-            address _updater,
-            address _splitMain,
-            address _split,
-            address _owner
-        ) = abi.decode(_initializationParams, (address, uint32, address, address, address, address));
-        __NetworkRegistry_init(_connext, _updaterDomain, _updater, _splitMain, _split, _owner);
+        (address _connext, uint32 _updaterDomain, address _updater, address _split, address _owner) = abi.decode(
+            _initializationParams,
+            (address, uint32, address, address, address)
+        );
+        __NetworkRegistryV2_init(_connext, _updaterDomain, _updater, _split, _owner);
     }
 
     /**
@@ -586,29 +582,24 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     }
 
     /**
-     * @notice Updates the 0xSplit distribution
-     * @param _receivers sorted list (ascending order) of members to be considered in the 0xSplit distribution
-     * @param _percentAllocations allocation percent for each receiver
-     * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
-     */
-    function _updateSplit(
-        address[] memory _receivers,
-        uint32[] memory _percentAllocations,
-        uint32 _splitDistributorFee
-    ) internal returns (bytes32 splitHash) {
-        splitMain.updateSplit(split, _receivers, _percentAllocations, _splitDistributorFee);
-        splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, _splitDistributorFee));
-    }
-
-    /**
      * @notice Updates the 0xSplit distribution based on member activity during the last epoch
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
-     * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
+     * @param _distributionIncentive split fee set as reward for the address that executes the distribution
      */
-    function _updateSplitDistribution(address[] memory _sortedList, uint16 _splitDistributorFee) internal {
-        (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
-        bytes32 splitHash = _updateSplit(_receivers, _percentAllocations, uint32(_splitDistributorFee));
-        emit SplitsDistributionUpdated(split, splitHash, _splitDistributorFee);
+    function _updateSplitDistribution(address[] memory _sortedList, uint16 _distributionIncentive) internal {
+        (address[] memory _recipients, uint256[] memory _allocations) = _calculate(
+            _sortedList,
+            PGContribCalculator.DEFAULT_TOTAL_ALLOCATION
+        );
+        split.updateSplit(
+            SplitV2Lib.Split({
+                recipients: _recipients,
+                allocations: _allocations,
+                totalAllocation: PGContribCalculator.DEFAULT_TOTAL_ALLOCATION,
+                distributionIncentive: _distributionIncentive
+            })
+        );
+        emit SplitsDistributionUpdated(address(split), split.splitHash(), _distributionIncentive);
     }
 
     /**
@@ -616,8 +607,8 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * Consider calling {updateSecondsActive} prior triggering a 0xSplit distribution update
      * @inheritdoc ISplitManagerBase
      */
-    function updateSplits(address[] memory _sortedList, uint16 _splitDistributorFee) external onlyReplica {
-        _updateSplitDistribution(_sortedList, _splitDistributorFee);
+    function updateSplits(address[] memory _sortedList, uint16 _distributionIncentive) external onlyReplica {
+        _updateSplitDistribution(_sortedList, _distributionIncentive);
     }
 
     /**
@@ -628,13 +619,13 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      */
     function syncUpdateSplits(
         address[] memory _sortedList,
-        uint16 _splitDistributorFee,
+        uint16 _distributionIncentive,
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        _updateSplitDistribution(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _distributionIncentive);
         bytes4 action = ISplitManagerBase.updateSplits.selector;
-        bytes memory callData = abi.encodeCall(ISplitManagerBase.updateSplits, (_sortedList, _splitDistributorFee));
+        bytes memory callData = abi.encodeCall(ISplitManagerBase.updateSplits, (_sortedList, _distributionIncentive));
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
@@ -646,10 +637,10 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     function updateAll(
         uint32 _cutoffDate,
         address[] memory _sortedList,
-        uint16 _splitDistributorFee
+        uint16 _distributionIncentive
     ) external onlyReplica {
         _updateSecondsActive(_cutoffDate);
-        _updateSplitDistribution(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _distributionIncentive);
     }
 
     /**
@@ -660,30 +651,45 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      */
     function syncUpdateAll(
         address[] memory _sortedList,
-        uint16 _splitDistributorFee,
+        uint16 _distributionIncentive,
         uint32[] calldata _chainIds,
         uint256[] calldata _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
         super._updateSecondsActive(cutoffDate);
-        _updateSplitDistribution(_sortedList, _splitDistributorFee);
+        _updateSplitDistribution(_sortedList, _distributionIncentive);
         bytes4 action = ISplitManagerBase.updateAll.selector;
         bytes memory callData = abi.encodeCall(
             ISplitManagerBase.updateAll,
-            (cutoffDate, _sortedList, _splitDistributorFee)
+            (cutoffDate, _sortedList, _distributionIncentive)
         );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
     /**
      * @notice Calculate 0xSplit distribution allocations
+     * @dev Verify if the address list is sorted, has no duplicates and is valid.
+     * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
+     * @param _totalAllocation the total allocation of the split distribution
+     * @return _recipients list of eligible recipients (non-zero allocation) for the next split distribution
+     * @return _allocations list of split allocations for each eligible recipient
+     */
+    function _calculate(
+        address[] memory _sortedList,
+        uint256 _totalAllocation
+    ) internal view returns (address[] memory _recipients, uint256[] memory _allocations) {
+        (_recipients, _allocations) = members.calculateV2(_sortedList, _totalAllocation);
+    }
+
+    /**
+     * @notice Calculate 0xSplit distribution allocations
      * @dev It uses the PGContribCalculator library to calculate member allocations
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitV2Manager
      */
     function calculate(
         address[] memory _sortedList
-    ) public view virtual returns (address[] memory _receivers, uint32[] memory _percentAllocations) {
-        (_receivers, _percentAllocations) = members.calculate(_sortedList);
+    ) external view virtual returns (address[] memory _recipients, uint256[] memory _allocations) {
+        (_recipients, _allocations) = _calculate(_sortedList, PGContribCalculator.DEFAULT_TOTAL_ALLOCATION);
     }
 
     /**
@@ -807,112 +813,111 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Updates the the 0xSplitMain proxy and 0xSplit contract addresses
      * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitV2Manager
      */
-    function setSplit(address _splitMain, address _split) external onlyOwnerOrUpdater {
-        splitMain = ISplitMain(_splitMain);
-        address currentController = splitMain.getController(_split);
-        if (currentController == address(0)) revert Split__InvalidOrImmutable();
-        address newController = splitMain.getNewPotentialController(_split);
-        if (currentController != address(this) && newController != address(this)) revert Split__ControlNotHandedOver();
-        split = _split;
-        emit SplitUpdated(_splitMain, split);
-        acceptSplitControl();
+    function setSplit(address _splitWalletV2) external onlyOwnerOrUpdater {
+        split = ISplitWalletV2(_splitWalletV2);
+        address currentOwner = split.owner();
+        if (currentOwner == address(0)) revert Split__InvalidOrImmutable();
+        if (currentOwner != address(this)) revert Split__ControlNotHandedOver();
+        emit SplitUpdated(_splitWalletV2);
     }
 
     /**
      * @notice Updates the 0xSplit contracts on existing NetworkRegistry replicas via sync message
      * @dev Callable by main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkMemberRegistryV2
      */
     function updateNetworkSplit(
         uint32[] memory _chainIds,
-        address[] memory _splitsMain,
         address[] memory _splits,
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
-        if (_splitsMain.length != totalParams || _splits.length != totalParams) revert Registry__ParamsSizeMismatch();
-        bytes4 action = ISplitManager.setSplit.selector;
+        if (_splits.length != totalParams) revert Registry__ParamsSizeMismatch();
+        bytes4 action = ISplitV2Manager.setSplit.selector;
         for (uint256 i; i < totalParams; ++i) {
-            bytes memory callData = abi.encodeCall(ISplitManager.setSplit, (_splitsMain[i], _splits[i]));
+            bytes memory callData = abi.encodeCall(ISplitV2Manager.setSplit, (_splits[i]));
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
         }
     }
 
     /**
-     * @notice Transfer control of the current 0xSplit contract to `_newController`
-     * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @notice Transfer ownership of the current 0xSplit contract to `_newOwner`
+     * @inheritdoc ISplitV2Manager
      */
-    function transferSplitControl(address _newController) external onlyOwnerOrUpdater {
-        splitMain.transferControl(split, _newController);
+    function transferSplitOwnership(address _newOwner) external onlyOwnerOrUpdater {
+        split.transferOwnership(_newOwner);
     }
 
     /**
-     * @notice Submit sync messages to replicas in order to transfer control
-     * of the current 0xSplit contract to `_newController`
-     * @dev Callable by main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @notice Submit sync messages to replicas in order to transfer ownership of the current
+     * SplitWalletV2 contract
+     * @inheritdoc INetworkMemberRegistryV2
      */
-    function transferNetworkSplitControl(
+    function transferNetworkSplitOwnership(
         uint32[] memory _chainIds,
-        address[] memory _newControllers,
+        address[] memory _newOwners,
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint256 totalParams = _chainIds.length;
-        if (_newControllers.length != totalParams) revert Registry__ParamsSizeMismatch();
-        bytes4 action = ISplitManager.transferSplitControl.selector;
+        if (_newOwners.length != totalParams) revert Registry__ParamsSizeMismatch();
+        bytes4 action = ISplitV2Manager.transferSplitOwnership.selector;
         for (uint256 i; i < totalParams; ++i) {
-            bytes memory callData = abi.encodeCall(ISplitManager.transferSplitControl, (_newControllers[i]));
+            bytes memory callData = abi.encodeCall(ISplitV2Manager.transferSplitOwnership, (_newOwners[i]));
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
         }
     }
 
     /**
-     * @notice Accepts control of the current 0xSplit contract
-     * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @notice Pause the current SplitWalletV2 contract
+     * @inheritdoc ISplitV2Manager
      */
-    function acceptSplitControl() public onlyOwnerOrUpdater {
-        splitMain.acceptControl(split);
+    function pauseSplit(bool _paused) external onlyOwnerOrUpdater {
+        split.setPaused(_paused);
     }
 
     /**
-     * @notice Submit sync messages to replicas in order to accept control of the current 0xSplit contract
-     * @dev Callable by main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @notice Submit sync messages to replicas in order to (un)pause the current SplitWalletV2 contract
+     * @inheritdoc INetworkMemberRegistryV2
      */
-    function acceptNetworkSplitControl(
+    function pauseNetworkSplit(
         uint32[] memory _chainIds,
+        bool[] memory _paused,
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        bytes4 action = ISplitManager.acceptSplitControl.selector;
-        bytes memory callData = abi.encode(action);
-        _syncRegistries(action, callData, _chainIds, _relayerFees);
+        uint256 totalParams = _chainIds.length;
+        if (_paused.length != totalParams) revert Registry__ParamsSizeMismatch();
+        bytes4 action = ISplitV2Manager.pauseSplit.selector;
+        for (uint256 i; i < totalParams; ++i) {
+            bytes memory callData = abi.encodeCall(ISplitV2Manager.pauseSplit, (_paused[i]));
+            _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);
+        }
     }
 
     /**
-     * @notice Cancel controller transfer of the current 0xSplit contract
-     * @dev Callable on both main and replica registries
-     * @inheritdoc ISplitManager
+     * @notice Execute a batch of calls through SplitWallet
+     * @inheritdoc ISplitV2Manager
      */
-    function cancelSplitControlTransfer() external onlyOwnerOrUpdater {
-        splitMain.cancelControlTransfer(split);
+    function splitWalletExecCalls(
+        ISplitWalletV2.Call[] calldata _calls
+    ) external payable onlyOwnerOrUpdater returns (uint256 _blockNumber, bytes[] memory _returnData) {
+        (_blockNumber, _returnData) = split.execCalls{ value: msg.value }(_calls);
     }
 
     /**
-     * @notice Submit sync messages to replicas in order to cancel a transfer control request
-     * of the current 0xSplit contract
-     * @dev Callable by main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @notice Submit sync messages to replicas in order to execute a batch of calls through 0xSplitV2 SplitWallet
+     * @inheritdoc INetworkMemberRegistryV2
      */
-    function cancelNetworkSplitControlTransfer(
+    function networkSplitWalletExecCalls(
         uint32[] memory _chainIds,
+        ISplitWalletV2.Call[] calldata _calls,
         uint256[] memory _relayerFees
     ) external payable onlyOwner onlyMain validNetworkParams(_chainIds, _relayerFees) {
-        bytes4 action = ISplitManager.cancelSplitControlTransfer.selector;
-        bytes memory callData = abi.encode(action);
+        uint256 totalParams = _chainIds.length;
+        if (_calls.length != totalParams) revert Registry__ParamsSizeMismatch();
+        bytes4 action = ISplitV2Manager.splitWalletExecCalls.selector;
+        bytes memory callData = abi.encodeCall(ISplitV2Manager.splitWalletExecCalls, (_calls));
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 

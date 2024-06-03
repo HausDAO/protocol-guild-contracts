@@ -5,15 +5,32 @@ import { BigNumber } from "ethers";
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from "hardhat";
 
 import { PERCENTAGE_SCALE } from "../../constants";
-import { GuildRegistry, GuildRegistryHarness, GuildRegistryV2Mock, PGContribCalculator, SplitMain } from "../../types";
-import { User, registryFixture } from "../networkRegistry/NetworkRegistry.fixture";
+import {
+  GuildRegistry,
+  GuildRegistryV2,
+  GuildRegistryV2Harness,
+  GuildRegistryV21Mock,
+  PGContribCalculator,
+  PullSplitFactory,
+  SplitMain,
+  SplitWalletV2,
+} from "../../types";
+import { User, registryFixture } from "../networkRegistry/NetworkRegistryV2.fixture";
 import { Member } from "../types";
-import { deploySplit, generateMemberBatch, hashSplit, summonGuildRegistryProxy } from "../utils";
+import {
+  deploySplit,
+  deploySplitV2,
+  generateMemberBatch,
+  hashSplitV2,
+  summonGuildRegistryProxy,
+  summonGuildRegistryV2Proxy,
+} from "../utils";
 
-describe("GuildRegistry", function () {
+describe("GuildRegistryV2", function () {
   let l1CalculatorLibrary: PGContribCalculator;
-  let l1SplitMain: SplitMain;
-  let l1SplitAddress: string;
+  let l1SplitV2Factory: PullSplitFactory;
+  let l1SplitV2Address: string;
+  let l1SplitWalletV2: SplitWalletV2;
   let users: { [key: string]: User };
   let members: Array<string>;
   const splitConfig = {
@@ -21,12 +38,12 @@ describe("GuildRegistry", function () {
     distributorFee: 0,
   };
 
-  let guildRegistry: GuildRegistry;
+  let guildRegistry: GuildRegistryV2;
 
   beforeEach(async function () {
     const setup = await registryFixture({});
     l1CalculatorLibrary = setup.calculatorLibrary;
-    l1SplitMain = setup.splitMain;
+    l1SplitV2Factory = setup.splitV2Factory;
     users = setup.users;
 
     const signer = await ethers.getSigner(users.owner.address);
@@ -36,30 +53,31 @@ describe("GuildRegistry", function () {
       .sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
 
     // Deploy Split on L1
-    l1SplitAddress = await deploySplit(
-      l1SplitMain,
+    l1SplitV2Address = await deploySplitV2(
+      l1SplitV2Factory,
       members,
       splitConfig.percentAllocations,
       splitConfig.distributorFee,
+      PERCENTAGE_SCALE,
       users.owner.address,
     );
 
+    l1SplitWalletV2 = (await ethers.getContractAt("SplitWalletV2", l1SplitV2Address, signer)) as SplitWalletV2;
+
     // Summon Registry
-    const registryAddress = await summonGuildRegistryProxy(
+    const registryAddress = await summonGuildRegistryV2Proxy(
       l1CalculatorLibrary.address,
       {
-        splitMain: l1SplitMain.address,
-        split: l1SplitAddress,
+        split: l1SplitV2Address,
         owner: users.owner.address,
       },
-      "GuildRegistry",
+      "GuildRegistryV2",
     );
-    guildRegistry = (await ethers.getContractAt("GuildRegistry", registryAddress, signer)) as GuildRegistry;
+    guildRegistry = (await ethers.getContractAt("GuildRegistryV2", registryAddress, signer)) as GuildRegistryV2;
 
-    // Transfer Split control to GuildRegistry
-    const tx_controller_l1 = await l1SplitMain.transferControl(l1SplitAddress, registryAddress);
-    await tx_controller_l1.wait();
-    await guildRegistry.acceptSplitControl();
+    // Transfer Split ownership to GuildRegistry
+    const tx_ownership_l1 = await l1SplitWalletV2.transferOwnership(registryAddress);
+    await tx_ownership_l1.wait();
   });
 
   // ##############################################################################################################
@@ -70,42 +88,12 @@ describe("GuildRegistry", function () {
   // ##############################################################################################################
   // ##############################################################################################################
 
-  describe("GuildRegistry Config", function () {
+  describe("GuildRegistryV2 Config", function () {
     it("Should be not be able to initialize proxy with wrong parameters", async () => {
       const { deployer } = await getNamedAccounts();
       let initializationParams = ethers.utils.defaultAbiCoder.encode(
-        ["address", "address", "address"],
+        ["address", "address"],
         [
-          ethers.constants.AddressZero, // splitMain address
-          l1SplitAddress, // split address
-          ethers.constants.AddressZero, // owner
-        ],
-      );
-
-      await expect(
-        deployments.deploy("Guild Registry", {
-          contract: "GuildRegistry",
-          from: deployer,
-          args: [],
-          libraries: {
-            PGContribCalculator: l1CalculatorLibrary.address,
-          },
-          proxy: {
-            execute: {
-              methodName: "initialize",
-              args: [initializationParams],
-            },
-            proxyContract: "ERC1967Proxy",
-            proxyArgs: ["{implementation}", "{data}"],
-          },
-          log: true,
-        }),
-      ).to.be.revertedWithCustomError(guildRegistry, "Split_InvalidAddress");
-
-      initializationParams = ethers.utils.defaultAbiCoder.encode(
-        ["address", "address", "address"],
-        [
-          l1SplitMain.address, // splitMain address
           ethers.constants.AddressZero, // split address
           ethers.constants.AddressZero, // owner
         ],
@@ -113,7 +101,7 @@ describe("GuildRegistry", function () {
 
       await expect(
         deployments.deploy("Guild Registry", {
-          contract: "GuildRegistry",
+          contract: "GuildRegistryV2",
           from: deployer,
           args: [],
           libraries: {
@@ -132,17 +120,16 @@ describe("GuildRegistry", function () {
       ).to.be.revertedWithCustomError(guildRegistry, "Split_InvalidAddress");
 
       initializationParams = ethers.utils.defaultAbiCoder.encode(
-        ["address", "address", "address"],
+        ["address", "address"],
         [
-          l1SplitMain.address, // splitMain address
-          l1SplitAddress, // split address
+          l1SplitV2Address, // split address
           ethers.constants.AddressZero, // owner address
         ],
       );
 
       await expect(
         deployments.deploy("Guild Registry", {
-          contract: "GuildRegistry",
+          contract: "GuildRegistryV2",
           from: deployer,
           args: [],
           libraries: {
@@ -166,17 +153,17 @@ describe("GuildRegistry", function () {
     it("Should not be able to initialize the implementation contract", async () => {
       const signer = await ethers.getSigner(users.owner.address);
       const l1InitializationParams = ethers.utils.defaultAbiCoder.encode(
-        ["address", "address", "address"],
-        [l1SplitMain.address, l1SplitAddress, users.owner.address],
+        ["address", "address"],
+        [l1SplitV2Address, users.owner.address],
       );
       const implSlot = BigNumber.from("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc");
       const slotValue = await ethers.provider.getStorageAt(guildRegistry.address, implSlot);
       const implementationAddress = `0x${slotValue.substring(26, 66)}`;
       const implementation = (await ethers.getContractAt(
-        "GuildRegistry",
+        "GuildRegistryV2",
         implementationAddress,
         signer,
-      )) as GuildRegistry;
+      )) as GuildRegistryV2;
       await expect(implementation.initialize(l1InitializationParams)).to.be.revertedWithCustomError(
         implementation,
         "InvalidInitialization",
@@ -186,8 +173,8 @@ describe("GuildRegistry", function () {
     it("Should not be able to call init functions if contract is not initializing", async () => {
       const { deployer } = await getNamedAccounts();
       const signer = await ethers.getSigner(deployer);
-      const implDeployed = await deployments.deploy("GuildRegistryHarness", {
-        contract: "GuildRegistryHarness",
+      const implDeployed = await deployments.deploy("GuildRegistryV2Harness", {
+        contract: "GuildRegistryV2Harness",
         from: deployer,
         args: [],
         libraries: {
@@ -196,10 +183,10 @@ describe("GuildRegistry", function () {
         log: true,
       });
       const registry = (await ethers.getContractAt(
-        "GuildRegistryHarness",
+        "GuildRegistryV2Harness",
         implDeployed.address,
         signer,
-      )) as GuildRegistryHarness;
+      )) as GuildRegistryV2Harness;
 
       await expect(registry.exposed__MemberRegistry_init_unchained()).to.be.revertedWithCustomError(
         registry,
@@ -209,15 +196,11 @@ describe("GuildRegistry", function () {
       await expect(registry.exposed__MemberRegistry_init()).to.be.revertedWithCustomError(registry, "NotInitializing");
 
       await expect(
-        registry.exposed__GuildRegistry_init_unchained(ethers.constants.AddressZero, ethers.constants.AddressZero),
+        registry.exposed__GuildRegistryV2_init_unchained(ethers.constants.AddressZero),
       ).to.be.revertedWithCustomError(registry, "NotInitializing");
 
       await expect(
-        registry.exposed__GuildRegistry_init(
-          ethers.constants.AddressZero,
-          ethers.constants.AddressZero,
-          ethers.constants.AddressZero,
-        ),
+        registry.exposed__GuildRegistryV2_init(ethers.constants.AddressZero, ethers.constants.AddressZero),
       ).to.be.revertedWithCustomError(registry, "NotInitializing");
     });
 
@@ -236,158 +219,119 @@ describe("GuildRegistry", function () {
       const signer = await ethers.getSigner(users.applicant.address);
       const applicantRegistry = guildRegistry.connect(signer);
 
-      await expect(applicantRegistry.setSplit(l1SplitMain.address, l1SplitAddress)).to.be.revertedWithCustomError(
+      await expect(applicantRegistry.setSplit(l1SplitV2Address)).to.be.revertedWithCustomError(
         guildRegistry,
         "OwnableUnauthorizedAccount",
       );
-      await expect(applicantRegistry.transferSplitControl(users.applicant.address)).to.be.revertedWithCustomError(
+      await expect(applicantRegistry.transferSplitOwnership(users.applicant.address)).to.be.revertedWithCustomError(
         guildRegistry,
         "OwnableUnauthorizedAccount",
       );
-      await expect(applicantRegistry.acceptSplitControl()).to.be.revertedWithCustomError(
+      await expect(applicantRegistry.pauseSplit(true)).to.be.revertedWithCustomError(
         guildRegistry,
         "OwnableUnauthorizedAccount",
       );
-      await expect(applicantRegistry.cancelSplitControlTransfer()).to.be.revertedWithCustomError(
-        guildRegistry,
-        "OwnableUnauthorizedAccount",
-      );
+      await expect(
+        applicantRegistry.splitWalletExecCalls([{ data: "0x", to: users.applicant.address, value: "0" }]),
+      ).to.be.revertedWithCustomError(guildRegistry, "OwnableUnauthorizedAccount");
     });
 
-    it("Should control the 0xSplit contract", async () => {
+    it("Should own the 0xSplit contract", async () => {
       const signer = await ethers.getSigner(users.owner.address);
-      const l1SplitMainAddress = await guildRegistry.splitMain();
-      const l1SplitAddress = await guildRegistry.split();
-      const splitMain = (await ethers.getContractAt("SplitMain", l1SplitMainAddress, signer)) as SplitMain;
-      expect(await splitMain.getController(l1SplitAddress)).to.equal(guildRegistry.address);
+      const l1SplitV2Address = await guildRegistry.split();
+      const splitV2Wallet = (await ethers.getContractAt("SplitWalletV2", l1SplitV2Address, signer)) as SplitWalletV2;
+      expect(await splitV2Wallet.owner()).to.equal(guildRegistry.address);
     });
 
     it("Should not be able to set a non-existent 0xSplit contract", async () => {
       const dummySplitAddress = users.applicant.address;
-      await expect(guildRegistry.setSplit(l1SplitMain.address, dummySplitAddress)).to.be.revertedWithCustomError(
-        guildRegistry,
-        "Split__InvalidOrImmutable",
-      );
+      await expect(guildRegistry.setSplit(dummySplitAddress)).to.be.revertedWithoutReason();
 
-      const newSplitAddress = await deploySplit(
-        l1SplitMain,
+      const newSplitAddress = await deploySplitV2(
+        l1SplitV2Factory,
         members,
         splitConfig.percentAllocations,
         splitConfig.distributorFee,
+        PERCENTAGE_SCALE,
         ethers.constants.AddressZero, // immutable
       );
-      await expect(guildRegistry.setSplit(l1SplitMain.address, newSplitAddress)).to.be.revertedWithCustomError(
+      await expect(guildRegistry.setSplit(newSplitAddress)).to.be.revertedWithCustomError(
         guildRegistry,
         "Split__InvalidOrImmutable",
       );
     });
 
-    it("Should not be able to update 0xSplit contract if control is not handed over first", async () => {
-      const newSplitAddress = await deploySplit(
-        l1SplitMain,
+    it("Should not be able to update 0xSplit contract if ownership is not handed over first", async () => {
+      const newSplitAddress = await deploySplitV2(
+        l1SplitV2Factory,
         members,
         splitConfig.percentAllocations,
         splitConfig.distributorFee,
-        users.owner.address,
+        PERCENTAGE_SCALE,
+        users.applicant.address,
       );
 
-      await expect(guildRegistry.setSplit(l1SplitMain.address, newSplitAddress)).to.be.revertedWithCustomError(
+      await expect(guildRegistry.setSplit(newSplitAddress)).to.be.revertedWithCustomError(
         guildRegistry,
         "Split__ControlNotHandedOver",
       );
     });
 
-    it("Should be able to update 0xSplit contract and get control over it", async () => {
-      const newSplitAddress = await deploySplit(
-        l1SplitMain,
+    it("Should be able to update 0xSplit contract and get ownership over it", async () => {
+      const signer = await ethers.getSigner(users.owner.address);
+      const newSplitAddress = await deploySplitV2(
+        l1SplitV2Factory,
         members,
         splitConfig.percentAllocations,
         splitConfig.distributorFee,
+        PERCENTAGE_SCALE,
         users.owner.address,
       );
-      const txTransfer = await l1SplitMain.transferControl(newSplitAddress, guildRegistry.address);
-      await txTransfer.wait();
+      const splitV2Wallet = (await ethers.getContractAt("SplitWalletV2", newSplitAddress, signer)) as SplitWalletV2;
+      const tx_owner = await splitV2Wallet.transferOwnership(guildRegistry.address);
+      await tx_owner.wait();
+      await expect(tx_owner)
+        .to.emit(splitV2Wallet, "OwnershipTransferred")
+        .withArgs(users.owner.address, guildRegistry.address);
 
-      const tx = await guildRegistry.setSplit(l1SplitMain.address, newSplitAddress);
+      const tx = await guildRegistry.setSplit(newSplitAddress);
 
-      await expect(tx).to.emit(guildRegistry, "SplitUpdated").withArgs(l1SplitMain.address, newSplitAddress);
-      await expect(tx)
-        .to.emit(l1SplitMain, "ControlTransfer")
-        .withArgs(newSplitAddress, users.owner.address, guildRegistry.address);
+      await expect(tx).to.emit(guildRegistry, "SplitUpdated").withArgs(newSplitAddress);
     });
 
-    it("Should be able to transfer 0xSplit control", async () => {
+    it("Should be able to transfer 0xSplit ownership", async () => {
       const newController = users.applicant.address;
-      const tx = await guildRegistry.transferSplitControl(newController);
+      const tx = await guildRegistry.transferSplitOwnership(newController);
       await tx.wait();
-      expect(await l1SplitMain.getNewPotentialController(await guildRegistry.split())).to.equal(newController);
+      expect(await l1SplitWalletV2.owner()).to.equal(newController);
     });
 
-    it("Should be able to accept 0xSplit control", async () => {
-      const signer = await ethers.getSigner(users.owner.address);
-      const newL1SplitAddress = await deploySplit(
-        l1SplitMain,
-        members,
-        splitConfig.percentAllocations,
-        splitConfig.distributorFee,
-        users.owner.address,
-      );
-      const l1RegistryAddress = await summonGuildRegistryProxy(
-        l1CalculatorLibrary.address,
+    it("Should be able to pause 0xSplit", async () => {
+      const tx = await guildRegistry.pauseSplit(true);
+      await expect(tx).to.emit(l1SplitWalletV2, "SetPaused").withArgs(true);
+    });
+
+    it("Should be able to execute calls through 0xSplit wallet", async () => {
+      const to = users.applicant.address;
+      const value = ethers.utils.parseEther("1");
+      const calls = [
         {
-          splitMain: l1SplitMain.address,
-          split: newL1SplitAddress,
-          owner: users.owner.address,
+          to,
+          value,
+          data: "0x",
         },
-        "Guild Registry",
-      );
-      const txTransfer = await l1SplitMain.transferControl(newL1SplitAddress, l1RegistryAddress);
-      await expect(txTransfer)
-        .to.emit(l1SplitMain, "InitiateControlTransfer")
-        .withArgs(newL1SplitAddress, l1RegistryAddress);
-      const registry = (await ethers.getContractAt("GuildRegistry", l1RegistryAddress, signer)) as GuildRegistry;
-      const tx = await registry.acceptSplitControl();
+      ];
+      const balanceBefore = await ethers.provider.getBalance(to);
+      const tx = await guildRegistry.splitWalletExecCalls(calls, { value });
       await expect(tx)
-        .to.emit(l1SplitMain, "ControlTransfer")
-        .withArgs(newL1SplitAddress, users.owner.address, l1RegistryAddress);
-    });
-
-    it("Should be able to cancel 0xSplit control", async () => {
-      const signer = await ethers.getSigner(users.owner.address);
-      const newL1SplitAddress = await deploySplit(
-        l1SplitMain,
-        members,
-        splitConfig.percentAllocations,
-        splitConfig.distributorFee,
-        users.owner.address,
-      );
-      const l1RegistryAddress = await summonGuildRegistryProxy(
-        l1CalculatorLibrary.address,
-        {
-          splitMain: l1SplitMain.address,
-          split: newL1SplitAddress,
-          owner: users.owner.address,
-        },
-        "Guild Registry",
-      );
-      const txTransfer = await l1SplitMain.transferControl(newL1SplitAddress, l1RegistryAddress);
-      await expect(txTransfer)
-        .to.emit(l1SplitMain, "InitiateControlTransfer")
-        .withArgs(newL1SplitAddress, l1RegistryAddress);
-
-      const registry = (await ethers.getContractAt("GuildRegistry", l1RegistryAddress, signer)) as GuildRegistry;
-      const txAccept = await registry.acceptSplitControl();
-      await expect(txAccept)
-        .to.emit(l1SplitMain, "ControlTransfer")
-        .withArgs(newL1SplitAddress, users.owner.address, l1RegistryAddress);
-
-      const txTransfer2 = await registry.transferSplitControl(users.applicant.address);
-      await expect(txTransfer2)
-        .to.emit(l1SplitMain, "InitiateControlTransfer")
-        .withArgs(newL1SplitAddress, users.applicant.address);
-
-      const tx = await registry.cancelSplitControlTransfer();
-      await expect(tx).to.emit(l1SplitMain, "CancelControlTransfer").withArgs(newL1SplitAddress);
+        .to.emit(l1SplitWalletV2, "ExecCalls")
+        .withArgs((value: any) => {
+          expect(value.length).to.equal(1);
+          expect(value[0]).to.deep.equal(calls.map((c) => [c.to, c.value, c.data])[0]);
+          return true;
+        });
+      const balanceAfter = await ethers.provider.getBalance(to);
+      expect(balanceAfter).to.be.equal(balanceBefore.add(value));
     });
   });
 
@@ -399,7 +343,7 @@ describe("GuildRegistry", function () {
   // ##############################################################################################################
   // ##############################################################################################################
 
-  describe("GuildRegistry Actions", function () {
+  describe("GuildRegistryV2 Actions", function () {
     it("Should not be able to update a main registry if not the owner", async () => {
       const signer = await ethers.getSigner(users.applicant.address);
       const applicantRegistry = guildRegistry.connect(signer);
@@ -592,7 +536,6 @@ describe("GuildRegistry", function () {
             .to.emit(guildRegistry, "UpdateMember")
             .withArgs(newMembers[i].account, modActivityMultipliers[i], newMembers[i].startDate, anyValue);
       }
-      // TODO: check members with activityMuliplier=0 were removed from the registry
       const totalActiveMembers = await guildRegistry.totalActiveMembers();
       expect(totalActiveMembers).to.be.equal(modActivityMultipliers.filter((v) => v === 0).length);
     });
@@ -788,9 +731,10 @@ describe("GuildRegistry", function () {
       newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
       const sortedMembers = newMembers.map((m: Member) => m.account);
 
-      await expect(
-        guildRegistry.updateSplits(sortedMembers.map(() => sortedMembers[0]), splitDistributorFee)
-      ).to.be.revertedWithCustomError(
+      await expect(guildRegistry.updateSplits(
+        sortedMembers.map(() => sortedMembers[0]),
+        splitDistributorFee
+      )).to.be.revertedWithCustomError(
         l1CalculatorLibrary,
         "SplitDistribution__AccountsOutOfOrderOrInvalid",
       );
@@ -802,11 +746,6 @@ describe("GuildRegistry", function () {
       await expect(guildRegistry.updateSplits(members, splitDistributorFee)).to.be.revertedWithCustomError(
         l1CalculatorLibrary,
         "SplitDistribution__MemberListSizeMismatch",
-      );
-
-      await expect(guildRegistry.updateSplits(members.slice(1), splitDistributorFee)).to.be.revertedWithCustomError(
-        l1CalculatorLibrary,
-        "SplitDistribution__AccountsOutOfOrderOrInvalid",
       );
 
       sortedMembers.pop(); // remove the last member in sortedList
@@ -891,7 +830,7 @@ describe("GuildRegistry", function () {
       newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
       const sortedMembers = newMembers.map((m: Member) => m.account);
 
-      const { _receivers, _percentAllocations } = await guildRegistry.calculate(sortedMembers);
+      const { _recipients, _allocations } = await guildRegistry.calculate(sortedMembers);
 
       // fetch last calculated contributions on registry
       const contributions = await Promise.all(
@@ -904,8 +843,8 @@ describe("GuildRegistry", function () {
         contr.mul(PERCENTAGE_SCALE).div(totalContributions),
       );
 
-      expect(_receivers).to.be.eql(newMembers.map((m: Member) => m.account));
-      expect(_percentAllocations).to.be.eql(calculatedAllocations.map((v: BigNumber) => v.toNumber()));
+      expect(_recipients).to.be.eql(newMembers.map((m: Member) => m.account));
+      expect(_allocations).to.be.eql(calculatedAllocations);
     });
 
     it("Should be able to calculate Split allocations", async () => {
@@ -926,7 +865,7 @@ describe("GuildRegistry", function () {
       newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
       const sortedMembers = newMembers.map((m: Member) => m.account);
 
-      const { _receivers, _percentAllocations } = await guildRegistry.calculate(sortedMembers);
+      const { _recipients, _allocations } = await guildRegistry.calculate(sortedMembers);
 
       // filter active members
       const activeMembers = newMembers.filter((member: Member) => Number(member.activityMultiplier) > 0);
@@ -952,8 +891,8 @@ describe("GuildRegistry", function () {
         calculatedAllocations[minIndex] = calculatedAllocations[minIndex].add(PERCENTAGE_SCALE.sub(totalAllocations));
       }
 
-      expect(_receivers).to.be.eql(activeMembers.map((m: Member) => m.account));
-      expect(_percentAllocations).to.be.eql(calculatedAllocations.map((v: BigNumber) => v.toNumber()));
+      expect(_recipients).to.be.eql(activeMembers.map((m: Member) => m.account));
+      expect(_allocations).to.be.eql(calculatedAllocations);
     });
 
     it("Should not be able to produce an empty Split distribution", async () => {
@@ -998,17 +937,21 @@ describe("GuildRegistry", function () {
       const splitDistributorFee = splitConfig.distributorFee;
 
       // pre-calculate to get split hash
-      const { _receivers, _percentAllocations } = await guildRegistry.calculate(members);
-
-      const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
+      const { _recipients, _allocations } = await guildRegistry.calculate(members);
+      const splitHash = hashSplitV2(_recipients, _allocations, PERCENTAGE_SCALE, splitDistributorFee);
 
       const tx = await guildRegistry.updateSplits(members, splitDistributorFee);
 
-      await expect(tx).to.emit(l1SplitMain, "UpdateSplit").withArgs(l1SplitAddress);
+      await expect(tx)
+        .to.emit(l1SplitWalletV2, "SplitUpdated")
+        .withArgs((value: any) => {
+          expect(value).to.deep.equal([_recipients, _allocations, PERCENTAGE_SCALE, splitDistributorFee]);
+          return true;
+        });
       await expect(tx)
         .to.emit(guildRegistry, "SplitsDistributionUpdated")
-        .withArgs(l1SplitAddress, splitHash, splitDistributorFee);
-      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
+        .withArgs(l1SplitV2Address, splitHash, splitDistributorFee);
+      expect(await l1SplitWalletV2.splitHash()).to.equal(splitHash);
     });
 
     it("Should not be able to update all if submitted member list is invalid", async () => {
@@ -1028,9 +971,9 @@ describe("GuildRegistry", function () {
       const updateTx = await guildRegistry.updateSecondsActive(0);
       await updateTx.wait();
 
-      await expect(guildRegistry.updateAll(
-        0, sortedMembers.map(() => sortedMembers[0]), splitDistributorFee
-      )).to.be.revertedWithCustomError(
+      await expect(
+        guildRegistry.updateAll(0, sortedMembers.map(() => sortedMembers[0]), splitDistributorFee)
+      ).to.be.revertedWithCustomError(
         l1CalculatorLibrary,
         "SplitDistribution__AccountsOutOfOrderOrInvalid",
       );
@@ -1044,10 +987,6 @@ describe("GuildRegistry", function () {
       await expect(guildRegistry.updateAll(0, members, splitDistributorFee)).to.be.revertedWithCustomError(
         l1CalculatorLibrary,
         "SplitDistribution__MemberListSizeMismatch",
-      );
-      await expect(guildRegistry.updateAll(0, members.slice(1), splitDistributorFee)).to.be.revertedWithCustomError(
-        l1CalculatorLibrary,
-        "SplitDistribution__AccountsOutOfOrderOrInvalid",
       );
 
       sortedMembers.pop(); // remove the last member in sortedList
@@ -1084,8 +1023,8 @@ describe("GuildRegistry", function () {
       const lastBlockTimestamp = await time.latest();
 
       // MUST get calculations after the updateAll call so it uses the latest activeSeconds
-      const { _receivers, _percentAllocations } = await guildRegistry.calculate(members);
-      const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
+      const { _recipients, _allocations } = await guildRegistry.calculate(members);
+      const splitHash = hashSplitV2(_recipients, _allocations, PERCENTAGE_SCALE, splitDistributorFee);
 
       for (let i = 0; i < batchSize; i++) {
         await expect(tx)
@@ -1098,11 +1037,16 @@ describe("GuildRegistry", function () {
       const totalMembers = await guildRegistry.totalMembers();
       await expect(tx).to.emit(guildRegistry, "RegistryActivityUpdate").withArgs(lastBlockTimestamp, totalMembers);
 
-      await expect(tx).to.emit(l1SplitMain, "UpdateSplit").withArgs(l1SplitAddress);
+      await expect(tx)
+        .to.emit(l1SplitWalletV2, "SplitUpdated")
+        .withArgs((value: any) => {
+          expect(value).to.deep.equal([_recipients, _allocations, PERCENTAGE_SCALE, splitDistributorFee]);
+          return true;
+        });
       await expect(tx)
         .to.emit(guildRegistry, "SplitsDistributionUpdated")
-        .withArgs(l1SplitAddress, splitHash, splitDistributorFee);
-      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
+        .withArgs(l1SplitV2Address, splitHash, splitDistributorFee);
+      expect(await l1SplitWalletV2.splitHash()).to.equal(splitHash);
     });
   });
 
@@ -1114,7 +1058,7 @@ describe("GuildRegistry", function () {
   // ##########################################################################################################
   // ##########################################################################################################
 
-  describe("GuildRegistry getters", function () {
+  describe("GuildRegistryV2 getters", function () {
     const batchSize: number = 10;
     let newMembers: Array<Member>;
 
@@ -1133,7 +1077,6 @@ describe("GuildRegistry", function () {
     });
 
     it("Should be able to get the current number of active members", async () => {
-      // TODO: check members updates being removed from the registry
       expect(await guildRegistry.totalActiveMembers()).to.equal(newMembers.length);
 
       const updateTx = await guildRegistry.updateSecondsActive(0);
@@ -1224,14 +1167,14 @@ describe("GuildRegistry", function () {
   // ##########################################################################################################
   // ##########################################################################################################
 
-  describe("GuildRegistry UUPS Upgradeability", function () {
-    let newRegistryImplementation: GuildRegistryV2Mock;
+  describe("GuildRegistryV2 UUPS Upgradeability", function () {
+    let newRegistryImplementation: GuildRegistryV21Mock;
 
     beforeEach(async () => {
       const { deployer } = await getNamedAccounts();
       const signer = await ethers.getSigner(deployer);
-      const implDeployed = await deployments.deploy("GuildRegistryV2Mock", {
-        contract: "GuildRegistryV2Mock",
+      const implDeployed = await deployments.deploy("GuildRegistryV21Mock", {
+        contract: "GuildRegistryV21Mock",
         from: deployer,
         args: [],
         libraries: {
@@ -1239,7 +1182,7 @@ describe("GuildRegistry", function () {
         },
         log: true,
       });
-      newRegistryImplementation = await ethers.getContractAt("GuildRegistryV2Mock", implDeployed.address, signer);
+      newRegistryImplementation = await ethers.getContractAt("GuildRegistryV21Mock", implDeployed.address, signer);
     });
 
     it("Should not be able to upgrade the implementation of a registry if not owner", async () => {
@@ -1267,8 +1210,8 @@ describe("GuildRegistry", function () {
         .withArgs(newRegistryImplementation.address);
 
       const initializationParams = ethers.utils.defaultAbiCoder.encode(
-        ["address", "address", "address"],
-        [l1SplitMain.address, l1SplitAddress, users.owner.address],
+        ["address", "address"],
+        [l1SplitV2Address, users.owner.address],
       );
 
       const calldata = newRegistryImplementation.interface.encodeFunctionData("initialize", [initializationParams]);
@@ -1278,6 +1221,54 @@ describe("GuildRegistry", function () {
 
       await expect(tx).to.emit(guildRegistry, "Upgraded").withArgs(newRegistryImplementation.address);
       await expect(tx).to.emit(guildRegistry, "Initialized").withArgs(2);
+    });
+
+    it("Should be able to upgrade from V1 to V2 registry", async () => {
+      const { deployer } = await getNamedAccounts();
+      const signer = await ethers.getSigner(users.owner.address);
+
+      // Deploy SplitMain V1
+      const l1SplitMainDeployed = await deployments.deploy("SplitMain", {
+        contract: "SplitMain",
+        from: deployer,
+        args: [],
+        log: false,
+      });
+      const l1SplitV1Main = (await ethers.getContractAt("SplitMain", l1SplitMainDeployed.address, signer)) as SplitMain;
+      // Deploy Split V1
+      const l1SplitAddress = await deploySplit(
+        l1SplitV1Main,
+        members,
+        splitConfig.percentAllocations,
+        splitConfig.distributorFee,
+        users.owner.address,
+      );
+      // Summon RegistryV1
+      const registryV1Address = await summonGuildRegistryProxy(
+        l1CalculatorLibrary.address,
+        {
+          splitMain: l1SplitV1Main.address,
+          split: l1SplitAddress,
+          owner: users.owner.address,
+        },
+        "GuildRegistryV1",
+      );
+      const guildRegistryV1 = (await ethers.getContractAt("GuildRegistry", registryV1Address, signer)) as GuildRegistry;
+
+      // Registry V2
+      const initializationParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "address"],
+        [l1SplitV2Address, users.owner.address],
+      );
+
+      const calldata = newRegistryImplementation.interface.encodeFunctionData("initialize", [initializationParams]);
+
+      const tx = await guildRegistryV1.upgradeToAndCall(newRegistryImplementation.address, calldata);
+      await tx.wait();
+
+      await expect(tx).to.emit(guildRegistryV1, "Upgraded").withArgs(newRegistryImplementation.address);
+      await expect(tx).to.emit(guildRegistryV1, "Initialized").withArgs(2);
+      expect(await guildRegistryV1.split()).to.be.equal(l1SplitV2Address);
     });
   });
 });
