@@ -292,74 +292,74 @@ pnpm hardhat memberlist:generate
   `./constants/config.ts`
 
 ```sh
-pnpm hardhat --network goerli deploy:split --controller
-pnpm hardhat --network optimismGoerli deploy:split --controller
-pnpm hardhat --network arbitrumGoerli deploy:split --controller
+# Split V1
+pnpm hardhat --network sepolia deploy:split --controller
+pnpm hardhat --network optimismSepolia deploy:split --controller
+pnpm hardhat --network arbitrumSepolia deploy:split --controller
+```
+
+```sh
+# Split V2
+pnpm hardhat --network sepolia deploy:splitV2 --controller
+pnpm hardhat --network optimismSepolia deploy:splitV2 --controller
+pnpm hardhat --network arbitrumSepolia deploy:splitV2 --controller
 ```
 
 The `--controller` flag will set the deployer address as the 0xSplit controller..
-
-- **Deploy & Verify Registry Summoner + Singleton contracts** on relevant test networks (OPTIONAL as these should be
-  already deployed)
-
-```sh
-pnpm hardhat --network goerli deploy --tags Summoner
-pnpm hardhat --network goerli etherscan-verify
-
-pnpm hardhat --network optimismGoerli deploy --tags Summoner
-pnpm hardhat --network optimismGoerli etherscan-verify
-
-pnpm hardhat --network arbitrumGoerli deploy --tags Summoner
-pnpm hardhat --network arbitrumGoerli etherscan-verify
-```
 
 - **Deploy a Main NetworkRegistry** using the deploy script. The registry will be owned either by `safe` address, or
   `moloch`.avatar() address you define in `./constants/config.ts`, otherwise the `deployer` will be set as owner by
   default. Finally don't forget to set the `pgRegistry` to the deployed contract address in `./constants/config.ts`.
 
-Using Summoner:
+GuildRegistry:
 
 ```sh
-pnpm hardhat --network goerli deploy --tags PGNetworkRegistry
+pnpm hardhat --network sepolia deploy --tags GuildRegistry
+# or using SplitV2
+pnpm hardhat --network sepolia deploy --tags GuildRegistryV2
 ```
 
-Using UUPS Proxy:
+NetworkRegistry:
 
 ```sh
-pnpm hardhat --network sepolia deploy --tags UpgradeablePGNetworkRegistry
+pnpm hardhat --network sepolia deploy --tags NetworkRegistry
+# or using SplitV2
+pnpm hardhat --network sepolia deploy --tags NetworkRegistryV2
 ```
 
 - **Transfer 0xSplit control to NetworkRegistry contract**: if NetworkRegistry is owner by the DAO safe, remember to
   trigger an action later to accept control.
 
 ```sh
-pnpm hardhat --network goerli registry:ownSplit
+pnpm hardhat --network sepolia registry:ownSplit
 ```
 
 - **Deploy a Replica NetworkRegistry on relevant L2's**. The registry will be owned by a temporary `registryOwner`
   address if set in `./constants/config.ts`, otherwise the `deployer` will renounce ownership (Zero address) by default.
   Finally don't forget to set the `pgRegistry` to the deployed contract address in `./constants/config.ts`.
 
-Using Summoner:
+GuildRegistry:
 
 ```sh
-pnpm hardhat --network optimismGoerli deploy --tags PGNetworkRegistry
-pnpm hardhat --network arbitrumGoerli deploy --tags PGNetworkRegistry
+pnpm hardhat --network optimismSepolia deploy --tags GuildRegistry
+# or using SplitV2
+pnpm hardhat --network optimismSepolia deploy --tags GuildRegistryV2
 ```
 
-Using UUPS Proxy:
+NetworkRegistry:
 
 ```sh
-pnpm hardhat --network optimismSepolia deploy --tags UpgradeablePGNetworkRegistry
-pnpm hardhat --network arbitrumSepolia deploy --tags UpgradeablePGNetworkRegistry
+pnpm hardhat --network optimismSepolia deploy --tags NetworkRegistry
+# or using SplitV2
+pnpm hardhat --network optimismSepolia deploy --tags NetworkRegistryV2
 ```
 
 - **Register a new Replicas on the Main NetworkRegistry**
 
 ```
-pnpm hardhat --network goerli registry:addNetwork --foreign-chain-id 420 --foreign-domain-id 1735356532 --foreign-registry-address <registry_address>
+pnpm hardhat --network sepolia registry:addNetwork --foreign-chain-id 420 --foreign-domain-id 1735356532 --foreign-registry-address <registry_address>
 
-pnpm hardhat --network goerli registry:addNetwork --foreign-chain-id 421613 --foreign-domain-id 1734439522 --foreign-registry-address <registry_address>
+pnpm hardhat --network sepolia registry:addNetwork --foreign-chain-id 421613 --foreign-domain-id 1734439522 --foreign-registry-address <registry_address>
 ```
 
 - **Transfer 0xSplit control in L2s to replica NetworkRegistry contracts**. In case of Replica registries that have
@@ -375,50 +375,32 @@ pnpm hardhat --network goerli registry:addNetwork --foreign-chain-id 421613 --fo
 - **Test New Member Sync Action**
 
 ```
-pnpm hardhat --network goerli registry:newMember --member <member_address> --multiplier 100
+pnpm hardhat --network sepolia registry:newMember --member <member_address> --multiplier 100
 ```
 
 - Copy the hash from the latest tx and open
-  [Goerli subgraph](https://thegraph.com/hosted-service/subgraph/connext/nxtp-amarok-runtime-v0-goerli)
+  [Sepolia subgraph](https://thegraph.com/hosted-service/subgraph/connext/runtime-v1-sepolia)
 - Copy/Paste Origin Transfer query from [this link](https://docs.connext.network/developers/guides/xcall-status) and
   replace the txHash parameter. You'll get the `transferId` from both cross-chain actions submitted to optimism and
   arbitrum
-- Open [Connextscan]() to monitor cross-chain actions status. It usually takes ~30min to get a Complete status (Tx
+- Open [Connextscan](https://testnet.connextscan.io/) to monitor cross-chain actions status. It usually takes ~30min to get a Complete status (Tx
   Reconciled & Executed)
 
 ## Deployed Contracts
 
 ### Sepolia
 
-| Contract                       | Address |
-| ------------------------------ | ------- |
-| NetworkRegistry Proxy          | TBD     |
-| NetworkRegistry Implementation | TBD     |
-| PGContribCalculator            | TBD     |
-
-### ~~Goerli~~
-
-| Contract                        | Address                                        |
-| ------------------------------- | ---------------------------------------------- |
-| NetworkRegistrySummoner         | ~~0xd1a8c3b7F7250b50E352b51d148A29f24C0CeD62~~ |
-| NetworkRegistry Singleton       | ~~0x250F9e93822cD48269E8a24A9D4bE817A9cf389D~~ |
-| NetworkRegistryShaman Singleton | <None>                                         |
-
-### ~~Optimism Goerli~~
-
-| Contract                        | Address                                        |
-| ------------------------------- | ---------------------------------------------- |
-| NetworkRegistrySummoner         | ~~0x7D32b8Ae083d78ff6628271a15B162676380bd00~~ |
-| NetworkRegistry Singleton       | ~~0xF3C93FBa186758605318b2F6d0b141029a20E2a8~~ |
-| NetworkRegistryShaman Singleton | <None>                                         |
-
-### ~~Arbitrum Goerli~~
-
-| Contract                        | Address                                        |
-| ------------------------------- | ---------------------------------------------- |
-| NetworkRegistrySummoner         | ~~0x7D32b8Ae083d78ff6628271a15B162676380bd00~~ |
-| NetworkRegistry Singleton       | ~~0xF3C93FBa186758605318b2F6d0b141029a20E2a8~~ |
-| NetworkRegistryShaman Singleton | <None>                                         |
+| Contract                          | Address |
+| --------------------------------- | ------- |
+| NetworkRegistry Proxy             | TBD     |
+| NetworkRegistry Implementation    | TBD     |
+| NetworkRegistryV2 Proxy           | TBD     |
+| NetworkRegistryV2  Implementation | TBD     |
+| GuildRegistry Proxy               | TBD     |
+| GuildRegistry Implementation      | TBD     |
+| GuildRegistryV2 Proxy             | TBD     |
+| GuildRegistryV2 Implementation    | TBD     |
+| PGContribCalculator               | TBD     |
 
 ### Polygon Mumbai
 

@@ -35,13 +35,12 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     console.log("Registry will be owned by", owner, "Is L2?", networkConfig.l2, "Is Safe?", owner === safeAddress);
 
     const initializationParams = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint32", "address", "address", "address", "address"],
+      ["address", "uint32", "address", "address", "address"],
       [
         networkConfig.connext,
         networkConfig.l2 ? deploymentConfig[parentChainId].domainId : 0,
         networkConfig.l2 ? deploymentConfig[parentChainId].pgRegistry : ethers.constants.AddressZero,
-        networkConfig.splitMain,
-        networkConfig.split,
+        networkConfig.splitV2,
         owner,
       ],
     );
@@ -53,8 +52,8 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       log: true,
     });
 
-    const registryDeployed = await deploy("NetworkRegistry", {
-      contract: "NetworkRegistry",
+    const registryDeployed = await deploy("NetworkRegistryV2", {
+      contract: "NetworkRegistryV2",
       from: deployer,
       args: [],
       libraries: {
@@ -75,7 +74,7 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     });
     const registryAddress = registryDeployed.address;
 
-    console.log(`PG NetworkRegistry deployed on ${network.name} chain at ${registryAddress}`);
+    console.log(`PG NetworkRegistryV2 deployed on ${network.name} chain at ${registryAddress}`);
 
     return;
   }
@@ -83,4 +82,4 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 };
 
 export default deployFn;
-deployFn.tags = ["NetworkRegistry", "UpgradeablePGNetworkRegistry"];
+deployFn.tags = ["NetworkRegistryV2", "UpgradeablePGNetworkRegistry"];

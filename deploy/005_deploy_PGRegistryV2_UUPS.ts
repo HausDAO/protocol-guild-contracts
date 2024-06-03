@@ -30,8 +30,8 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   console.log("Registry will be owned by", owner, "Is Safe?", owner === safeAddress);
 
   const initializationParams = ethers.utils.defaultAbiCoder.encode(
-    ["address", "address", "address"],
-    [networkConfig.splitMain, networkConfig.split, owner],
+    ["address", "address"],
+    [networkConfig.splitV2, owner],
   );
 
   const calculatorLibraryDeployed = await deploy("PGContribCalculator", {
@@ -41,8 +41,8 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     log: true,
   });
 
-  const registryDeployed = await deploy("GuildRegistry", {
-    contract: "GuildRegistry",
+  const registryDeployed = await deploy("GuildRegistryV2", {
+    contract: "GuildRegistryV2",
     from: deployer,
     args: [],
     libraries: {
@@ -63,8 +63,8 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   });
   const registryAddress = registryDeployed.address;
 
-  console.log(`PG GuildRegistry deployed on ${network.name} chain at ${registryAddress}`);
+  console.log(`PG GuildRegistryV2 deployed on ${network.name} chain at ${registryAddress}`);
 };
 
 export default deployFn;
-deployFn.tags = ["GuildRegistry", "UpgradeablePGuildRegistry"];
+deployFn.tags = ["GuildRegistryV2", "UpgradeablePGuildRegistry"];
