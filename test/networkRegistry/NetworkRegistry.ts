@@ -682,11 +682,11 @@ describe("NetworkRegistry", function () {
         l1NetworkRegistry,
         "NetworkRegistry__OnlyReplicaRegistry",
       );
-      await expect(applicantRegistry.updateSplits([users.applicant.address], 100_000)).to.be.revertedWithCustomError(
+      await expect(applicantRegistry.updateSplits([users.applicant.address], 10_000)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
         "NetworkRegistry__OnlyReplicaRegistry",
       );
-      await expect(applicantRegistry.updateAll(0, [users.applicant.address], 100_000)).to.be.revertedWithCustomError(
+      await expect(applicantRegistry.updateAll(0, [users.applicant.address], 10_000)).to.be.revertedWithCustomError(
         l1NetworkRegistry,
         "NetworkRegistry__OnlyReplicaRegistry",
       );
@@ -1063,6 +1063,15 @@ describe("NetworkRegistry", function () {
       newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
       const sortedMembers = newMembers.map((m: Member) => m.account);
 
+      await expect(
+        l1NetworkRegistry.syncUpdateSplits(
+          sortedMembers.map(() => sortedMembers[0]),
+          splitDistributorFee,
+          [],
+          [],
+        ),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
+
       // first member in sortedList becomes inactive
       const batch2Tx = await l1NetworkRegistry.syncBatchUpdateMembersActivity(sortedMembers.slice(0, 1), [0], [], []);
       await batch2Tx.wait();
@@ -1072,7 +1081,7 @@ describe("NetworkRegistry", function () {
       ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__MemberListSizeMismatch");
       await expect(
         l1NetworkRegistry.syncUpdateSplits(members.slice(1), splitDistributorFee, [], []),
-      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrder");
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 
       sortedMembers.pop(); // remove the last member in sortedList
       // try to execute a split distribution with first member in sortedList as inactive
@@ -1271,6 +1280,7 @@ describe("NetworkRegistry", function () {
       await expect(tx)
         .to.emit(l1NetworkRegistry, "SplitsDistributionUpdated")
         .withArgs(l1SplitAddress, splitHash, splitDistributorFee);
+      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
     });
 
     it("Should not be able to update all if submitted member list is invalid", async () => {
@@ -1290,6 +1300,15 @@ describe("NetworkRegistry", function () {
       const updateTx = await l1NetworkRegistry.syncUpdateSecondsActive([], []);
       await updateTx.wait();
 
+      await expect(
+        l1NetworkRegistry.syncUpdateAll(
+          sortedMembers.map(() => sortedMembers[0]),
+          splitDistributorFee,
+          [],
+          [],
+        ),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
+
       // first member in sortedList becomes inactive
       const batch2Tx = await l1NetworkRegistry.syncBatchUpdateMembersActivity(sortedMembers.slice(0, 1), [0], [], []);
       await batch2Tx.wait();
@@ -1302,7 +1321,7 @@ describe("NetworkRegistry", function () {
       );
       await expect(
         l1NetworkRegistry.syncUpdateAll(members.slice(1), splitDistributorFee, [], []),
-      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrder");
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
 
       sortedMembers.pop(); // remove the last member in sortedList
       // try to execute a update all with first member in sortedList as inactive
@@ -1358,6 +1377,7 @@ describe("NetworkRegistry", function () {
       await expect(tx)
         .to.emit(l1NetworkRegistry, "SplitsDistributionUpdated")
         .withArgs(l1SplitAddress, splitHash, splitDistributorFee);
+      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
     });
   });
 
@@ -2869,7 +2889,7 @@ describe("NetworkRegistry", function () {
 
       const splitHash = hashSplit(_receivers, _percentAllocations, splitDistributorFee);
 
-      const action = l2NetworkRegistry.interface.getSighash("updateSplits(address[],uint32)");
+      const action = l2NetworkRegistry.interface.getSighash(l2NetworkRegistry.interface.getFunction("updateSplits"));
       const tx = await l1NetworkRegistry.syncUpdateSplits(members, splitDistributorFee, chainIds, relayerFees, {
         value: totalValue,
       });
@@ -2891,6 +2911,8 @@ describe("NetworkRegistry", function () {
       await expect(tx)
         .to.emit(l2NetworkRegistry, "SplitsDistributionUpdated")
         .withArgs(l2SplitAddress, splitHash, splitDistributorFee);
+      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
+      expect(await l2Registry.splitMain.getHash(l2SplitAddress)).to.equal(splitHash);
     });
 
     it("Should be able to sync update all (registry activity + Splits)", async () => {
@@ -2925,7 +2947,7 @@ describe("NetworkRegistry", function () {
       members.sort((a: string, b: string) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
       const splitDistributorFee = splitConfig.distributorFee;
 
-      const action = l2NetworkRegistry.interface.getSighash("updateAll(uint32,address[],uint32)");
+      const action = l2NetworkRegistry.interface.getSighash(l2NetworkRegistry.interface.getFunction("updateAll"));
       const tx = await l1NetworkRegistry.syncUpdateAll(members, splitDistributorFee, chainIds, relayerFees, {
         value: totalValue,
       });
@@ -2975,6 +2997,8 @@ describe("NetworkRegistry", function () {
       await expect(tx)
         .to.emit(l2NetworkRegistry, "SplitsDistributionUpdated")
         .withArgs(l2SplitAddress, splitHash, splitDistributorFee);
+      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
+      expect(await l2Registry.splitMain.getHash(l2SplitAddress)).to.equal(splitHash);
     });
   });
 

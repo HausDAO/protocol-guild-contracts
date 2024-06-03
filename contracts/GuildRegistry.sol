@@ -5,7 +5,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import { ISplitMain } from "./interfaces/ISplitMain.sol";
-import { ISplitManager } from "./interfaces/ISplitManager.sol";
+import { ISplitManager, ISplitManagerBase } from "./interfaces/ISplitManager.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
 import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
@@ -18,9 +18,9 @@ import {
 } from "./utils/Errors.sol";
 
 /**
- * @title A guild registry to distribute funds escrowed in 0xSplit based on member activity
+ * @title A guild registry to distribute funds escrowed in 0xSplit V1 based on member activity
  * @author DAOHaus
- * @notice Manage a time-weighted member registry to distribute funds hold in 0xSplit based on member activity
+ * @notice Manage a time-weighted member registry to distribute funds hold in 0xSplit V2 based on member activity
  * @dev Features and important things to consider:
  * - There are methods for adding/updating members, update registry activity & split funds
  *   based on a time-weighted formula.
@@ -161,28 +161,28 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
      */
-    function _updateSplitDistribution(address[] memory _sortedList, uint32 _splitDistributorFee) internal {
+    function _updateSplitDistribution(address[] memory _sortedList, uint16 _splitDistributorFee) internal {
         (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
         splitMain.updateSplit(split, _receivers, _percentAllocations, _splitDistributorFee);
-        bytes32 splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, _splitDistributorFee));
+        bytes32 splitHash = keccak256(abi.encodePacked(_receivers, _percentAllocations, uint32(_splitDistributorFee)));
         emit SplitsDistributionUpdated(split, splitHash, _splitDistributorFee);
     }
 
     /**
-     * @notice Updates the 0xSplit distribution based on member activity during the last epoch
+     * @notice Updates the 0xSplit distribution based on member activity during the last epoch.
      * Consider calling {updateSecondsActive} prior triggering a 0xSplit distribution update
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
-    function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) external {
+    function updateSplits(address[] memory _sortedList, uint16 _splitDistributorFee) external {
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
     }
 
     /**
      * @notice Executes both {updateSecondsActive} to update registry member's activity and {updateSplits}
      * for split distribution. If _cutoffDate is zero its value will be overridden with the current block.timestamp
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
-    function updateAll(uint32 _cutoffDate, address[] memory _sortedList, uint32 _splitDistributorFee) external {
+    function updateAll(uint32 _cutoffDate, address[] memory _sortedList, uint16 _splitDistributorFee) external {
         _updateSecondsActive(_cutoffDate);
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
     }
@@ -201,7 +201,7 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
     /**
      * @notice Calculates a member individual contribution
      * @dev It uses the PGContribCalculator library
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
     function calculateContributionOf(address _memberAddress) external view returns (uint256) {
         DataTypes.Member memory member = getMember(_memberAddress);
@@ -211,7 +211,7 @@ contract GuildRegistry is ISplitManager, UUPSUpgradeable, OwnableUpgradeable, Me
     /**
      * @notice Calculates the sum of all member contributions
      * @dev omit members with activityMultiplier == 0
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
     function calculateTotalContributions() external view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();

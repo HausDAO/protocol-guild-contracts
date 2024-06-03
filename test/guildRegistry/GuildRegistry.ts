@@ -788,6 +788,13 @@ describe("GuildRegistry", function () {
       newMembers.sort((a: Member, b: Member) => (a.account.toLowerCase() > b.account.toLowerCase() ? 1 : -1));
       const sortedMembers = newMembers.map((m: Member) => m.account);
 
+      await expect(
+        guildRegistry.updateSplits(
+          sortedMembers.map(() => sortedMembers[0]),
+          splitDistributorFee,
+        ),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
+
       // first member in sortedList becomes inactive
       const batch2Tx = await guildRegistry.batchUpdateMembersActivity(sortedMembers.slice(0, 1), [0]);
       await batch2Tx.wait();
@@ -796,9 +803,10 @@ describe("GuildRegistry", function () {
         l1CalculatorLibrary,
         "SplitDistribution__MemberListSizeMismatch",
       );
+
       await expect(guildRegistry.updateSplits(members.slice(1), splitDistributorFee)).to.be.revertedWithCustomError(
         l1CalculatorLibrary,
-        "SplitDistribution__AccountsOutOfOrder",
+        "SplitDistribution__AccountsOutOfOrderOrInvalid",
       );
 
       sortedMembers.pop(); // remove the last member in sortedList
@@ -1000,6 +1008,7 @@ describe("GuildRegistry", function () {
       await expect(tx)
         .to.emit(guildRegistry, "SplitsDistributionUpdated")
         .withArgs(l1SplitAddress, splitHash, splitDistributorFee);
+      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
     });
 
     it("Should not be able to update all if submitted member list is invalid", async () => {
@@ -1019,6 +1028,14 @@ describe("GuildRegistry", function () {
       const updateTx = await guildRegistry.updateSecondsActive(0);
       await updateTx.wait();
 
+      await expect(
+        guildRegistry.updateAll(
+          0,
+          sortedMembers.map(() => sortedMembers[0]),
+          splitDistributorFee,
+        ),
+      ).to.be.revertedWithCustomError(l1CalculatorLibrary, "SplitDistribution__AccountsOutOfOrderOrInvalid");
+
       // first member in sortedList becomes inactive
       const batch2Tx = await guildRegistry.batchUpdateMembersActivity(sortedMembers.slice(0, 1), [0]);
       await batch2Tx.wait();
@@ -1031,7 +1048,7 @@ describe("GuildRegistry", function () {
       );
       await expect(guildRegistry.updateAll(0, members.slice(1), splitDistributorFee)).to.be.revertedWithCustomError(
         l1CalculatorLibrary,
-        "SplitDistribution__AccountsOutOfOrder",
+        "SplitDistribution__AccountsOutOfOrderOrInvalid",
       );
 
       sortedMembers.pop(); // remove the last member in sortedList
@@ -1086,6 +1103,7 @@ describe("GuildRegistry", function () {
       await expect(tx)
         .to.emit(guildRegistry, "SplitsDistributionUpdated")
         .withArgs(l1SplitAddress, splitHash, splitDistributorFee);
+      expect(await l1SplitMain.getHash(l1SplitAddress)).to.equal(splitHash);
     });
   });
 

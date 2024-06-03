@@ -6,7 +6,7 @@ import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 import { DataTypes } from "../libraries/DataTypes.sol";
 import {
     MemberRegistry__NotRegistered,
-    SplitDistribution__AccountsOutOfOrder,
+    SplitDistribution__AccountsOutOfOrderOrInvalid,
     SplitDistribution__EmptyDistribution,
     SplitDistribution__InactiveMember,
     SplitDistribution__MemberListSizeMismatch,
@@ -30,11 +30,15 @@ library PGContribCalculator {
         uint256 calcContribution;
     }
 
-    // @dev constant to scale UINT values into percentages (1e6 == 100%)
-    uint256 private constant PERCENTAGE_SCALE = 1e6;
+    /// @dev constant to scale UINT values into percentages (1e6 == 100%)
+    uint256 public constant PERCENTAGE_SCALE = 1e6;
+
+    /// @dev default value used as total allocation for a split distribution.
+    /// Used in 0xSplit V2
+    uint256 public constant DEFAULT_TOTAL_ALLOCATION = 1e6;
 
     /**
-     * @notice Calculate 0xSplit allocations
+     * @notice Calculate 0xSplit V1 allocations
      * @dev Verifies if the address list is sorted, has no duplicates and is valid.
      * Formula to calculate individual allocations:
      *  - (SQRT(secondsActive * activityMultiplier) * PERCENTAGE_SCALE) / totalContributions
@@ -57,11 +61,12 @@ library PGContribCalculator {
 
         if (listSize != activeMembers) revert SplitDistribution__MemberListSizeMismatch();
 
-        MemberContribution[] memory memberDistribution = new MemberContribution[](_sortedList.length);
+        MemberContribution[] memory memberDistribution = new MemberContribution[](listSize);
         for (uint256 i; i < listSize; ++i) {
             address memberAddress = _sortedList[i];
             DataTypes.Member memory member = getMember(self, memberAddress);
-            if (previous >= memberAddress) revert SplitDistribution__AccountsOutOfOrder(i);
+            // check for duplicates or out-of-order addresses
+            if (previous >= memberAddress) revert SplitDistribution__AccountsOutOfOrderOrInvalid(i);
             if (member.activityMultiplier == 0) revert SplitDistribution__InactiveMember(memberAddress);
 
             memberDistribution[i] = MemberContribution({
@@ -112,6 +117,89 @@ library PGContribCalculator {
         // the remainder will be added to the recipient with lowest allocation
         if (runningTotal != PERCENTAGE_SCALE) {
             _percentAllocations[minAllocationIndex] += uint32(PERCENTAGE_SCALE - runningTotal);
+        }
+    }
+
+    /**
+     * @notice Calculate 0xSplit V2 allocations
+     * @dev Verifies if `_memberList` has no duplicates and is valid.
+     * Formula to calculate individual allocations:
+     *  - (SQRT(secondsActive * activityMultiplier) * PERCENTAGE_SCALE) / totalContributions
+     *  - Total allocations from all members must be equal to 0xSplit PERCENTAGE_SCALE
+     * The goal of the weighting formula is to reduce the total variance range of every member weight (hence using SQRT)
+     * @param _memberList list of members to be considered in the 0xSplit distribution
+     * @param _totalAllocation the total allocation of the split distribution
+     * @return _recipients list of eligible recipients (non-zero allocation) for the next split distribution
+     * @return _allocations list of split allocations for each eligible recipient
+     */
+    function calculateV2(
+        DataTypes.Members storage self,
+        address[] memory _memberList,
+        uint256 _totalAllocation
+    ) external view returns (address[] memory _recipients, uint256[] memory _allocations) {
+        uint256 activeMembers = self.totalActiveMembers;
+        uint256 listSize = _memberList.length;
+        uint256 total;
+        address previous;
+
+        if (activeMembers == 0) revert SplitDistribution__NoActiveMembers();
+
+        if (listSize != activeMembers) revert SplitDistribution__MemberListSizeMismatch();
+
+        MemberContribution[] memory memberDistribution = new MemberContribution[](listSize);
+        for (uint256 i; i < listSize; ++i) {
+            address memberAddress = _memberList[i];
+            DataTypes.Member memory member = getMember(self, memberAddress);
+            // // check for duplicates or out-of-order addresses
+            if (previous >= memberAddress) revert SplitDistribution__AccountsOutOfOrderOrInvalid(i);
+            if (member.activityMultiplier == 0) revert SplitDistribution__InactiveMember(memberAddress);
+
+            memberDistribution[i] = MemberContribution({
+                // TODO: how to allow recipient to assign different addresses per network?
+                receiverAddress: memberAddress,
+                calcContribution: calculateContributionOf(self, member)
+            });
+            // get the total seconds in the last period
+            // total = total + unwrap(wrap(members[memberIdx - 1].secondsActive).sqrt());
+            total += memberDistribution[i].calcContribution;
+            previous = memberAddress;
+        }
+
+        // define variables for split params
+        _recipients = new address[](activeMembers);
+        _allocations = new uint256[](activeMembers);
+
+        // define variables for second loop
+        uint256 runningTotal;
+        uint256 nonZeroIndex; // index counter for non zero allocations
+        uint256 minAllocation = type(uint256).max;
+        uint256 minAllocationIndex;
+        // fill 0xSplits arrays with sorted list
+        for (uint256 i; i < listSize; ++i) {
+            if (memberDistribution[i].calcContribution > 0) {
+                _recipients[nonZeroIndex] = memberDistribution[i].receiverAddress;
+                _allocations[nonZeroIndex] = (memberDistribution[i].calcContribution * _totalAllocation) / total;
+
+                runningTotal += _allocations[nonZeroIndex];
+
+                // find the recipient with lowest allocation
+                if (_allocations[nonZeroIndex] < minAllocation) {
+                    minAllocation = _allocations[nonZeroIndex];
+                    minAllocationIndex = nonZeroIndex;
+                }
+
+                unchecked {
+                    ++nonZeroIndex; // gas optimization: very unlikely to overflow
+                }
+            }
+        }
+
+        if (nonZeroIndex == 0) revert SplitDistribution__EmptyDistribution();
+
+        // NOTICE: In case sum(percentAllocations) < _totalAllocations
+        // the remainder will be added to the recipient with lowest allocation
+        if (runningTotal != _totalAllocation) {
+            _allocations[minAllocationIndex] += (_totalAllocation - runningTotal);
         }
     }
 

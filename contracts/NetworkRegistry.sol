@@ -6,9 +6,9 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { UD60x18 } from "@prb/math/src/UD60x18.sol";
 
-import { INetworkMemberRegistry } from "./interfaces/INetworkMemberRegistry.sol";
+import { INetworkMemberRegistry, INetworkRegistryManager } from "./interfaces/INetworkMemberRegistry.sol";
 import { ISplitMain } from "./interfaces/ISplitMain.sol";
-import { ISplitManager } from "./interfaces/ISplitManager.sol";
+import { ISplitManager, ISplitManagerBase } from "./interfaces/ISplitManager.sol";
 import { DataTypes } from "./libraries/DataTypes.sol";
 import { PGContribCalculator } from "./libraries/PGContribCalculator.sol";
 import { IMemberRegistry, MemberRegistry } from "./registry/MemberRegistry.sol";
@@ -47,9 +47,9 @@ error NetworkRegistry__InvalidReplica();
 error NetworkRegistry__UnAuthorizedCalldata();
 
 /**
- * @title A cross-chain network registry to distribute funds escrowed in 0xSplit based on member activity
+ * @title A cross-chain network registry to distribute funds escrowed in 0xSplit V1 based on member activity
  * @author DAOHaus
- * @notice Manage a cross-chain time-weighted member registry to distribute funds hold in 0xSplit
+ * @notice Manage a cross-chain time-weighted member registry to distribute funds hold in 0xSplit V1
  * based on member activity.
  * @dev Uses Connext XApp architecture to manage main + multiple replica registries across different networks.
  * It should also be able to use member activity to distribute funds escrowed on a 0xSplit contract.
@@ -70,6 +70,12 @@ error NetworkRegistry__UnAuthorizedCalldata();
 contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeable, OwnableUpgradeable, MemberRegistry {
     using PGContribCalculator for DataTypes.Members;
 
+    /// @notice 0xSplit proxy contract
+    /// @dev 0xSplitMain contract
+    ISplitMain public splitMain;
+    /// @notice 0xSplit contract where funds are hold
+    /// @dev 0xSplitWallet contract
+    address public split;
     /// @notice Connext contract in the current domain
     IConnext public connext;
     /// @notice Connext domain ID where the updater contract is deployed
@@ -84,12 +90,6 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /// @dev chainId => Registry
     // solhint-disable-next-line named-parameters-mapping
     mapping(uint32 => DataTypes.Registry) public replicaRegistry;
-    /// @notice 0xSplit proxy contract
-    /// @dev 0xSplitMain contract
-    ISplitMain public splitMain;
-    /// @notice 0xSplit contract where funds are hold
-    /// @dev 0xSplitWallet contract
-    address public split;
 
     /**
      * @notice A modifier for authenticated calls coming from the Connext bridge.
@@ -185,13 +185,13 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
         if (
             action == IMemberRegistry.batchNewMembers.selector ||
             action == IMemberRegistry.batchUpdateMembersActivity.selector ||
-            action == ISplitManager.updateAll.selector ||
+            action == ISplitManagerBase.updateAll.selector ||
             action == IMemberRegistry.updateSecondsActive.selector ||
-            action == ISplitManager.updateSplits.selector ||
-            action == INetworkMemberRegistry.addOrUpdateMembersBatch.selector ||
+            action == ISplitManagerBase.updateSplits.selector ||
+            action == INetworkRegistryManager.addOrUpdateMembersBatch.selector ||
             action == IMemberRegistry.batchRemoveMembers.selector ||
             action == ISplitManager.setSplit.selector ||
-            action == INetworkMemberRegistry.setUpdaterConfig.selector ||
+            action == INetworkRegistryManager.setUpdaterConfig.selector ||
             action == ISplitManager.acceptSplitControl.selector ||
             action == ISplitManager.transferSplitControl.selector ||
             action == ISplitManager.cancelSplitControlTransfer.selector ||
@@ -416,7 +416,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Adds a new set of members to the registry and sync with replicas
      * @dev Callable by the main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function syncBatchNewMembers(
         address[] memory _members,
@@ -449,7 +449,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Updates the activity multiplier for a set of existing members and sync with replicas
      * @dev Callable by the main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function syncBatchUpdateMembersActivity(
         address[] memory _members,
@@ -477,7 +477,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Remove a set of existing members from the registry and sync with replicas
      * @dev Callable by the main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function syncBatchRemoveMembers(
         address[] memory _members,
@@ -495,7 +495,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @dev Callable on a replica registry through the Connext bridge.
      * The syncNetworkMemberRegistry function ensures that array params will always
      * be the same length so there is no need for args validation
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function addOrUpdateMembersBatch(
         address[] memory _members,
@@ -532,7 +532,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * this function can be used to sync member's state in batches instead of doing a full registry sync
      * which could become pretty gas intensive with a growing list of members.
      * @dev Callable by the main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function syncNetworkMemberRegistry(
         address[] memory _members,
@@ -544,9 +544,9 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             uint32[] memory _startDates,
             uint32[] memory _secondsActive
         ) = getMembersProperties(_members);
-        bytes4 action = INetworkMemberRegistry.addOrUpdateMembersBatch.selector;
+        bytes4 action = INetworkRegistryManager.addOrUpdateMembersBatch.selector;
         bytes memory callData = abi.encodeCall(
-            INetworkMemberRegistry.addOrUpdateMembersBatch,
+            INetworkRegistryManager.addOrUpdateMembersBatch,
             (_members, _activityMultipliers, _startDates, _secondsActive)
         );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -572,7 +572,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
 
     /**
      * @notice Updates activity for each member in the registry since the last update epoch and sync with replicas
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function syncUpdateSecondsActive(
         uint32[] memory _chainIds,
@@ -605,18 +605,18 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @param _sortedList sorted list (ascending order) of members to be considered in the 0xSplit distribution
      * @param _splitDistributorFee split fee set as reward for the address that executes the distribution
      */
-    function _updateSplitDistribution(address[] memory _sortedList, uint32 _splitDistributorFee) internal {
+    function _updateSplitDistribution(address[] memory _sortedList, uint16 _splitDistributorFee) internal {
         (address[] memory _receivers, uint32[] memory _percentAllocations) = calculate(_sortedList);
-        bytes32 splitHash = _updateSplit(_receivers, _percentAllocations, _splitDistributorFee);
+        bytes32 splitHash = _updateSplit(_receivers, _percentAllocations, uint32(_splitDistributorFee));
         emit SplitsDistributionUpdated(split, splitHash, _splitDistributorFee);
     }
 
     /**
-     * @notice Updates the 0xSplit distribution based on member activity during the last epoch
+     * @notice Updates the 0xSplit distribution based on member activity during the last epoch.
      * Consider calling {updateSecondsActive} prior triggering a 0xSplit distribution update
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
-    function updateSplits(address[] memory _sortedList, uint32 _splitDistributorFee) external onlyReplica {
+    function updateSplits(address[] memory _sortedList, uint16 _splitDistributorFee) external onlyReplica {
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
     }
 
@@ -624,29 +624,29 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @notice Updates the 0xSplit distribution on all networks based on reported member activity during the last epoch.
      * Consider calling {syncUpdateSecondsActive} prior or after applying a 0xSplit distribution update
      * @dev Addresses in _sortedList must be in the member registry
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function syncUpdateSplits(
         address[] memory _sortedList,
-        uint32 _splitDistributorFee,
-        uint32[] memory _chainIds,
-        uint256[] memory _relayerFees
+        uint16 _splitDistributorFee,
+        uint32[] calldata _chainIds,
+        uint256[] calldata _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
-        bytes4 action = ISplitManager.updateSplits.selector;
-        bytes memory callData = abi.encodeCall(ISplitManager.updateSplits, (_sortedList, _splitDistributorFee));
+        bytes4 action = ISplitManagerBase.updateSplits.selector;
+        bytes memory callData = abi.encodeCall(ISplitManagerBase.updateSplits, (_sortedList, _splitDistributorFee));
         _syncRegistries(action, callData, _chainIds, _relayerFees);
     }
 
     /**
      * @notice Executes both {updateSecondsActive} to update registry member's activity and {updateSplits}
      * for split distribution. If _cutoffDate is zero its value will be overridden with the current block.timestamp
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
     function updateAll(
         uint32 _cutoffDate,
         address[] memory _sortedList,
-        uint32 _splitDistributorFee
+        uint16 _splitDistributorFee
     ) external onlyReplica {
         _updateSecondsActive(_cutoffDate);
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
@@ -656,20 +656,20 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
      * @notice Executes both {updateSecondsActive} to update member's activity and {updateSplits}
      * for split distribution across all networks
      * @dev Addresses in _sortedList must be in the member registry
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function syncUpdateAll(
         address[] memory _sortedList,
-        uint32 _splitDistributorFee,
-        uint32[] memory _chainIds,
-        uint256[] memory _relayerFees
+        uint16 _splitDistributorFee,
+        uint32[] calldata _chainIds,
+        uint256[] calldata _relayerFees
     ) external payable onlyMain validNetworkParams(_chainIds, _relayerFees) {
         uint32 cutoffDate = uint32(block.timestamp);
         super._updateSecondsActive(cutoffDate);
         _updateSplitDistribution(_sortedList, _splitDistributorFee);
-        bytes4 action = ISplitManager.updateAll.selector;
+        bytes4 action = ISplitManagerBase.updateAll.selector;
         bytes memory callData = abi.encodeCall(
-            ISplitManager.updateAll,
+            ISplitManagerBase.updateAll,
             (cutoffDate, _sortedList, _splitDistributorFee)
         );
         _syncRegistries(action, callData, _chainIds, _relayerFees);
@@ -689,7 +689,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Calculates a member individual contribution
      * @dev It uses the PGContribCalculator library
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
     function calculateContributionOf(address _memberAddress) external view returns (uint256) {
         DataTypes.Member memory member = getMember(_memberAddress);
@@ -699,7 +699,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Calculates the sum of all member contributions
      * @dev omit members with activityMultiplier == 0
-     * @inheritdoc ISplitManager
+     * @inheritdoc ISplitManagerBase
      */
     function calculateTotalContributions() external view returns (uint256 total) {
         uint256 totalRegistryMembers = totalMembers();
@@ -713,7 +713,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
 
     /**
      * @notice Returns whether or not a registry has been setup as a main registry
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function isMainRegistry() public view returns (bool) {
         return updater == address(0) && updaterDomain == 0;
@@ -722,7 +722,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Adds a replica NetworkRegistry that should get in sync with a main registry
      * @dev Callable by main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function updateNetworkRegistry(
         uint32 _chainId,
@@ -745,7 +745,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
 
     /**
      * @notice Upgrade replica NetworkRegistry implementation
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function upgradeNetworkRegistryImplementation(
         uint32[] memory _chainIds,
@@ -766,7 +766,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Set Connext and Updater config parameters
      * @dev Callable on both main and replica registries
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function setUpdaterConfig(address _connext, uint32 _updaterDomain, address _updater) external onlyOwnerOrUpdater {
         if (_connext == address(0)) revert NetworkRegistry__InvalidConnextAddress();
@@ -779,7 +779,7 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
     /**
      * @notice Set Connext & Updater config settings for existing NetworkRegistry replicas via sync message
      * @dev Callable by main registry owner
-     * @inheritdoc INetworkMemberRegistry
+     * @inheritdoc INetworkRegistryManager
      */
     function setNetworkUpdaterConfig(
         uint32[] memory _chainIds,
@@ -794,10 +794,10 @@ contract NetworkRegistry is INetworkMemberRegistry, ISplitManager, UUPSUpgradeab
             _updaterDomains.length != totalParams ||
             _updaterAddrs.length != totalParams
         ) revert Registry__ParamsSizeMismatch();
-        bytes4 action = INetworkMemberRegistry.setUpdaterConfig.selector;
+        bytes4 action = INetworkRegistryManager.setUpdaterConfig.selector;
         for (uint256 i; i < totalParams; ++i) {
             bytes memory callData = abi.encodeCall(
-                INetworkMemberRegistry.setUpdaterConfig,
+                INetworkRegistryManager.setUpdaterConfig,
                 (_connextAddrs[i], _updaterDomains[i], _updaterAddrs[i])
             );
             _execSyncAction(action, callData, _chainIds[i], _relayerFees[i]);

@@ -6,10 +6,10 @@ import "forge-std/Test.sol";
 import { console2 } from "forge-std/console2.sol";
 import { Options, Upgrades } from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-import { SplitMain } from "contracts/fixtures/SplitMain.sol";
-import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
-import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
+import { SplitMain } from "contracts/fixtures/SplitMain.sol";
+import { DataTypes } from "contracts/libraries/DataTypes.sol";
+import { ConnextMock } from "contracts/mocks/ConnextMock.sol";
 
 // import { NetworkRegistrySummoner } from "contracts/NetworkRegistrySummoner.sol";
 

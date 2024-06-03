@@ -1,5 +1,5 @@
 // NOTICE: hardhat-foundry must be disabled when running pnpm coverage
-import "@nomicfoundation/hardhat-foundry";
+// import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-toolbox";
 import { config as dotenvConfig } from "dotenv";
 import "hardhat-contract-sizer";
@@ -29,38 +29,30 @@ if (!infuraApiKey) {
 
 const chainIds = {
   hardhat: 31337,
-  goerli: 5,
   sepolia: 11155111,
   mainnet: 1,
   gnosis: 100,
   "arbitrum-mainnet": 42161,
-  "arbitrum-goerli": 421613,
   "arbitrum-sepolia": 421614,
   "optimism-mainnet": 10,
-  "optimism-goerli": 420,
   "optimism-sepolia": 11155420,
   "polygon-mainnet": 137,
-  "polygon-mumbai": 80001,
 };
 
 const explorerApiKey = (networkName: keyof typeof chainIds) => {
   const fromEnv = () => {
     switch (networkName) {
       case "mainnet":
-      case "goerli":
       case "sepolia":
         return process.env.ETHERSCAN_APIKEY;
       case "gnosis":
         return process.env.GNOSISSCAN_APIKEY;
       case "polygon-mainnet":
-      case "polygon-mumbai":
         return process.env.POLYGONSCAN_APIKEY;
       case "optimism-mainnet":
-      case "optimism-goerli":
       case "optimism-sepolia":
         return process.env.OPTIMISTICSCAN_APIKEY;
       case "arbitrum-mainnet":
-      case "arbitrum-goerli":
       case "arbitrum-sepolia":
         return process.env.ARBISCAN_APIKEY;
       default:
@@ -74,21 +66,14 @@ const getNodeURI = (networkName: keyof typeof chainIds) => {
   switch (networkName) {
     case "arbitrum-mainnet":
       return "https://rpc.ankr.com/arbitrum";
-    case "arbitrum-goerli":
-      return "https://goerli-rollup.arbitrum.io/rpc";
-    // return "https://arbitrum-goerli.publicnode.com";
     case "arbitrum-sepolia":
       return "https://sepolia-rollup.arbitrum.io/rpc";
     case "optimism-mainnet":
       return "https://rpc.ankr.com/optimism";
-    case "optimism-goerli":
-      return "https://goerli.optimism.io";
     case "optimism-sepolia":
       return "https://sepolia.optimism.io";
     case "polygon-mainnet":
       return "https://rpc.ankr.com/polygon";
-    case "polygon-mumbai":
-      return "https://rpc-mumbai.maticvigil.com";
     case "gnosis":
       return "https://rpc.gnosischain.com";
     default:
@@ -150,16 +135,6 @@ const config: HardhatUserConfig = {
     // },
     // avalanche: getChainConfig("avalanche"),
     // bsc: getChainConfig("bsc"),
-    goerli: {
-      ...getChainConfig("goerli"),
-      companionNetworks: {
-        "l2-optimism": "optimismGoerli",
-        "l2-arbitrum": "arbitrumGoerli",
-      },
-      gas: 5000000,
-      gasPrice: 8000000000,
-      gasMultiplier: 2,
-    },
     sepolia: {
       ...getChainConfig("sepolia"),
       companionNetworks: {
@@ -173,15 +148,6 @@ const config: HardhatUserConfig = {
     mainnet: getChainConfig("mainnet"),
     gnosis: getChainConfig("gnosis"),
     arbitrum: getChainConfig("arbitrum-mainnet"),
-    arbitrumGoerli: {
-      ...getChainConfig("arbitrum-goerli"),
-      companionNetworks: {
-        l1: "goerli",
-      },
-      initialBaseFeePerGas: 1635190000,
-      gasPrice: 1635190000,
-      gasMultiplier: 1.2,
-    },
     arbitrumSepolia: {
       ...getChainConfig("arbitrum-sepolia"),
       companionNetworks: {
@@ -192,13 +158,6 @@ const config: HardhatUserConfig = {
       gasMultiplier: 1.2,
     },
     optimism: getChainConfig("optimism-mainnet"),
-    optimismGoerli: {
-      ...getChainConfig("optimism-goerli"),
-      companionNetworks: {
-        l1: "goerli",
-      },
-      gasPrice: 2000000000,
-    },
     optimismSepolia: {
       ...getChainConfig("optimism-sepolia"),
       companionNetworks: {
@@ -207,12 +166,6 @@ const config: HardhatUserConfig = {
       gasPrice: 2000000000,
     },
     polygon: getChainConfig("polygon-mainnet"),
-    mumbai: {
-      ...getChainConfig("polygon-mumbai"),
-      companionNetworks: {
-        l1: "goerli",
-      },
-    },
   },
   paths: {
     artifacts: "./artifacts",
@@ -225,7 +178,13 @@ const config: HardhatUserConfig = {
     disambiguatePaths: false,
     runOnCompile: true,
     strict: false,
-    only: ["GuildRegistry.sol", "NetworkRegistry.sol", "PGContribCalculator"],
+    only: [
+      "GuildRegistry.sol",
+      "GuildRegistryV2.sol",
+      "NetworkRegistry.sol",
+      "NetworkRegistryV2.sol",
+      "PGContribCalculator",
+    ],
   },
   solidity: {
     compilers: [
@@ -284,16 +243,12 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: explorerApiKey("mainnet"),
-      goerli: explorerApiKey("goerli"),
       sepolia: explorerApiKey("sepolia"),
       optimisticEthereum: explorerApiKey("optimism-mainnet"),
-      optimisticGoerli: explorerApiKey("optimism-goerli"),
-      // optimisticSepolia: explorerApiKey("optimism-sepolia"),
+      optimisticSepolia: explorerApiKey("optimism-sepolia"),
       arbitrumOne: explorerApiKey("arbitrum-mainnet"),
-      arbitrumGoerli: explorerApiKey("arbitrum-goerli"),
-      // arbitrumSepolia: explorerApiKey("arbitrum-sepolia"),
+      arbitrumSepolia: explorerApiKey("arbitrum-sepolia"),
       polygon: explorerApiKey("polygon-mainnet"),
-      polygonMumbai: explorerApiKey("polygon-mumbai"),
     },
   },
   external: {

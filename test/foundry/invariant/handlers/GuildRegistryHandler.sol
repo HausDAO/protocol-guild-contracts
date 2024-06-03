@@ -3,23 +3,25 @@ pragma solidity >=0.8.23 <0.9.0;
 
 import { BaseHandler } from "./BaseHandler.sol";
 
-import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { GuildRegistry } from "contracts/GuildRegistry.sol";
+import { GuildRegistryV2 } from "contracts/GuildRegistryV2.sol";
+import { IMemberRegistry } from "contracts/interfaces/IMemberRegistry.sol";
+import { DataTypes } from "contracts/libraries/DataTypes.sol";
 
-contract GuildRegistryHandler is BaseHandler {
+contract GuildRegistryBaseHandler is BaseHandler {
     uint256 internal constant MIN_MEMBERS = 10;
 
     uint256 internal constant MAX_MEMBERS = 100;
 
-    GuildRegistry public registry;
+    IMemberRegistry public registry;
 
     address internal owner;
 
     uint256 private batchNewCounter;
 
-    constructor(GuildRegistry _registry) BaseHandler() {
+    constructor(IMemberRegistry _registry, address _owner) BaseHandler() {
         registry = _registry;
-        owner = registry.owner();
+        owner = _owner;
     }
 
     function batchNewMembers(
@@ -66,4 +68,12 @@ contract GuildRegistryHandler is BaseHandler {
         _cutoffTimestamp = uint32(bound(_cutoffTimestamp, registry.lastActivityUpdate() + 1, block.timestamp));
         registry.updateSecondsActive(_cutoffTimestamp);
     }
+}
+
+contract GuildRegistryHandler is GuildRegistryBaseHandler {
+    constructor(GuildRegistry _registry) GuildRegistryBaseHandler(_registry, _registry.owner()) {}
+}
+
+contract GuildRegistryV2Handler is GuildRegistryBaseHandler {
+    constructor(GuildRegistryV2 _registry) GuildRegistryBaseHandler(_registry, _registry.owner()) {}
 }

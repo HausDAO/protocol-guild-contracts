@@ -3,15 +3,17 @@ pragma solidity >=0.8.23 <0.9.0;
 
 import { BaseHandler } from "./BaseHandler.sol";
 
-import { DataTypes } from "contracts/libraries/DataTypes.sol";
 import { NetworkRegistry } from "contracts/NetworkRegistry.sol";
+import { NetworkRegistryV2 } from "contracts/NetworkRegistryV2.sol";
+import { INetworkRegistryManager } from "contracts/interfaces/INetworkRegistryManager.sol";
+import { DataTypes } from "contracts/libraries/DataTypes.sol";
 
-contract NetworkRegistryHandler is BaseHandler {
+contract NetworkRegistryBaseHandler is BaseHandler {
     uint256 internal constant MIN_MEMBERS = 10;
 
     uint256 internal constant MAX_MEMBERS = 100;
 
-    NetworkRegistry public registry;
+    INetworkRegistryManager public registry;
 
     address internal owner;
 
@@ -22,9 +24,9 @@ contract NetworkRegistryHandler is BaseHandler {
     uint32[] internal chainIds;
     uint256[] internal relayerFees;
 
-    constructor(NetworkRegistry _registry) BaseHandler() {
+    constructor(INetworkRegistryManager _registry, address _owner) BaseHandler() {
         registry = _registry;
-        owner = registry.owner();
+        owner = _owner;
     }
 
     function batchNewMembers(
@@ -80,4 +82,12 @@ contract NetworkRegistryHandler is BaseHandler {
         vm.warp(registry.lastActivityUpdate() + 1 days);
         registry.syncUpdateSecondsActive(chainIds, relayerFees);
     }
+}
+
+contract NetworkRegistryHandler is NetworkRegistryBaseHandler {
+    constructor(NetworkRegistry _registry) NetworkRegistryBaseHandler(_registry, _registry.owner()) {}
+}
+
+contract NetworkRegistryV2Handler is NetworkRegistryBaseHandler {
+    constructor(NetworkRegistryV2 _registry) NetworkRegistryBaseHandler(_registry, _registry.owner()) {}
 }

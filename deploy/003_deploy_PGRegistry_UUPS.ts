@@ -9,7 +9,7 @@ const deployFn: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, ethers, getChainId, getNamedAccounts, network } = hre;
   const { deployer } = await getNamedAccounts();
   const signer = await ethers.getSigner(deployer);
-  const chainId = network.name === "hardhat" ? "5" : await getChainId(); // hardhat -> Forking mode
+  const chainId = network.name === "hardhat" ? "11155111" : await getChainId(); // hardhat -> Forking mode
 
   const { deploy } = deployments;
 

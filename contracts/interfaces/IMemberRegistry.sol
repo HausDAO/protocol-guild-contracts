@@ -99,4 +99,10 @@ interface IMemberRegistry {
         uint256 _fromIndex,
         uint256 _toIndex
     ) external view returns (DataTypes.Member[] memory);
+
+    /**
+     * @notice Fetch the last timestamp where the registry got updated
+     * @return last activity update timestamp
+     */
+    function lastActivityUpdate() external view returns (uint32);
 }

@@ -54,9 +54,9 @@ error Split__InvalidOrImmutable();
 /// @notice Member list size must match the amount of active members in the registry
 error SplitDistribution__MemberListSizeMismatch();
 
-/// @notice Member list must be sorted in ascending order
-/// @param _index index where a member address is not properly sorted
-error SplitDistribution__AccountsOutOfOrder(uint256 _index);
+/// @notice Member list out-of-order or duplicate address
+/// @param _index list index where a member address is invalid
+error SplitDistribution__AccountsOutOfOrderOrInvalid(uint256 _index);
 
 /// @notice The registry does not have any active member
 error SplitDistribution__NoActiveMembers();
