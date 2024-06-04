@@ -3,7 +3,6 @@ pragma solidity ^0.8.23;
 
 import { INetworkRegistryManager } from "./INetworkRegistryManager.sol";
 import { ISplitWalletV2 } from "./ISplitWalletV2.sol";
-import { DataTypes } from "../libraries/DataTypes.sol";
 
 /**
  * @title A cross-chain member activity registry in sync across multiple networks

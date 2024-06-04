@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import { INetworkRegistryManager } from "./INetworkRegistryManager.sol";
-import { DataTypes } from "../libraries/DataTypes.sol";
 
 /**
  * @title A cross-chain member activity registry in sync across multiple networks

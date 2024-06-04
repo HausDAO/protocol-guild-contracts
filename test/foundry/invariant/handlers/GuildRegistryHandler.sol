@@ -13,9 +13,9 @@ contract GuildRegistryBaseHandler is BaseHandler {
 
     uint256 internal constant MAX_MEMBERS = 100;
 
-    IMemberRegistry public registry;
+    IMemberRegistry public immutable registry;
 
-    address internal owner;
+    address internal immutable owner;
 
     uint256 private batchNewCounter;
 
@@ -46,7 +46,8 @@ contract GuildRegistryBaseHandler is BaseHandler {
         DataTypes.Member[] memory members = registry.getMembers();
         address[] memory memberAddrs = new address[](_inactiveMembers);
         uint32[] memory activityMultipliers = new uint32[](_inactiveMembers);
-        for (uint256 i; i < memberAddrs.length; ++i) {
+        uint256 totalMembers = memberAddrs.length;
+        for (uint256 i; i < totalMembers; ++i) {
             memberAddrs[i] = members[i].account;
             activityMultipliers[i] = (i < _inactiveMembers) ? 0 : uint32(bound(_activityMultiplier, 1, 100));
         }

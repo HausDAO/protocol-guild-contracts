@@ -13,9 +13,9 @@ contract NetworkRegistryBaseHandler is BaseHandler {
 
     uint256 internal constant MAX_MEMBERS = 100;
 
-    INetworkRegistryManager public registry;
+    INetworkRegistryManager public immutable registry;
 
-    address internal owner;
+    address internal immutable owner;
 
     uint256 private batchNewCounter;
 
@@ -52,7 +52,8 @@ contract NetworkRegistryBaseHandler is BaseHandler {
         address[] memory memberAddrs;
         uint32[] memory activityMultipliers;
         uint256 inactiveCounter;
-        for (uint256 i; i < memberAddrs.length; ++i) {
+        uint256 totalMembers = memberAddrs.length;
+        for (uint256 i; i < totalMembers; ++i) {
             uint32 multiplier = (i < _inactiveMembers) ? 0 : uint32(bound(_activityMultiplier, 1, 100));
             if (members[i].activityMultiplier > 0 && multiplier == 0) {
                 memberAddrs[inactiveCounter] = members[i].account;
