@@ -1,7 +1,7 @@
 import { deployments } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-import { ConnextMock, PGContribCalculator, PullSplitFactory, TestERC20 } from "../../types";
+import { ConnextMock, PGContribCalculator, PullSplitFactory, SplitsWarehouse, TestERC20 } from "../../types";
 
 export type NetworkRegistryOpts = {
   parentDomainId?: number;
@@ -15,6 +15,7 @@ export type NetworkRegistryProps = {
   calculatorLibrary: PGContribCalculator;
   connext: ConnextMock;
   splitV2Factory: PullSplitFactory;
+  splitWarehouse: SplitsWarehouse;
   token: TestERC20;
 };
 
@@ -60,6 +61,12 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       log: false,
     });
 
+    const l1SplitWarehouse = (await ethers.getContractAt(
+      "SplitsWarehouse",
+      l1SplitsWarehouseDeployed.address,
+      signer,
+    )) as SplitsWarehouse;
+
     // Deploy 0xSplitV2 Factory on L1
     const l1SplitV2FactoryDeployed = await deployments.deploy("PullSplitFactory", {
       contract: "PullSplitFactory",
@@ -96,6 +103,12 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       log: false,
     });
 
+    const l2SplitWarehouse = (await ethers.getContractAt(
+      "SplitsWarehouse",
+      l2SplitsWarehouseDeployed.address,
+      signer,
+    )) as SplitsWarehouse;
+
     // Deploy 0xSplitV2 Factory on L1
     const l2SplitV2FactoryDeployed = await deployments.deploy("PullSplitFactory", {
       contract: "PullSplitFactory",
@@ -130,11 +143,13 @@ export const registryFixture = deployments.createFixture<RegistrySetup, NetworkR
       calculatorLibrary: l1CalculatorLibrary,
       connext,
       splitV2Factory: l1SplitV2Factory,
+      splitWarehouse: l1SplitWarehouse,
       token: l1Token,
       l2: {
         calculatorLibrary: l2CalculatorLibrary,
         connext,
         splitV2Factory: l2SplitV2Factory,
+        splitWarehouse: l2SplitWarehouse,
         token: l2Token,
       },
       users: {

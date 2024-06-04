@@ -20,6 +20,7 @@ import {
   PullSplitFactory,
   SplitMain,
   SplitWalletV2,
+  SplitsWarehouse,
 } from "../../types";
 import { Member } from "../types";
 import {
@@ -36,6 +37,7 @@ describe("NetworkRegistryV2", function () {
   let connext: ConnextMock;
   let l1CalculatorLibrary: PGContribCalculator;
   let splitV2Factory: PullSplitFactory;
+  let l1SplitWarehouse: SplitsWarehouse;
   let l1SplitV2Address: string;
   let l1SplitWalletV2: SplitWalletV2;
   let l2Registry: NetworkRegistryProps;
@@ -62,6 +64,7 @@ describe("NetworkRegistryV2", function () {
     l1CalculatorLibrary = setup.calculatorLibrary;
     connext = setup.connext;
     splitV2Factory = setup.splitV2Factory;
+    l1SplitWarehouse = setup.splitWarehouse;
     l2Registry = setup.l2;
     users = setup.users;
 
@@ -612,6 +615,26 @@ describe("NetworkRegistryV2", function () {
         });
       const balanceAfter = await ethers.provider.getBalance(to);
       expect(balanceAfter).to.be.equal(balanceBefore.add(value));
+    });
+
+    it("Should be able to pause withdrawals from the SplitWarehouse", async () => {
+      const value = ethers.utils.parseEther("1");
+      const calls = [
+        {
+          to: l1SplitWarehouse.address,
+          value: "0",
+          data: l1SplitWarehouse.interface.encodeFunctionData("setWithdrawConfig", [{ incentive: "0", paused: true }]),
+        },
+      ];
+      const tx = await l1NetworkRegistry.splitWalletExecCalls(calls, { value });
+      await expect(tx)
+        .to.emit(l1SplitWalletV2, "ExecCalls")
+        .withArgs((value: any) => {
+          expect(value.length).to.equal(1);
+          expect(value[0]).to.deep.equal(calls.map((c) => [c.to, c.value, c.data])[0]);
+          return true;
+        });
+      expect(await l1SplitWarehouse.withdrawConfig(l1SplitWalletV2.address)).to.deep.equal(["0", true]);
     });
   });
 
